@@ -98,3 +98,26 @@ add_action('admin_notices', function () {
         );
     }
 });
+
+require __DIR__ . '/vendor/autoload.php';
+
+TAW\Support\Performance::configure([
+    // Add external domains your theme connects to
+    'preconnect_origins' => [
+        'https://fonts.googleapis.com',
+        'https://fonts.gstatic.com',
+    ],
+
+    // Self-hosted fonts to preload (resolved via vite_asset_url)
+    'preload_fonts' => [
+        'resources/fonts/Roboto-Regular.woff2',
+        'resources/fonts/Roboto-Bold.woff2',
+    ],
+
+    // Turn individual features off
+    'remove_emoji'       => false,
+    'remove_meta_tags'   => true,
+    'remove_oembed'      => true,
+    'remove_bloat'       => true,
+    'preload_hero_image' => true,
+]);
