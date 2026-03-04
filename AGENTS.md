@@ -11,7 +11,7 @@
 |---|---|
 | `vendor/taw/core/src/Core/` | Framework internals — base classes, registry, loader, metabox engine (**read-only**, managed via composer) |
 | `vendor/taw/core/src/Core/Menu/` | Navigation menu object model (`Menu`, `MenuItem`) |
-| `vendor/taw/core/src/Core/Rest/` | REST API endpoints (`SearchEndpoints`) |
+| `vendor/taw/core/src/Core/Rest/` | REST API endpoints (`SearchEndpoints`, `VisualEditorEndpoint`) |
 | `vendor/taw/core/src/Helpers/` | Utility helpers (`Image`) |
 | `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`) |
 | `vendor/taw/core/src/Support/` | `vite-loader.php`, `performance.php` — autoloaded by composer |
@@ -23,7 +23,7 @@
 | `resources/scss/critical.scss` | Above-the-fold CSS — compiled and inlined in `<head>` |
 | `resources/scss/_fonts.scss` | `@font-face` declarations for self-hosted fonts |
 | `resources/fonts/` | Self-hosted WOFF2 font files |
-| `functions.php` | Theme bootstrap (minimal — delegates to block system) |
+| `functions.php` | Developer customisations — theme supports, nav menus, performance config. Calls `TAW\Core\Theme::boot()`. |
 
 > **Important:** `TAW\Core`, `TAW\Helpers`, and `TAW\CLI` classes live inside the `taw/core` composer package (`vendor/taw/core/src/`), **not** in `inc/`. The theme's `inc/` only holds `options.php` and any Metabox view templates. Do not edit files inside `vendor/`.
 
@@ -58,8 +58,11 @@ vendor/taw/core/
 │   │   │   ├── Menu.php         # Nav menu tree factory
 │   │   │   └── MenuItem.php     # Typed menu item with active-state helpers
 │   │   └── Rest/
-│   │       └── SearchEndpoints.php  # GET taw/v1/search-posts
-│   ├── CLI/                     # Symfony Console commands
+│   │       ├── SearchEndpoints.php      # GET taw/v1/search-posts
+│   │       └── VisualEditorEndpoint.php # Visual Builder REST endpoint (⚠️ WIP)
+│   ├── Core/
+│   │   └── VisualEditor.php         # Visual Builder engine (⚠️ WIP)
+│   ├── CLI/                         # Symfony Console commands
 │   │   ├── MakeBlockCommand.php
 │   │   ├── ExportBlockCommand.php
 │   │   └── ImportBlockCommand.php
@@ -101,6 +104,8 @@ BaseBlock (abstract)
 | `TAW\Core\Menu\Menu` | Navigation menu object model — wraps WP nav menus into a typed tree |
 | `TAW\Core\Menu\MenuItem` | Individual menu item with typed getters (url, title, children, active state) |
 | `TAW\Core\Rest\SearchEndpoints` | REST API: `GET taw/v1/search-posts` — post search for authenticated users |
+| `TAW\Core\VisualEditor` | Visual Builder engine — initialised by `Theme::boot()` (**WIP**) |
+| `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint for the Visual Builder (**WIP**) |
 | `TAW\Helpers\Image` | Performance-optimized `<img>` tag generator with above/below-fold attributes |
 
 ### Naming Convention (CRITICAL)
@@ -170,6 +175,7 @@ get_header();
 **Safety fallback:** If `render()` is called without prior `queue()`, styles are printed inline in the body via `did_action('wp_head')` check. This works but is suboptimal (potential FOUC). Always prefer `queue()` first.
 
 ---
+
 
 ## Creating a New MetaBlock
 
@@ -406,7 +412,7 @@ if ($menu && $menu->hasItems()):
 | `children()` | `MenuItem[]` | Child items |
 | `classes()` | `string[]` | Custom classes (WP defaults stripped) |
 
-Menus must be registered in `functions.php` via `register_nav_menus()`. The theme registers `primary` and `footer` by default.
+Menus are registered in `functions.php` via `register_nav_menus()`. The theme registers `primary` and `footer` by default — edit that array directly to add or rename locations.
 
 ---
 
@@ -414,7 +420,7 @@ Menus must be registered in `functions.php` via `register_nav_menus()`. The them
 
 Provided by `taw/core` (namespace `TAW\Core\Rest\SearchEndpoints`).
 
-Registered automatically in `functions.php` via `new TAW\Core\Rest\SearchEndpoints()`.
+Registered automatically via `TAW\Core\Theme::boot()`.
 
 ### `GET taw/v1/search-posts`
 
