@@ -25,6 +25,8 @@ Framework internals live in the **`taw/core` composer package** (source: `https:
 
 The package provides: `Core\BaseBlock`, `Core\Block`, `Core\MetaBlock`, `Core\BlockLoader`, `Core\BlockRegistry`, `Core\Framework`, `Core\Metabox\Metabox`, `Core\OptionsPage`, `Core\ThemeUpdater`, `Core\Menu\Menu`, `Core\Menu\MenuItem`, `Core\Rest\SearchEndpoints`, `Helpers\Image`, and the CLI commands. It also autoloads `vite-loader.php` and `performance.php` via composer `files`.
 
+`Core\VisualEditor` and `Core\Rest\VisualEditorEndpoint` are also part of the package but are **Work in Progress** — do not rely on them yet.
+
 The theme's own `inc/` only contains:
 - `options.php` — theme-level options page configuration (required from `functions.php`)
 - `Metabox/` — any view/template overrides for metabox fields

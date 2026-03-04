@@ -28,6 +28,8 @@ The framework internals (block system, metabox engine, Vite bridge) ship as the 
 
 **AI-native DX.** Ships with `AGENTS.md`, `CLAUDE.md`, and Copilot/Windsurf instructions so any AI coding assistant understands the architecture out of the box.
 
+**Visual Builder** *(Work in Progress)* — a live drag-and-drop page builder is under active development inside `taw/core` (`TAW\Core\VisualEditor`). It is not ready for production use.
+
 ---
 
 ## Quick Start
@@ -666,13 +668,13 @@ See [Theme Options](#theme-options) above for the full API.
 
 ## Navigation Menus — registration
 
-Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_menus()`. Assign them in WordPress admin → Appearance → Menus.
+Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_menus()`. Edit that array directly to add or rename locations. Assign menus to locations in WordPress admin → Appearance → Menus.
 
 ---
 
 ## REST API
 
-`TAW\Core\Rest\SearchEndpoints` registers `GET taw/v1/search-posts`. It powers the `post_select` metabox field and is registered automatically in `functions.php`.
+`TAW\Core\Rest\SearchEndpoints` registers `GET taw/v1/search-posts`. It powers the `post_select` metabox field and is registered automatically via `TAW\Core\Theme::boot()`.
 
 **Endpoint:** `GET /wp-json/taw/v1/search-posts`
 **Requires:** `edit_posts` capability (logged-in editors+)
@@ -770,7 +772,7 @@ taw-theme/
 │   ├── fonts/                 # Self-hosted WOFF2 files
 │   └── js/app.js              # Alpine.js + global JS entry point
 ├── public/build/              # Compiled assets (gitignored)
-├── functions.php              # Theme bootstrap (minimal)
+├── functions.php              # Developer customisations — theme setup, menus, performance config
 ├── vite.config.js             # Vite configuration
 ├── composer.json              # PHP deps — TAW\Blocks\ → Blocks/, requires taw/core
 ├── package.json               # Node deps + scripts
