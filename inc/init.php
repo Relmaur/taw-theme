@@ -32,17 +32,22 @@ new TAW\Core\Rest\SearchEndpoints();
 new TAW\Core\Rest\VisualEditorEndpoint();
 
 // --- Performance ---
-TAW\Support\Performance::configure(
-    apply_filters('taw_performance_config', [
-        'preconnect_origins' => [],
-        'preload_fonts'      => [],
-        'remove_emoji'       => false,
-        'remove_meta_tags'   => true,
-        'remove_oembed'      => true,
-        'remove_bloat'       => true,
-        'preload_hero_image' => true,
-    ])
-);
+// Wrapped in after_setup_theme so filters registered in functions.php are in place
+// before apply_filters() runs. Priority 5 ensures this fires before the theme's
+// own after_setup_theme callback (priority 10) and before any wp_head hooks.
+add_action('after_setup_theme', function () {
+    TAW\Support\Performance::configure(
+        apply_filters('taw_performance_config', [
+            'preconnect_origins' => [],
+            'preload_fonts'      => [],
+            'remove_emoji'       => false,
+            'remove_meta_tags'   => true,
+            'remove_oembed'      => true,
+            'remove_bloat'       => true,
+            'preload_hero_image' => true,
+        ])
+    );
+}, 5);
 
 // --- Asset Pipeline ---
 add_action('wp_enqueue_scripts', [TAW\Core\BlockRegistry::class, 'enqueueQueuedAssets']);
