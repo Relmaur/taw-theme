@@ -70,11 +70,16 @@ add_action('wp_enqueue_scripts', function () {
 
 TAW\Core\BlockLoader::loadAll();
 
+// --- Visual Editor ---
+TAW\Core\VisualEditor::init();
+
 add_action('wp_enqueue_scripts', [TAW\Core\BlockRegistry::class, 'enqueueQueuedAssets']);
 
 // --- REST API ---
 
 new TAW\Core\Rest\SearchEndpoints();
+
+new TAW\Core\Rest\VisualEditorEndpoint();
 
 // --- Admin ---
 

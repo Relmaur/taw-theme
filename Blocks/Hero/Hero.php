@@ -24,6 +24,7 @@ class Hero extends MetaBlock
                     'type'     => 'text',
                     'width'    => '33.33',
                     'required' => true,
+                    'editor' => true
                 ],
                 [
                     'id'       => 'hero_tagline',
@@ -31,12 +32,18 @@ class Hero extends MetaBlock
                     'type'     => 'text',
                     'width'    => '33.33',
                     'required' => true,
+                    'editor'   => [      // ← Editable with settings
+                        'max_length' => 200,
+                    ],
                 ],
                 [
                     'id'    => 'hero_image_url',
                     'label' => __('Hero Image', 'taw-theme'),
                     'type'  => 'image',
-                    'width' => '33.33'
+                    'width' => '33.33',
+                    'editor' => [      // ← Editable with settings
+                        'preview_size' => 'medium',
+                    ],
                 ],
                 [
                     'id'          => 'hero_show_tagline',
