@@ -10,13 +10,9 @@
  *
  *   Filters:
  *     taw_performance_config  — (array) Full Performance::configure() config array
- *     taw_nav_menus           — (array) Nav menu locations passed to register_nav_menus()
- *     taw_custom_logo         — (array|false) custom-logo theme support args, or false to disable
  *
  *   Actions:
  *     taw_init                — Fires after all TAW core is bootstrapped
- *     taw_after_theme_setup   — Fires at the end of the after_setup_theme callback
- *     taw_after_admin_init    — Fires at the end of the admin_init callback
  */
 
 require_once get_template_directory() . '/vendor/autoload.php';
@@ -31,6 +27,16 @@ TAW\Core\VisualEditor::init();
 new TAW\Core\Rest\SearchEndpoints();
 new TAW\Core\Rest\VisualEditorEndpoint();
 
+// --- Asset Pipeline ---
+add_action('wp_enqueue_scripts', [TAW\Core\BlockRegistry::class, 'enqueueQueuedAssets']);
+
+add_action('wp_enqueue_scripts', function () {
+    vite_enqueue_theme_assets();
+});
+
+// --- Admin ---
+
+
 // --- Performance ---
 // Wrapped in after_setup_theme so filters registered in functions.php are in place
 // before apply_filters() runs. Priority 5 ensures this fires before the theme's
@@ -40,7 +46,7 @@ add_action('after_setup_theme', function () {
         apply_filters('taw_performance_config', [
             'preconnect_origins' => [],
             'preload_fonts'      => [],
-            'remove_emoji'       => false,
+            'remove_emoji'       => true,
             'remove_meta_tags'   => true,
             'remove_oembed'      => true,
             'remove_bloat'       => true,
@@ -49,54 +55,8 @@ add_action('after_setup_theme', function () {
     );
 }, 5);
 
-// --- Asset Pipeline ---
-add_action('wp_enqueue_scripts', [TAW\Core\BlockRegistry::class, 'enqueueQueuedAssets']);
-add_action('wp_enqueue_scripts', function () {
-    vite_enqueue_theme_assets();
-});
-
 // --- Theme Setup ---
-add_action('after_setup_theme', function () {
-    load_theme_textdomain('taw-theme', get_template_directory() . '/languages');
 
-    add_theme_support('title-tag');
-    add_theme_support('post-thumbnails');
-    add_theme_support('html5', [
-        'search-form',
-        'comment-form',
-        'comment-list',
-        'gallery',
-        'caption',
-        'style',
-        'script',
-    ]);
-
-    $logo_args = apply_filters('taw_custom_logo', [
-        'height'      => 60,
-        'width'       => 200,
-        'flex-height' => true,
-        'flex-width'  => true,
-    ]);
-    if ($logo_args !== false) {
-        add_theme_support('custom-logo', $logo_args);
-    }
-
-    register_nav_menus(
-        apply_filters('taw_nav_menus', [
-            'primary' => __('Primary Menu', 'taw-theme'),
-            'footer'  => __('Footer Menu', 'taw-theme'),
-        ])
-    );
-
-    do_action('taw_after_theme_setup');
-});
-
-// --- Admin ---
-add_action('admin_init', function () {
-    remove_post_type_support('page', 'editor');
-
-    do_action('taw_after_admin_init');
-});
 
 // --- Ready ---
 do_action('taw_init');

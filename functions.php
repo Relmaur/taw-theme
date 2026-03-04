@@ -7,62 +7,67 @@
  * Core bootstrap lives in inc/init.php — update the theme to get the latest version.
  */
 
-require_once get_template_directory() . '/inc/init.php';
+require_once get_template_directory() . '/vendor/autoload.php';
+
 require_once get_template_directory() . '/inc/options.php';
 
-// ---------------------------------------------------------------------------
-// Performance
-// Docs: https://github.com/Relmaur/taw-core
-// ---------------------------------------------------------------------------
-add_filter('taw_performance_config', function (array $config): array {
-    $config['preconnect_origins'] = [
-        'https://fonts.googleapis.com',
-        'https://fonts.gstatic.com',
-    ];
+// Add the necessary hooks to configure the theme. See inc/init.php for available hooks and documentation.
+TAW\Support\Performance::configure(
+    [
+        'preconnect_origins' => [
+            'https://fonts.googleapis.com',
+            'https://fonts.gstatic.com',
+        ],
+        'preload_fonts'      => [
+            'resources/fonts/Roboto-Regular.woff2',
+            'resources/fonts/Roboto-Bold.woff2',
+        ],
+        'preconnect_origins' => [],
+        'preload_fonts'      => [],
+        'remove_emoji'       => true,
+        'remove_meta_tags'   => true,
+        'remove_oembed'      => true,
+        'remove_bloat'       => true,
+        'preload_hero_image' => true,
+    ]
+);
 
-    $config['preload_fonts'] = [
-        'resources/fonts/Roboto-Regular.woff2',
-        'resources/fonts/Roboto-Bold.woff2',
-    ];
+TAW\Core\Theme::boot();
 
-    return $config;
+/**
+ * Customize here:
+ */
+add_action('admin_init', function () {
+    remove_post_type_support('page', 'editor');
+
+    do_action('taw_after_admin_init');
 });
 
-// ---------------------------------------------------------------------------
-// Navigation Menus
-// Add extra locations here, or override the defaults entirely.
-// ---------------------------------------------------------------------------
-// add_filter('taw_nav_menus', function (array $menus): array {
-//     $menus['mobile'] = __('Mobile Menu', 'taw-theme');
-//     return $menus;
-// });
+add_action('after_setup_theme', function () {
+    add_theme_support('title-tag');
+    add_theme_support('post-thumbnails');
+    add_theme_support('html5', [
+        'search-form',
+        'comment-form',
+        'comment-list',
+        'gallery',
+        'caption',
+        'style',
+        'script',
+    ]);
+    add_theme_support('custom-logo', [
+        'height'      => 60,
+        'width'       => 200,
+        'flex-height' => true,
+        'flex-width'  => true,
+    ]);
 
-// ---------------------------------------------------------------------------
-// Custom Logo
-// Return false to disable custom-logo theme support.
-// ---------------------------------------------------------------------------
-// add_filter('taw_custom_logo', function (array $args): array {
-//     $args['width'] = 300;
-//     return $args;
-// });
+    register_nav_menus([
+        'primary' => __('Primary Menu', 'taw-theme'),
+        'footer'  => __('Footer Menu', 'taw-theme'),
+    ]);
+});
 
-// ---------------------------------------------------------------------------
-// Runs after all TAW core is bootstrapped (BlockLoader, REST, Performance…)
-// ---------------------------------------------------------------------------
-// add_action('taw_init', function () {
-//     // e.g. register custom post types, taxonomies, etc.
-// });
-
-// ---------------------------------------------------------------------------
-// Runs at the end of after_setup_theme
-// ---------------------------------------------------------------------------
-// add_action('taw_after_theme_setup', function () {
-//     add_theme_support('woocommerce');
-// });
-
-// ---------------------------------------------------------------------------
-// Runs at the end of admin_init
-// ---------------------------------------------------------------------------
-// add_action('taw_after_admin_init', function () {
-//     // e.g. remove post type support from other post types
-// });
+add_action('after_setup_theme', function () {
+    load_theme_textdomain('taw-theme', get_template_directory() . '/languages');
+}, 1);
