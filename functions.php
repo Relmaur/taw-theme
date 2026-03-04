@@ -1,107 +1,68 @@
 <?php
 
 /**
- * TAW Theme — Bootstrap
+ * TAW Theme — Developer Customisations
  *
- * WHAT CHANGED (post-split):
- * --------------------------
- * Before: We manually required vite-loader.php and performance.php.
- * After:  The core package's composer.json declares them in the "files"
- *         autoload key, so Composer loads them automatically when
- *         vendor/autoload.php is required. One line does it all.
- *
- * Before: Core classes lived at inc/Core/*, inc/CLI/*, inc/Helpers/*
- * After:  They live at vendor/taw/core/src/* — same namespaces,
- *         different physical location. Composer handles resolution.
- *
- * WHAT STAYS THE SAME:
- * --------------------
- * - All use statements (TAW\Core\BlockLoader, etc.) are identical
- * - The queue-before-render pattern is identical
- * - Block auto-discovery works the same way
- * - Your Blocks/ directory hasn't changed at all
+ * This is your file. Use the hooks below to configure the theme.
+ * Core bootstrap lives in inc/init.php — update the theme to get the latest version.
  */
 
-// This single line loads EVERYTHING:
-// - Composer's PSR-4 autoloader (resolves TAW\Core\* from vendor/taw/core/src/)
-// - The "files" entries from taw/core (vite-loader.php, performance.php)
-// - Your TAW\Blocks\* classes from Blocks/
-
-require_once get_template_directory() . '/vendor/autoload.php';
-
-// Theme-specific configuration (this stays in your theme)
+require_once get_template_directory() . '/inc/init.php';
 require_once get_template_directory() . '/inc/options.php';
 
-// --- Block System ---
-TAW\Core\BlockLoader::loadAll();
-
-// --- Visual Editor ---
-TAW\Core\VisualEditor::init();
-
-// --- REST API ---
-new TAW\Core\Rest\SearchEndpoints();
-new TAW\Core\Rest\VisualEditorEndpoint();
-
-// --- Performance Optimizations ---
-TAW\Support\Performance::configure([
-    // Add external domains your theme connects to
-    'preconnect_origins' => [
+// ---------------------------------------------------------------------------
+// Performance
+// Docs: https://github.com/Relmaur/taw-core
+// ---------------------------------------------------------------------------
+add_filter('taw_performance_config', function (array $config): array {
+    $config['preconnect_origins'] = [
         'https://fonts.googleapis.com',
         'https://fonts.gstatic.com',
-    ],
+    ];
 
-    // Self-hosted fonts to preload (resolved via vite_asset_url)
-    'preload_fonts' => [
+    $config['preload_fonts'] = [
         'resources/fonts/Roboto-Regular.woff2',
         'resources/fonts/Roboto-Bold.woff2',
-    ],
+    ];
 
-    // Turn individual features off
-    'remove_emoji'       => false,
-    'remove_meta_tags'   => true,
-    'remove_oembed'      => true,
-    'remove_bloat'       => true,
-    'preload_hero_image' => true,
-]);
-
-
-// TAW: Register the queue-before-render callback for front-end assets
-add_action('wp_enqueue_scripts', [TAW\Core\BlockRegistry::class, 'enqueueQueuedAssets']);
-
-// TAW: Asset Pipeline ---
-add_action('wp_enqueue_scripts', function () {
-    vite_enqueue_theme_assets();
+    return $config;
 });
 
-// --- Theme Setup ---
-add_action('after_setup_theme', function () {
-    load_theme_textdomain('taw-theme', get_template_directory() . '/languages');
+// ---------------------------------------------------------------------------
+// Navigation Menus
+// Add extra locations here, or override the defaults entirely.
+// ---------------------------------------------------------------------------
+// add_filter('taw_nav_menus', function (array $menus): array {
+//     $menus['mobile'] = __('Mobile Menu', 'taw-theme');
+//     return $menus;
+// });
 
-    add_theme_support('title-tag');
-    add_theme_support('post-thumbnails');
-    add_theme_support('html5', [
-        'search-form',
-        'comment-form',
-        'comment-list',
-        'gallery',
-        'caption',
-        'style',
-        'script',
-    ]);
-    add_theme_support('custom-logo', [
-        'height'      => 60,
-        'width'       => 200,
-        'flex-height' => true,
-        'flex-width'  => true,
-    ]);
+// ---------------------------------------------------------------------------
+// Custom Logo
+// Return false to disable custom-logo theme support.
+// ---------------------------------------------------------------------------
+// add_filter('taw_custom_logo', function (array $args): array {
+//     $args['width'] = 300;
+//     return $args;
+// });
 
-    register_nav_menus([
-        'primary' => __('Primary Menu', 'taw-theme'),
-        'footer'  => __('Footer Menu', 'taw-theme'),
-    ]);
-});
+// ---------------------------------------------------------------------------
+// Runs after all TAW core is bootstrapped (BlockLoader, REST, Performance…)
+// ---------------------------------------------------------------------------
+// add_action('taw_init', function () {
+//     // e.g. register custom post types, taxonomies, etc.
+// });
 
-// --- Admin ---
-add_action('admin_init', function () {
-    remove_post_type_support('page', 'editor');
-});
+// ---------------------------------------------------------------------------
+// Runs at the end of after_setup_theme
+// ---------------------------------------------------------------------------
+// add_action('taw_after_theme_setup', function () {
+//     add_theme_support('woocommerce');
+// });
+
+// ---------------------------------------------------------------------------
+// Runs at the end of admin_init
+// ---------------------------------------------------------------------------
+// add_action('taw_after_admin_init', function () {
+//     // e.g. remove post type support from other post types
+// });
