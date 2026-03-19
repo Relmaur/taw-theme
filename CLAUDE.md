@@ -23,9 +23,18 @@ php bin/taw import:block path/to/Block.zip            # Import block from ZIP
 
 Framework internals live in the **`taw/core` composer package** (source: `https://github.com/Relmaur/taw-core`), installed at `vendor/taw/core/src/`. The namespace `TAW\Core` maps to that package — do **not** look for these classes in `inc/`.
 
-The package provides: `Core\BaseBlock`, `Core\Block`, `Core\MetaBlock`, `Core\BlockLoader`, `Core\BlockRegistry`, `Core\Framework`, `Core\Metabox\Metabox`, `Core\OptionsPage`, `Core\ThemeUpdater`, `Core\Menu\Menu`, `Core\Menu\MenuItem`, `Core\Rest\SearchEndpoints`, `Helpers\Image`, and the CLI commands. It also autoloads `vite-loader.php` and `performance.php` via composer `files`.
+The package provides:
+- **Block system:** `Core\Block\BaseBlock`, `Core\Block\Block`, `Core\Block\MetaBlock`, `Core\Block\BlockLoader`, `Core\Block\BlockRegistry`
+- **Data:** `Core\Metabox\Metabox`, `Core\OptionsPage\OptionsPage`
+- **Theme:** `Core\Theme\Theme`, `Core\Theme\ThemeUpdater`
+- **Navigation:** `Core\Menu\Menu`, `Core\Menu\MenuItem`
+- **REST:** `Core\Rest\SearchEndpoints`
+- **Forms:** `Core\Form\Form`, `Core\Form\SubmissionsHandler`
+- **Mail:** `Core\Mail\Mailer`, `Core\Mail\MailTemplate`, `Core\Mail\MailTester`
+- **Helpers:** `Helpers\Framework`, `Helpers\Image`, `Helpers\Svg`, `Helpers\Dump`, `Helpers\Editor`
+- **CLI commands** and autoloads `utilities.php` and `performance.php` via composer `files`.
 
-`Core\VisualEditor` and `Core\Rest\VisualEditorEndpoint` are also part of the package but are **Work in Progress** — do not rely on them yet.
+`Core\Editor\VisualEditor` and `Core\Rest\VisualEditorEndpoint` are also part of the package but are **Work in Progress** — do not rely on them yet.
 
 The theme's own `inc/` only contains:
 - `options.php` — theme-level options page configuration (required from `functions.php`)
@@ -68,13 +77,71 @@ Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_
 
 ## Helpers
 
-`TAW\Helpers\Image` (from `taw/core`) — performance-optimised `<img>` tag generator.
+`TAW\Helpers\Image` — performance-optimised `<img>` tag generator.
 
 ```php
 echo TAW\Helpers\Image::render($id, 'large', 'Alt text');
 echo TAW\Helpers\Image::render($id, 'full', 'Hero', ['above_fold' => true]);
 echo TAW\Helpers\Image::preload_tag($id, 'full'); // <link rel="preload">
 ```
+
+`TAW\Helpers\Svg` — SVG upload enablement, sanitization, and rendering.
+
+```php
+Svg::register(); // enable SVG uploads + auto-sanitize on upload (call in theme setup)
+echo Svg::render($attachment_id, 'Logo', ['class' => 'logo']); // <img> tag
+echo Svg::inline($attachment_id, ['class' => 'icon']);          // inline <svg>
+$url = Svg::url($attachment_id);
+```
+
+`TAW\Helpers\Dump` — debug helper. Global `dump()` / `dd()` functions output a styled panel in `wp_footer` — only when `WP_DEBUG` is true.
+
+## Forms
+
+`TAW\Core\Form\Form` — configuration-driven frontend form with CSRF (nonces), honeypot, field validation, PRG pattern, and email delivery.
+
+```php
+use TAW\Core\Form\Form;
+
+$form = new Form([
+    'id'           => 'contact',
+    'submit_label' => 'Send Message',
+    'email' => [
+        'to_self'   => ['subject' => 'New contact',        'template' => 'contact-self'],
+        'to_client' => ['subject' => 'Got your message',   'template' => 'contact-client'],
+    ],
+    'messages' => ['success' => "Thanks! We'll be in touch."],
+    'fields' => [
+        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
+        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
+        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+    ],
+]);
+$form->render();
+```
+
+Form field types: `text`, `email`, `textarea`, `select`, plus any standard HTML input type.
+
+`TAW\Core\Form\SubmissionsHandler` — stores submissions as a `taw_submission` CPT and can forward them via webhook (n8n, Zapier, Make, etc.). Instantiate once in `functions.php`.
+
+## Mail
+
+`TAW\Core\Mail\Mailer` — fluent `wp_mail()` wrapper with HTML template support.
+
+```php
+use TAW\Core\Mail\Mailer;
+
+(new Mailer())
+    ->to('user@example.com')
+    ->subject('Welcome!')
+    ->template('welcome')           // looks in mails/html/welcome.html
+    ->setVariables(['name' => 'Jane'])
+    ->send();
+```
+
+Templates live in `mails/html/{name}.html` (pre-compiled) or `mails/{name}.mjml` (compiled at runtime in dev via `spatie/mjml-php`). Use `{{variable_name}}` placeholders.
+
+`TAW\Core\Mail\MailTester` — admin page (Tools → Test Emails) for sending test emails. Register it with `(new MailTester())->register()`.
 
 ## REST API
 
@@ -86,7 +153,8 @@ echo TAW\Helpers\Image::preload_tag($id, 'full'); // <link rel="preload">
 - `resources/scss/critical.scss` — standalone Vite entry, inlined in `<head>` — keep under ~14 KB, **no `@font-face`**
 - Self-hosted fonts: WOFF2 in `resources/fonts/`, `@font-face` in `resources/scss/_fonts.scss`, `@use 'fonts'` in `app.scss` only
 - Add font preloads via `vite_asset_url('resources/fonts/Name.woff2')` (function provided by `taw/core`)
-- `vite-loader.php` and `performance.php` are part of the `taw/core` package — autoloaded via composer `files`
+- `utilities.php` and `performance.php` are part of the `taw/core` package — autoloaded via composer `files`
+- `utilities.php` provides global helpers: `vite_asset_url()`, `vite_is_dev()`, `dump()`, `dd()`, `taw_editable()`, `taw_editor_attrs()`
 
 ## Key Conventions
 
@@ -98,7 +166,7 @@ echo TAW\Helpers\Image::preload_tag($id, 'full'); // <link rel="preload">
 
 ## Metabox Field Types
 
-`text`, `textarea`, `wysiwyg`, `url`, `number`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_selector`
+`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_select`
 
 ## When Creating New Blocks
 
@@ -114,5 +182,5 @@ echo TAW\Helpers\Image::preload_tag($id, 'full'); // <link rel="preload">
 - Don't add `@font-face` to `critical.scss` — inlined CSS can't resolve relative asset paths
 - Don't add `resources/css/app.css` as a Vite entry — it's imported by `app.js`
 - Don't use `wp_nav_menu()` — use `Menu::get('location')` for full markup control
-- Don't look for `TAW\Core` classes in `inc/` — they live in `vendor/taw/core/src/Core/`
+- Don't look for `TAW\Core` or `TAW\Helpers` classes in `inc/` — they live in `vendor/taw/core/src/`
 - Don't edit files inside `vendor/` — to change framework behaviour, update the `taw/core` package in its own repo and bump the version

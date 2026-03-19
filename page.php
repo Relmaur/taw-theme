@@ -10,7 +10,7 @@
  * or create dedicated page templates (e.g. page-about.php, page-contact.php).
  */
 
-use TAW\Core\BlockRegistry;
+use TAW\Core\Block\BlockRegistry;
 
 BlockRegistry::queue('hero', 'pricing_table');
 

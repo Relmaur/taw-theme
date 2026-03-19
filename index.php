@@ -1,7 +1,7 @@
 <?php
 // index.php (or front-page.php)
 
-use TAW\Core\BlockRegistry;
+use TAW\Core\Block\BlockRegistry;
 
 // 1. Declare which blocks this page needs (BEFORE get_header)
 BlockRegistry::queue('hero', 'pricing_table');

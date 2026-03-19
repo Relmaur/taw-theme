@@ -1,5 +1,7 @@
 <?php
 
+use TAW\Core\Theme\Theme;
+
 /**
  * TAW Theme — Developer Customisations
  *
@@ -11,8 +13,10 @@ require_once get_template_directory() . '/vendor/autoload.php';
 
 require_once get_template_directory() . '/inc/options.php';
 
+Theme::boot();
+
 // Add the necessary hooks to configure the theme. See inc/init.php for available hooks and documentation.
-TAW\Support\Performance::configure(
+Theme::performance(
     [
         'preconnect_origins' => [
             'https://fonts.googleapis.com',
@@ -31,8 +35,6 @@ TAW\Support\Performance::configure(
         'preload_hero_image' => true,
     ]
 );
-
-TAW\Core\Theme::boot();
 
 /**
  * Customize here:

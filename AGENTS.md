@@ -9,12 +9,18 @@
 
 | Path | Purpose |
 |---|---|
-| `vendor/taw/core/src/Core/` | Framework internals — base classes, registry, loader, metabox engine (**read-only**, managed via composer) |
+| `vendor/taw/core/src/Core/Block/` | Block system — `BaseBlock`, `Block`, `MetaBlock`, `BlockLoader`, `BlockRegistry` (**read-only**) |
+| `vendor/taw/core/src/Core/Metabox/` | Metabox framework (`Metabox`) |
+| `vendor/taw/core/src/Core/OptionsPage/` | Options page framework (`OptionsPage`) |
+| `vendor/taw/core/src/Core/Theme/` | `Theme`, `ThemeUpdater` |
 | `vendor/taw/core/src/Core/Menu/` | Navigation menu object model (`Menu`, `MenuItem`) |
 | `vendor/taw/core/src/Core/Rest/` | REST API endpoints (`SearchEndpoints`, `VisualEditorEndpoint`) |
-| `vendor/taw/core/src/Helpers/` | Utility helpers (`Image`) |
+| `vendor/taw/core/src/Core/Form/` | Frontend form system (`Form`, `SubmissionsHandler`) |
+| `vendor/taw/core/src/Core/Mail/` | Email system (`Mailer`, `MailTemplate`, `MailTester`) |
+| `vendor/taw/core/src/Core/Editor/` | Visual Editor engine (⚠️ WIP) |
+| `vendor/taw/core/src/Helpers/` | Utility helpers (`Framework`, `Image`, `Svg`, `Dump`, `Editor`) |
 | `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`) |
-| `vendor/taw/core/src/Support/` | `vite-loader.php`, `performance.php` — autoloaded by composer |
+| `vendor/taw/core/src/Support/` | `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
 | `inc/options.php` | Theme-level options page configuration |
 | `resources/js/app.js` | Alpine.js + global JS — imports Tailwind CSS and custom SCSS |
@@ -44,32 +50,46 @@ This separation means:
 vendor/taw/core/
 ├── src/
 │   ├── Core/
-│   │   ├── Framework.php        # Path/URL resolver for the package (Taw::path(), Taw::themePath() …)
-│   │   ├── BaseBlock.php        # Abstract base — asset loading, template rendering
-│   │   ├── MetaBlock.php        # Data-owning blocks (metaboxes + post_meta)
-│   │   ├── Block.php            # Presentational blocks (receives props)
-│   │   ├── BlockRegistry.php    # Static registry — queue, enqueue, render
-│   │   ├── BlockLoader.php      # Auto-discovers blocks by scanning Blocks/
-│   │   ├── OptionsPage.php      # Config-driven admin options page (wp_options)
-│   │   ├── ThemeUpdater.php     # GitHub Releases-based auto-updater
+│   │   ├── Block/
+│   │   │   ├── BaseBlock.php        # Abstract base — asset loading, template rendering
+│   │   │   ├── MetaBlock.php        # Data-owning blocks (metaboxes + post_meta)
+│   │   │   ├── Block.php            # Presentational blocks (receives props)
+│   │   │   ├── BlockRegistry.php    # Static registry — queue, enqueue, render
+│   │   │   └── BlockLoader.php      # Auto-discovers blocks by scanning Blocks/
 │   │   ├── Metabox/
-│   │   │   └── Metabox.php      # Config-driven metabox framework
+│   │   │   └── Metabox.php          # Config-driven metabox framework
+│   │   ├── OptionsPage/
+│   │   │   └── OptionsPage.php      # Config-driven admin options page (wp_options)
+│   │   ├── Theme/
+│   │   │   ├── Theme.php            # Theme bootstrap
+│   │   │   └── ThemeUpdater.php     # GitHub Releases-based auto-updater
 │   │   ├── Menu/
-│   │   │   ├── Menu.php         # Nav menu tree factory
-│   │   │   └── MenuItem.php     # Typed menu item with active-state helpers
-│   │   └── Rest/
-│   │       ├── SearchEndpoints.php      # GET taw/v1/search-posts
-│   │       └── VisualEditorEndpoint.php # Visual Builder REST endpoint (⚠️ WIP)
-│   ├── Core/
-│   │   └── VisualEditor.php         # Visual Builder engine (⚠️ WIP)
+│   │   │   ├── Menu.php             # Nav menu tree factory
+│   │   │   └── MenuItem.php         # Typed menu item with active-state helpers
+│   │   ├── Rest/
+│   │   │   ├── SearchEndpoints.php      # GET taw/v1/search-posts
+│   │   │   └── VisualEditorEndpoint.php # Visual Builder REST endpoint (⚠️ WIP)
+│   │   ├── Form/
+│   │   │   ├── Form.php             # Config-driven frontend form (CSRF, honeypot, PRG, email)
+│   │   │   └── SubmissionsHandler.php # CPT submission storage + webhook forwarding
+│   │   ├── Mail/
+│   │   │   ├── Mailer.php           # Fluent wp_mail() wrapper with template support
+│   │   │   ├── MailTemplate.php     # MJML/HTML template compiler ({{variable}} syntax)
+│   │   │   └── MailTester.php       # Admin page: Tools → Test Emails
+│   │   └── Editor/
+│   │       └── VisualEditor.php     # Visual Builder engine (⚠️ WIP)
 │   ├── CLI/                         # Symfony Console commands
 │   │   ├── MakeBlockCommand.php
 │   │   ├── ExportBlockCommand.php
 │   │   └── ImportBlockCommand.php
 │   ├── Helpers/
-│   │   └── Image.php            # Performance-optimised <img> tag generator
+│   │   ├── Framework.php        # Path/URL resolver (Framework::path(), Framework::themePath() …)
+│   │   ├── Image.php            # Performance-optimised <img> tag generator
+│   │   ├── Svg.php              # SVG upload enablement, sanitization, inline/img rendering
+│   │   ├── Dump.php             # Debug panel helper (WP_DEBUG only)
+│   │   └── Editor.php           # Visual editor field annotation helpers
 │   └── Support/
-│       ├── vite-loader.php      # Vite ↔ WordPress bridge (autoloaded)
+│       ├── utilities.php        # Global helpers: vite_asset_url(), dump(), taw_editable() … (autoloaded)
 │       └── performance.php      # Resource hints, font preloads, WP bloat removal (autoloaded)
 └── composer.json
 ```
@@ -92,21 +112,29 @@ BaseBlock (abstract)
 
 | Class | Role |
 |---|---|
-| `TAW\Core\BaseBlock` | Reflection-based auto-discovery of component directory, asset enqueuing (CSS/JS), template rendering via `extract()` |
-| `TAW\Core\MetaBlock` | Extends BaseBlock. Registers metaboxes in constructor, provides `getData(int $postId)` and `render(?int $postId)` |
-| `TAW\Core\Block` | Extends BaseBlock. Defines `defaults()` for props, provides `render(array $props)` |
-| `TAW\Core\BlockRegistry` | Static registry for MetaBlocks. Supports `register()`, `queue()`, `render()`, `enqueueQueuedAssets()` |
-| `TAW\Core\BlockLoader` | Auto-discovers all MetaBlock classes by scanning `Blocks/*/` directories |
-| `TAW\Core\Framework` | Path/URL resolver. `Framework::path()` → package root; `Framework::themePath()` → active theme root |
+| `TAW\Core\Block\BaseBlock` | Reflection-based auto-discovery of component directory, asset enqueuing (CSS/JS), template rendering via `extract()` |
+| `TAW\Core\Block\MetaBlock` | Extends BaseBlock. Registers metaboxes in constructor, provides `getData(int $postId)` and `render(?int $postId)` |
+| `TAW\Core\Block\Block` | Extends BaseBlock. Defines `defaults()` for props, provides `render(array $props)` |
+| `TAW\Core\Block\BlockRegistry` | Static registry for MetaBlocks. Supports `register()`, `queue()`, `render()`, `enqueueQueuedAssets()` |
+| `TAW\Core\Block\BlockLoader` | Auto-discovers all MetaBlock classes by scanning `Blocks/*/` directories |
+| `TAW\Helpers\Framework` | Path/URL resolver. `Framework::path()` → package root; `Framework::themePath()` → active theme root |
 | `TAW\Core\Metabox\Metabox` | Configuration-driven metabox framework. Field registration, rendering, saving, and static retrieval helpers |
-| `TAW\Core\OptionsPage` | Configuration-driven admin options page. Same field format as Metabox but stores to `wp_options` |
-| `TAW\Core\ThemeUpdater` | GitHub Releases-based automatic theme updater |
+| `TAW\Core\OptionsPage\OptionsPage` | Configuration-driven admin options page. Same field format as Metabox but stores to `wp_options` |
+| `TAW\Core\Theme\ThemeUpdater` | GitHub Releases-based automatic theme updater |
 | `TAW\Core\Menu\Menu` | Navigation menu object model — wraps WP nav menus into a typed tree |
 | `TAW\Core\Menu\MenuItem` | Individual menu item with typed getters (url, title, children, active state) |
 | `TAW\Core\Rest\SearchEndpoints` | REST API: `GET taw/v1/search-posts` — post search for authenticated users |
-| `TAW\Core\VisualEditor` | Visual Builder engine — initialised by `Theme::boot()` (**WIP**) |
+| `TAW\Core\Form\Form` | Configuration-driven frontend form — CSRF, honeypot, validation, PRG redirect, email delivery |
+| `TAW\Core\Form\SubmissionsHandler` | Saves form submissions as `taw_submission` CPT; webhook forwarding (n8n, Zapier, Make) |
+| `TAW\Core\Mail\Mailer` | Fluent `wp_mail()` wrapper with HTML template support |
+| `TAW\Core\Mail\MailTemplate` | File-based email template compiler. Looks for `mails/html/{name}.html`; falls back to MJML at runtime |
+| `TAW\Core\Mail\MailTester` | Admin page under Tools → Test Emails for testing compiled templates |
+| `TAW\Core\Editor\VisualEditor` | Visual Builder engine (**WIP**) |
 | `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint for the Visual Builder (**WIP**) |
 | `TAW\Helpers\Image` | Performance-optimized `<img>` tag generator with above/below-fold attributes |
+| `TAW\Helpers\Svg` | SVG upload enablement, sanitization on upload, and inline/img rendering |
+| `TAW\Helpers\Dump` | Debug panel helper — `dump()` / `dd()` global functions, renders in `wp_footer` (WP_DEBUG only) |
+| `TAW\Helpers\Editor` | Visual editor field annotation — `Editor::field()`, `Editor::attrs()`, `Editor::section()` |
 
 ### Naming Convention (CRITICAL)
 
@@ -294,7 +322,7 @@ Usage in any template:
 
 Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-driven, supports:
 
-**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_selector`
+**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_select`
 
 **Features:**
 - `show_on` callback for conditional display (e.g., front page only)
@@ -312,7 +340,106 @@ Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-dri
 **Static helpers:**
 ```php
 Metabox::get(int $postId, string $fieldId, string $prefix = '_taw_'): mixed
+Metabox::get_bool(int $postId, string $fieldId): bool
 Metabox::get_image_url(int $postId, string $fieldId, string $size = 'full'): string
+Metabox::get_color(int $postId, string $fieldId, string $fallback = ''): string
+Metabox::get_posts(int $postId, string $fieldId): array   // post_select → array of IDs
+Metabox::get_repeater(int $postId, string $fieldId): array // repeater → array of rows
+```
+
+---
+
+## Form System
+
+Provided by `taw/core` (namespace `TAW\Core\Form`).
+
+### `Form`
+
+Configuration-driven frontend form. Handles CSRF protection (nonces), honeypot spam guard, field sanitization & validation, PRG redirect after success, and email delivery (plain-text fallback or MJML templates via `Mailer`).
+
+```php
+use TAW\Core\Form\Form;
+
+$form = new Form([
+    'id'                   => 'contact',
+    'submit_label'         => 'Send Message',
+    'submit_loading_label' => 'Sending...',
+    'messages' => ['success' => "Thanks! We'll be in touch."],
+    'email' => [
+        'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
+        'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
+    ],
+    'fields' => [
+        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
+        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
+        ['id' => 'service', 'label' => 'Service', 'type' => 'select',
+         'options' => ['web' => 'Web Design', 'seo' => 'SEO']],
+        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+    ],
+]);
+$form->render();
+```
+
+**Form field types:** `text`, `email`, `textarea`, `select`, and any standard HTML input type (e.g. `tel`, `date`). Fields support `required`, `placeholder`, `rows` (textarea).
+
+If `email.to_self.template` and `email.to_client.template` are both set, delivery uses `Mailer` + `MailTemplate`. Otherwise falls back to a plain-text `wp_mail()`.
+
+### `SubmissionsHandler`
+
+Registers a `taw_submission` CPT for viewing submissions in WP Admin. Also provides a Settings → Form Webhook page for a webhook URL + HMAC secret.
+
+```php
+// In functions.php — register once to activate submission storage
+new \TAW\Core\Form\SubmissionsHandler();
+```
+
+Submissions are saved automatically by `Form::process()` after a successful send.
+
+---
+
+## Mail System
+
+Provided by `taw/core` (namespace `TAW\Core\Mail`).
+
+### `Mailer`
+
+Fluent wrapper around `wp_mail()`.
+
+```php
+use TAW\Core\Mail\Mailer;
+
+(new Mailer())
+    ->to('user@example.com')
+    ->subject('Welcome!')
+    ->template('welcome')                   // looks for mails/html/welcome.html
+    ->setVariables(['name' => 'Jane', 'site_name' => 'MyBrand'])
+    ->send();
+
+// Optional extras
+(new Mailer())
+    ->to($email)
+    ->subject($subject)
+    ->template($template)
+    ->setVariables($vars)
+    ->from('noreply@mybrand.com', 'MyBrand')
+    ->addHeader('Reply-To: support@mybrand.com')
+    ->attach('/path/to/attachment.pdf')
+    ->send();
+```
+
+### `MailTemplate`
+
+Looks for templates in `mails/html/{name}.html` (pre-compiled HTML, used in production) or `mails/{name}.mjml` (compiled at runtime via `spatie/mjml-php` — dev only). The base directory can be overridden with the `taw_mail_templates_dir` filter.
+
+Use `{{variable_name}}` placeholders in templates. `all_fields` is auto-populated with a labelled HTML list of all submitted form values.
+
+### `MailTester`
+
+WP Admin page (Tools → Test Emails) for sending test emails against compiled templates.
+
+```php
+// In functions.php
+(new \TAW\Core\Mail\MailTester())->register();
 ```
 
 ---
@@ -522,6 +649,43 @@ echo Image::preload_tag($image_id, 'full');
 
 ---
 
+## SVG Helper
+
+Provided by `taw/core` (namespace `TAW\Helpers\Svg`).
+
+Enables SVG uploads in WordPress (sanitized via `enshrined/svg-sanitize` on upload) and provides rendering utilities.
+
+```php
+use TAW\Helpers\Svg;
+
+// Call once in theme setup (functions.php) to allow SVG uploads + auto-sanitize:
+Svg::register();
+
+// Render as <img> tag (safe; scripts inside SVG can't execute):
+echo Svg::render($attachment_id, 'Company logo', ['class' => 'logo h-8']);
+
+// Render inline (allows CSS targeting of SVG internals / animations):
+echo Svg::inline($attachment_id, ['class' => 'icon w-5 h-5', 'title' => 'Menu']);
+
+// Get URL only:
+$url = Svg::url($attachment_id);
+```
+
+---
+
+## Debug Helper
+
+Provided by `taw/core` (namespace `TAW\Helpers\Dump`). Global `dump()` / `dd()` functions are autoloaded from `utilities.php`.
+
+**Only active when `WP_DEBUG` is `true`.** Renders a styled collapsible panel in `wp_footer` — no output in production.
+
+```php
+dump($someArray, 'My label');   // queues value for display in footer panel
+dd($someValue);                 // dump + die
+```
+
+---
+
 ## Theme Updater
 
 Provided by `taw/core` (namespace `TAW\Core\ThemeUpdater`).
@@ -658,25 +822,36 @@ The `script_loader_tag` filter in `vite-loader.php` adds `type="module"` to:
 {
     "autoload": {
         "psr-4": { "TAW\\": "src/" },
-        "files": ["src/Support/vite-loader.php", "src/Support/performance.php"]
+        "files": ["src/Support/utilities.php", "src/Support/performance.php"]
     }
 }
 ```
 
+`utilities.php` provides global helper functions: `vite_asset_url()`, `vite_is_dev()`, `dump()`, `dd()`, `taw_editable()`, `taw_editor_attrs()`, `taw_editor_attrs_array()`, `taw_editor_section()`.
+
 Effective namespace mapping (combined):
-- `TAW\Core\BaseBlock` → `vendor/taw/core/src/Core/BaseBlock.php`
-- `TAW\Core\MetaBlock` → `vendor/taw/core/src/Core/MetaBlock.php`
-- `TAW\Core\Block` → `vendor/taw/core/src/Core/Block.php`
-- `TAW\Core\BlockRegistry` → `vendor/taw/core/src/Core/BlockRegistry.php`
-- `TAW\Core\BlockLoader` → `vendor/taw/core/src/Core/BlockLoader.php`
-- `TAW\Core\Framework` → `vendor/taw/core/src/Core/Framework.php`
+- `TAW\Core\Block\BaseBlock` → `vendor/taw/core/src/Core/Block/BaseBlock.php`
+- `TAW\Core\Block\MetaBlock` → `vendor/taw/core/src/Core/Block/MetaBlock.php`
+- `TAW\Core\Block\Block` → `vendor/taw/core/src/Core/Block/Block.php`
+- `TAW\Core\Block\BlockRegistry` → `vendor/taw/core/src/Core/Block/BlockRegistry.php`
+- `TAW\Core\Block\BlockLoader` → `vendor/taw/core/src/Core/Block/BlockLoader.php`
 - `TAW\Core\Metabox\Metabox` → `vendor/taw/core/src/Core/Metabox/Metabox.php`
-- `TAW\Core\OptionsPage` → `vendor/taw/core/src/Core/OptionsPage.php`
-- `TAW\Core\ThemeUpdater` → `vendor/taw/core/src/Core/ThemeUpdater.php`
+- `TAW\Core\OptionsPage\OptionsPage` → `vendor/taw/core/src/Core/OptionsPage/OptionsPage.php`
+- `TAW\Core\Theme\Theme` → `vendor/taw/core/src/Core/Theme/Theme.php`
+- `TAW\Core\Theme\ThemeUpdater` → `vendor/taw/core/src/Core/Theme/ThemeUpdater.php`
 - `TAW\Core\Menu\Menu` → `vendor/taw/core/src/Core/Menu/Menu.php`
 - `TAW\Core\Menu\MenuItem` → `vendor/taw/core/src/Core/Menu/MenuItem.php`
 - `TAW\Core\Rest\SearchEndpoints` → `vendor/taw/core/src/Core/Rest/SearchEndpoints.php`
+- `TAW\Core\Form\Form` → `vendor/taw/core/src/Core/Form/Form.php`
+- `TAW\Core\Form\SubmissionsHandler` → `vendor/taw/core/src/Core/Form/SubmissionsHandler.php`
+- `TAW\Core\Mail\Mailer` → `vendor/taw/core/src/Core/Mail/Mailer.php`
+- `TAW\Core\Mail\MailTemplate` → `vendor/taw/core/src/Core/Mail/MailTemplate.php`
+- `TAW\Core\Mail\MailTester` → `vendor/taw/core/src/Core/Mail/MailTester.php`
+- `TAW\Helpers\Framework` → `vendor/taw/core/src/Helpers/Framework.php`
 - `TAW\Helpers\Image` → `vendor/taw/core/src/Helpers/Image.php`
+- `TAW\Helpers\Svg` → `vendor/taw/core/src/Helpers/Svg.php`
+- `TAW\Helpers\Dump` → `vendor/taw/core/src/Helpers/Dump.php`
+- `TAW\Helpers\Editor` → `vendor/taw/core/src/Helpers/Editor.php`
 - `TAW\CLI\MakeBlockCommand` → `vendor/taw/core/src/CLI/MakeBlockCommand.php`
 - `TAW\Blocks\Hero\Hero` → `Blocks/Hero/Hero.php`
 
@@ -770,4 +945,6 @@ echo Image::render($card_image_id, 'large', 'Card photo');
 - Set `base: './'` globally in `vite.config.js` — it must only apply to `build` (dev mode breaks with a relative base in cross-origin setups)
 - Use `wp_nav_menu()` — use `Menu::get('location')` instead for full markup control
 - Edit files inside `vendor/taw/core/` directly — changes will be overwritten by `composer update`. Work in the `taw-core` repo instead
-- Look for `TAW\Core` or `TAW\Helpers` classes in `inc/` — they live in `vendor/taw/core/src/`
+- Look for `TAW\Core`, `TAW\Helpers`, or `TAW\CLI` classes in `inc/` — they live in `vendor/taw/core/src/`
+- Reference `TAW\Core\Framework` — it moved to `TAW\Helpers\Framework`
+- Reference `TAW\Core\BaseBlock` / `TAW\Core\MetaBlock` / `TAW\Core\Block` etc. without the `Block\` sub-namespace — e.g. use `TAW\Core\Block\MetaBlock`

@@ -22,13 +22,19 @@ The framework internals (block system, metabox engine, Vite bridge) ship as the 
 
 **Rich field types.** `text`, `textarea`, `wysiwyg`, `image`, `url`, `number`, `range`, `select`, `checkbox`, `color`, `group`, `repeater`, `post_select` — with conditional logic, tabbed layouts, and responsive grid placement.
 
+**Built-in form system.** `Form` handles CSRF, honeypot spam protection, field validation, PRG redirect, and email delivery. Drop it into any template with a config array — no plugin required.
+
+**Transactional email.** `Mailer` wraps `wp_mail()` with a fluent API and MJML/HTML template support. Write templates once in MJML, compile to HTML, deploy. Includes a `MailTester` admin page for testing templates without real submissions.
+
+**SVG support.** `Svg::register()` enables sanitized SVG uploads in WordPress. Render as `<img>` or inline — both ways provided.
+
 **Theme-level options.** `OptionsPage` brings the same config-driven field experience to site-wide settings stored in `wp_options` — tabbed UI, validation, and a clean retrieval API included.
 
 **Modern frontend, classic WordPress.** Tailwind v4 for utility CSS, Alpine.js for interactivity, Vite for instant HMR — all wired into WordPress through a lightweight bridge. No React, no REST API overhead.
 
 **AI-native DX.** Ships with `AGENTS.md`, `CLAUDE.md`, and Copilot/Windsurf instructions so any AI coding assistant understands the architecture out of the box.
 
-**Visual Editor** *(Work in Progress)* — a live content page editor is under active development inside `taw/core` (`TAW\Core\VisualEditor`). It is not ready for production use.
+**Visual Editor** *(Work in Progress)* — a live content page editor is under active development inside `taw/core` (`TAW\Core\Editor\VisualEditor`). It is not ready for production use.
 
 ---
 
@@ -295,35 +301,87 @@ new Metabox([
     'screen' => 'page',
     'fields' => [
         // Layout with widths
-        ['id' => 'heading',     'label' => 'Heading',     'type' => 'text',     'width' => '50', 'required' => true],
-        ['id' => 'subheading',  'label' => 'Subheading',  'type' => 'text',     'width' => '50'],
+        [
+            'id' => 'heading',     
+            'label' => 'Heading',     
+            'type' => 'text',     
+            'width' => '50', 
+            'required' => true
+        ],
+        [
+            'id' => 'subheading',  
+            'label' => 'Subheading',  
+            'type' => 'text',     
+            'width' => '50'
+        ],
 
         // Rich text
-        ['id' => 'body',        'label' => 'Body',        'type' => 'wysiwyg', 'rows' => 6],
+        [
+            'id' => 'body',        
+            'label' => 'Body',        
+            'type' => 'wysiwyg', 
+            'rows' => 6
+        ],
 
         // Select with options
-        ['id' => 'style',       'label' => 'Style',       'type' => 'select',
-         'options' => ['light' => 'Light', 'dark' => 'Dark']],
+        [
+            'id' => 'style',
+            'label' => 'Style',
+            'type' => 'select',
+            'options' => ['light' => 'Light', 'dark' => 'Dark']
+        ],
 
         // Toggle
-        ['id' => 'show_cta',    'label' => 'Show CTA',    'type' => 'checkbox'],
+        [
+            'id' => 'show_cta',    
+            'label' => 'Show CTA',    
+            'type' => 'checkbox'
+        ],
 
         // Color picker
-        ['id' => 'bg_color',    'label' => 'Background',  'type' => 'color', 'default' => '#ffffff'],
+        [
+            'id' => 'bg_color',    
+            'label' => 'Background',  
+            'type' => 'color', 
+            'default' => '#ffffff'
+        ],
 
         // Range slider
-        ['id' => 'min_height',  'label' => 'Min Height',  'type' => 'range',
-         'min' => 400, 'max' => 900, 'step' => 50, 'unit' => 'px', 'default' => 600],
+        [
+            'id' => 'min_height',
+            'label' => 'Min Height',
+            'type' => 'range',
+            'min' => 400,
+            'max' => 900,
+            'step' => 50,
+            'unit' => 'px',
+            'default' => 600
+        ],
 
         // Image
-        ['id' => 'image',       'label' => 'Background Image', 'type' => 'image'],
+        [
+            'id' => 'image',       
+            'label' => 'Background Image', 
+            'type' => 'image'
+        ],
 
         // Post selector (single)
-        ['id' => 'featured_post', 'label' => 'Featured Post', 'type' => 'post_select', 'post_type' => 'post'],
+        [
+            'id' => 'featured_post', 
+            'label' => 'Featured Post', 
+            'type' => 'post_select', 
+            'post_type' => 'post'
+        ],
 
         // Post selector (multi, with max)
-        ['id' => 'related',     'label' => 'Related Posts', 'type' => 'post_select',
-         'post_type' => 'post', 'multiple' => true, 'max' => 3],
+        [
+            'id' => 'related',
+            'label' => 'Related Posts',
+            'type' => 'post_select',
+            'post_type' => 'post',
+            'multiple' => true,
+            'max' => 3
+        ],
     ],
 ]);
 ```
@@ -660,6 +718,85 @@ The `BlockRegistry::queue('id')` call schedules assets for `<head>`. If you forg
 
 ---
 
+## Forms
+
+`TAW\Core\Form\Form` is a configuration-driven frontend form that handles everything in one place: CSRF (nonces), honeypot spam protection, field validation, PRG redirect after success, and email delivery.
+
+```php
+use TAW\Core\Form\Form;
+
+$form = new Form([
+    'id'           => 'contact',
+    'submit_label' => 'Send Message',
+    'messages'     => ['success' => "Thanks! We'll be in touch."],
+    'email' => [
+        'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
+        'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
+    ],
+    'fields' => [
+        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
+        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
+        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+    ],
+]);
+$form->render();
+```
+
+**Form field types:** `text`, `email`, `textarea`, `select`, and any standard HTML input type (e.g. `tel`, `date`). Fields support `required`, `placeholder`, `rows`.
+
+If both `email.to_self.template` and `email.to_client.template` are set, delivery uses `Mailer` + `MailTemplate` (see below). Otherwise falls back to plain-text `wp_mail()`.
+
+`TAW\Core\Form\SubmissionsHandler` stores successful submissions as a `taw_submission` CPT in WP Admin and optionally forwards them via webhook (n8n, Zapier, Make, etc.). Activate it in `functions.php`:
+
+```php
+new \TAW\Core\Form\SubmissionsHandler();
+```
+
+---
+
+## Transactional Email
+
+`TAW\Core\Mail\Mailer` is a fluent wrapper around `wp_mail()` with MJML/HTML template support.
+
+```php
+use TAW\Core\Mail\Mailer;
+
+(new Mailer())
+    ->to('user@example.com')
+    ->subject('Welcome!')
+    ->template('welcome')                              // → mails/html/welcome.html
+    ->setVariables(['name' => 'Jane', 'site_name' => get_bloginfo('name')])
+    ->send();
+```
+
+Templates live in `mails/html/{name}.html` (pre-compiled, used in production) or `mails/{name}.mjml` (compiled at runtime via `spatie/mjml-php` — dev only). Use `{{variable_name}}` placeholders.
+
+`MailTester` adds a **Tools → Test Emails** admin page for sending test emails against any compiled template. Register it with `(new \TAW\Core\Mail\MailTester())->register()` in `functions.php`.
+
+---
+
+## SVG Support
+
+`TAW\Helpers\Svg` enables sanitized SVG uploads and provides rendering utilities.
+
+```php
+use TAW\Helpers\Svg;
+
+// Call once in theme setup to allow SVG uploads + auto-sanitize on upload:
+Svg::register();
+
+// Render as <img> tag (scripts inside SVG can't execute):
+echo Svg::render($attachment_id, 'Company logo', ['class' => 'logo h-8']);
+
+// Render inline (allows CSS targeting and animations):
+echo Svg::inline($attachment_id, ['class' => 'icon w-5 h-5']);
+
+// Get URL only:
+$url = Svg::url($attachment_id);
+```
+
+---
+
 ## Theme Options — OptionsPage
 
 See [Theme Options](#theme-options) above for the full API.
@@ -723,18 +860,21 @@ Updates are cached for 6 hours to avoid GitHub rate limits. The updater prefers 
 | Concept           | Implementation                                                                          |
 | ----------------- | --------------------------------------------------------------------------------------- |
 | Autoloading       | PSR-4 via Composer — `TAW\Blocks\` → `Blocks/` (theme); everything else from `taw/core` |
-| Block system      | `BaseBlock` → `MetaBlock` / `Block` class hierarchy (in `taw/core`)                     |
+| Block system      | `BaseBlock` → `MetaBlock` / `Block` class hierarchy (`TAW\Core\Block\*` in `taw/core`)  |
 | Block discovery   | `BlockLoader::loadAll()` — recursive scan, any nesting depth, no registration needed    |
 | Metaboxes         | Bespoke config-driven framework (`TAW\Core\Metabox\Metabox` in `taw/core`)              |
-| Options page      | Config-driven `OptionsPage` — stores to `wp_options` (in `taw/core`)                    |
+| Options page      | Config-driven `OptionsPage` — stores to `wp_options` (`TAW\Core\OptionsPage\OptionsPage`) |
 | Navigation menus  | `Menu` / `MenuItem` typed tree (`TAW\Core\Menu` in `taw/core`)                          |
 | REST API          | `taw/v1/search-posts` endpoint (`TAW\Core\Rest` in `taw/core`)                          |
-| Asset pipeline    | `vite-loader.php` (autoloaded from `taw/core`) + `BlockRegistry` queue system           |
+| Forms             | Config-driven `Form` with CSRF, honeypot, validation, PRG (`TAW\Core\Form` in `taw/core`) |
+| Mail              | Fluent `Mailer` + MJML/HTML `MailTemplate` (`TAW\Core\Mail` in `taw/core`)              |
+| SVG               | Sanitized uploads + inline/img rendering (`TAW\Helpers\Svg` in `taw/core`)              |
+| Asset pipeline    | `utilities.php` (autoloaded from `taw/core`) + `BlockRegistry` queue system             |
 | Critical CSS      | `critical.scss` compiled and inlined in `<head>`                                        |
 | Async CSS         | Main CSS loaded non-render-blocking via `media="print"` + `onload` swap                 |
 | Fonts             | Self-hosted WOFF2 with preloads via `vite_asset_url()` (autoloaded from `taw/core`)     |
 | Performance       | `performance.php` removes WP bloat, adds resource hints (autoloaded from `taw/core`)    |
-| Theme updates     | GitHub Releases-based auto-updater (`TAW\Core\ThemeUpdater` in `taw/core`)              |
+| Theme updates     | GitHub Releases-based auto-updater (`TAW\Core\Theme\ThemeUpdater` in `taw/core`)        |
 | Framework updates | `composer update taw/core` — update across all sites independently                      |
 
 ---
@@ -757,12 +897,19 @@ taw-theme/
 │   └── taw/
 │       └── core/              # ← Framework internals (managed via composer)
 │           └── src/
-│               ├── Core/      #   BaseBlock, MetaBlock, Block, BlockRegistry, BlockLoader
-│               │              #   Metabox, OptionsPage, ThemeUpdater, Framework
-│               │              #   Menu/, Rest/
-│               ├── Helpers/   #   Image helper
+│               ├── Core/
+│               │   ├── Block/     #   BaseBlock, MetaBlock, Block, BlockRegistry, BlockLoader
+│               │   ├── Metabox/   #   Metabox
+│               │   ├── OptionsPage/ # OptionsPage
+│               │   ├── Theme/     #   Theme, ThemeUpdater
+│               │   ├── Menu/      #   Menu, MenuItem
+│               │   ├── Rest/      #   SearchEndpoints, VisualEditorEndpoint
+│               │   ├── Form/      #   Form, SubmissionsHandler
+│               │   ├── Mail/      #   Mailer, MailTemplate, MailTester
+│               │   └── Editor/    #   VisualEditor (WIP)
+│               ├── Helpers/   #   Framework, Image, Svg, Dump, Editor
 │               ├── CLI/       #   make:block, export:block, import:block commands
-│               └── Support/   #   vite-loader.php, performance.php (autoloaded)
+│               └── Support/   #   utilities.php, performance.php (autoloaded)
 ├── resources/
 │   ├── css/app.css            # Tailwind v4 directives (imported by app.js)
 │   ├── scss/

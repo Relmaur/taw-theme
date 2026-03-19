@@ -1,6 +1,6 @@
 <?php
 
-use TAW\Core\OptionsPage;
+use TAW\Core\OptionsPage\OptionsPage;
 
 ?>
 

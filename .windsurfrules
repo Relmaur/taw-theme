@@ -5,10 +5,17 @@ Full architecture docs: see AGENTS.md in the repo root.
 ## Core Package
 
 Framework internals live in the `taw/core` composer package at `vendor/taw/core/src/` — NOT in `inc/`.
-- `TAW\Core\*` → `vendor/taw/core/src/Core/`
-- `TAW\Helpers\*` → `vendor/taw/core/src/Helpers/`
+- `TAW\Core\Block\*` → `vendor/taw/core/src/Core/Block/` (BaseBlock, Block, MetaBlock, BlockLoader, BlockRegistry)
+- `TAW\Core\Metabox\*` → `vendor/taw/core/src/Core/Metabox/`
+- `TAW\Core\OptionsPage\*` → `vendor/taw/core/src/Core/OptionsPage/`
+- `TAW\Core\Theme\*` → `vendor/taw/core/src/Core/Theme/` (Theme, ThemeUpdater)
+- `TAW\Core\Menu\*` → `vendor/taw/core/src/Core/Menu/`
+- `TAW\Core\Rest\*` → `vendor/taw/core/src/Core/Rest/`
+- `TAW\Core\Form\*` → `vendor/taw/core/src/Core/Form/` (Form, SubmissionsHandler)
+- `TAW\Core\Mail\*` → `vendor/taw/core/src/Core/Mail/` (Mailer, MailTemplate, MailTester)
+- `TAW\Helpers\*` → `vendor/taw/core/src/Helpers/` (Framework, Image, Svg, Dump, Editor)
 - `TAW\CLI\*` → `vendor/taw/core/src/CLI/`
-- `vite-loader.php` and `performance.php` → `vendor/taw/core/src/Support/` (autoloaded by composer)
+- `utilities.php` and `performance.php` → `vendor/taw/core/src/Support/` (autoloaded by composer)
 - The theme's `inc/` only has `options.php` and Metabox view templates
 
 Do NOT edit anything inside `vendor/taw/core/`. To update the framework: `composer update taw/core`.
@@ -39,7 +46,25 @@ Image helper:
 - TAW\Helpers\Image::render($id, 'size', 'alt', ['above_fold' => true])
 - Generates performance-optimised <img> with correct loading/fetchpriority/srcset
 
-REST API:
-- GET taw/v1/search-posts — powers the post_selector metabox field type
+SVG helper:
+- TAW\Helpers\Svg::register() — enable SVG uploads (call in theme setup)
+- TAW\Helpers\Svg::render($id, 'alt', ['class' => '...']) — <img> tag
+- TAW\Helpers\Svg::inline($id, ['class' => '...']) — inline <svg>
 
-Metabox field types: text, textarea, wysiwyg, url, number, select, image, group, checkbox, color, repeater, post_selector
+Forms:
+- TAW\Core\Form\Form — config-driven frontend form (CSRF, honeypot, validation, PRG, email)
+- TAW\Core\Form\SubmissionsHandler — CPT submission storage + webhook forwarding
+- Field types: text, email, textarea, select, any HTML input type
+
+Mail:
+- TAW\Core\Mail\Mailer — fluent wp_mail() wrapper: ->to()->subject()->template()->setVariables()->send()
+- Templates in mails/html/{name}.html (production) or mails/{name}.mjml (dev); use {{variable}} placeholders
+- TAW\Core\Mail\MailTester — Tools → Test Emails admin page
+
+Debug:
+- dump($value, 'label') / dd($value) — global helpers from utilities.php, WP_DEBUG only
+
+REST API:
+- GET taw/v1/search-posts — powers the post_select metabox field type
+
+Metabox field types: text, textarea, wysiwyg, url, number, range, select, image, group, checkbox, color, repeater, post_select

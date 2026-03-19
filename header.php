@@ -76,9 +76,9 @@
                     </nav>
                 <?php endif; ?>
             </nav><!-- #site-navigation -->
-            <?php if (TAW\Core\OptionsPage::get('company_phone')) : ?>
-                <a href="tel:<?php echo esc_attr(TAW\Core\OptionsPage::get('company_phone')); ?>">
-                    <?php echo esc_html(TAW\Core\OptionsPage::get('company_phone')); ?>
+            <?php if (TAW\Core\OptionsPage\OptionsPage::get('company_phone')) : ?>
+                <a href="tel:<?php echo esc_attr(TAW\Core\OptionsPage\OptionsPage::get('company_phone')); ?>">
+                    <?php echo esc_html(TAW\Core\OptionsPage\OptionsPage::get('company_phone')); ?>
                 </a>
             <?php endif; ?>
         </div>

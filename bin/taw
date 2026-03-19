@@ -38,7 +38,7 @@ if (!file_exists($autoload)) {
 require $autoload;
 
 // Tell the Framework where the theme is (for any code that needs it in CLI context)
-TAW\Core\Framework::setThemeRoot($themeDir);
+TAW\Helpers\Framework::setThemeRoot($themeDir);
 
 use Symfony\Component\Console\Application;
 use TAW\CLI\MakeBlockCommand;
