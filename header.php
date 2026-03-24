@@ -1,3 +1,11 @@
+<?php
+
+use TAW\Blocks\Menu\Menu;
+
+// Queue Menu assets before wp_head() so the <link> lands in <head>.
+// (new Menu())->enqueueAssets(); // To implement the custom search functionality on Menu.php, uncomment this line to load the necessary assets.
+?>
+
 <!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 
@@ -50,9 +58,7 @@
                 */ ?>
                 <?php
 
-                use TAW\Core\Menu\Menu;
-
-                $menu = Menu::get('primary');
+                $menu = TAW\Core\Menu\Menu::get('primary');
                 ?>
                 <?php if ($menu && $menu->hasItems()): ?>
                     <nav class="flex items-center gap-4">
