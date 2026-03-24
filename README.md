@@ -803,6 +803,43 @@ See [Theme Options](#theme-options) above for the full API.
 
 ---
 
+## Boilerplate Blocks
+
+TAW ships with ready-to-customise blocks you can use immediately or treat as a reference implementation.
+
+### Menu — Site Header with Live Search
+
+`Blocks/Menu/` — a two-row site header with a keyboard-accessible Alpine.js live-search overlay.
+
+```php
+// header.php — instantiate and render
+use TAW\Blocks\Menu\Menu;
+
+(new Menu())->render();
+```
+
+**What it includes:**
+- Top row: custom logo (or site name), optional company address from `OptionsPage`, search trigger button
+- Bottom row: `primary` nav menu (with hover dropdowns for items that have children), optional company email + phone from `OptionsPage`
+- Search overlay: debounced live fetch against `GET /wp-json/wp/v2/search`, results list, empty state, loading spinner, Escape to close, body scroll lock
+
+**To restrict search to specific post types**, edit the `subtype` param in `Blocks/Menu/script.js`:
+
+```js
+const params = new URLSearchParams({
+    search: query,
+    type: 'post',
+    subtype: 'post,page', // ← adjust as needed
+    per_page: 8,
+});
+```
+
+**To translate the overlay labels**, edit `Blocks/Menu/index.php`:
+- `What are you looking for?` — overlay heading
+- `Search posts and pages…` — input placeholder
+
+---
+
 ## Navigation Menus — registration
 
 Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_menus()`. Edit that array directly to add or rename locations. Assign menus to locations in WordPress admin → Appearance → Menus.
@@ -886,6 +923,11 @@ taw-theme/
 ├── bin/
 │   └── taw                    # CLI entry point (Symfony Console — delegates to taw/core)
 ├── Blocks/                    # Your blocks — one folder per block, auto-discovered
+│   ├── Menu/                  #   ← Boilerplate: site header + live-search overlay
+│   │   ├── Menu.php           #     class TAW\Blocks\Menu\Menu extends Block
+│   │   ├── index.php          #     Two-row header (logo, nav, contact, search icon)
+│   │   ├── style.scss         #     Search overlay styles (.search-overlay BEM)
+│   │   └── script.js          #     Alpine.js Menu component (search state + fetch)
 │   └── Hero/
 │       ├── Hero.php           #   class TAW\Blocks\Hero\Hero extends MetaBlock
 │       ├── index.php          #   Template (receives extract()-ed vars from getData())

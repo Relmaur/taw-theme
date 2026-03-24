@@ -22,6 +22,7 @@
 | `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`) |
 | `vendor/taw/core/src/Support/` | `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
+| `Blocks/Menu/` | Boilerplate navigation block — two-row header with Alpine.js live-search overlay |
 | `inc/options.php` | Theme-level options page configuration |
 | `resources/js/app.js` | Alpine.js + global JS — imports Tailwind CSS and custom SCSS |
 | `resources/css/app.css` | Tailwind v4 directives (`@import "tailwindcss"`) — imported by `app.js` |
@@ -854,6 +855,7 @@ Effective namespace mapping (combined):
 - `TAW\Helpers\Editor` → `vendor/taw/core/src/Helpers/Editor.php`
 - `TAW\CLI\MakeBlockCommand` → `vendor/taw/core/src/CLI/MakeBlockCommand.php`
 - `TAW\Blocks\Hero\Hero` → `Blocks/Hero/Hero.php`
+- `TAW\Blocks\Menu\Menu` → `Blocks/Menu/Menu.php`
 
 After adding new block classes, run `composer dump-autoload`.
 
@@ -871,6 +873,59 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw make:block Name` | Scaffold a new block |
 | `php bin/taw export:block Name` | Export a block as a ZIP |
 | `php bin/taw import:block path.zip` | Import a block from a ZIP |
+
+---
+
+## Boilerplate Blocks
+
+The theme ships with pre-built blocks that serve as ready-to-use starting points.
+
+### `Menu` — Site Header with Live Search
+
+**Location:** `Blocks/Menu/` — `class TAW\Blocks\Menu\Menu extends Block`
+
+A two-row site header wired up with an Alpine.js live-search overlay. Drop it into `header.php` and customise the markup, colours, and labels.
+
+**Files:**
+
+| File | Purpose |
+|---|---|
+| `Menu.php` | UI Block class (no metaboxes — all markup is static in the template) |
+| `index.php` | Two-row header: logo + search icon (top row), primary nav + contact links (bottom row) |
+| `script.js` | Alpine.js `Menu` data component — search overlay state, debounced fetch, Escape key handler |
+| `style.scss` | Search overlay styles (`.search-overlay`, `.search-overlay__*` BEM classes) |
+
+**Features:**
+- Renders the `primary` WordPress nav menu via `Menu::get('primary')` with dropdown support
+- Shows `company_address`, `company_email`, `company_phone` from `OptionsPage` if set
+- Search overlay: debounced (350 ms) fetch against the native WP REST endpoint `GET /wp-json/wp/v2/search`, results list, empty state, spinner, Escape to close, body scroll lock
+- Minimum 2 characters before a search request fires
+
+**Usage in `header.php`:**
+
+```php
+<?php
+use TAW\Blocks\Menu\Menu;
+
+(new Menu())->render();
+?>
+```
+
+Asset queueing: because `Menu` is a UI Block (not a MetaBlock), call `queue()` manually if you want assets in `<head>`:
+
+```php
+// Before get_header() — assets land in <head>
+use TAW\Core\Block\BlockRegistry;
+BlockRegistry::queue('menu');
+get_header();
+```
+
+Or simply instantiate and render inline — assets fall back to an inline `<link>` tag (acceptable for a persistent header).
+
+**Customisation checklist:**
+- Update label strings (`What are you looking for?`, `Search posts and pages…`) for the target language
+- Adjust `subtype` in `script.js` to restrict search to specific post types (default: `post,page`)
+- Replace hard-coded `bg-primary` / `bg-secondary` classes with your project's colour tokens
 
 ---
 
