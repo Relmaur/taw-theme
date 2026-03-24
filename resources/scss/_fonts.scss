@@ -9,7 +9,7 @@
  * When adding a new font:
  * 1. Place .woff2 files in resources/fonts/
  * 2. Add an @font-face block below
- * 3. Add a preload hint in inc/performance.php for the primary weight
+ * 3. Add a preload hint in functions.php Theme::performance() method for the primary weights
  *
  * font-display: swap — shows text immediately in a fallback font,
  * then swaps to the custom font when loaded. This prevents invisible
