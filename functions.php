@@ -36,6 +36,12 @@ Theme::performance(
     ]
 );
 
+// Start Alpine after all block scripts have registered their components.
+// Block scripts are enqueued in the footer (priority ~20); we run at 100.
+add_action('wp_footer', function () {
+    echo '<script>Alpine.start();</script>' . "\n";
+}, 100);
+
 /**
  * Customize here:
  */
