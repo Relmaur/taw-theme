@@ -5,6 +5,24 @@
 
 ---
 
+## Full Documentation
+
+Official docs live at **https://emelambda.documentationai.com/**. Fetch the relevant page whenever you need deeper detail beyond what this file covers.
+
+| Topic | URL |
+|---|---|
+| Introduction & concepts | https://emelambda.documentationai.com/introduction |
+| Quickstart / project setup | https://emelambda.documentationai.com/quickstart |
+| TAW Theme (boot, performance) | https://emelambda.documentationai.com/taw-theme |
+| TAW Core (framework internals) | https://emelambda.documentationai.com/taw-core |
+| Blocks & BlockRegistry | https://emelambda.documentationai.com/taw-core-blocks |
+| Assets & Vite integration | https://emelambda.documentationai.com/taw-core-assets-vite |
+| Metabox & Editor tooling | https://emelambda.documentationai.com/taw-core-metabox |
+| Setup guide | https://emelambda.documentationai.com/help-center/guides/setup-project |
+| Changelog | https://emelambda.documentationai.com/changelog |
+
+---
+
 ## Quick Orientation
 
 | Path | Purpose |
@@ -33,6 +51,309 @@
 | `functions.php` | Developer customisations — theme supports, nav menus, performance config. Calls `TAW\Core\Theme::boot()`. |
 
 > **Important:** `TAW\Core`, `TAW\Helpers`, and `TAW\CLI` classes live inside the `taw/core` composer package (`vendor/taw/core/src/`), **not** in `inc/`. The theme's `inc/` only holds `options.php` and any Metabox view templates. Do not edit files inside `vendor/`.
+
+---
+
+## Building a Page — AI Playbook
+
+This section is the primary guide for fulfilling requests like _"I need a homepage with a hero, features, and a contact section."_ Read this first.
+
+### Step 1 — Map sections to block types
+
+| If the section… | Use |
+|---|---|
+| Owns its own content (editable in WP Admin per-page) | **MetaBlock** |
+| Is a reusable UI primitive (button, card, badge) | **Block** (presentational) |
+| Needs a form with email delivery | MetaBlock that renders a `Form` instance |
+
+**Rule of thumb:** any named section that a content editor would fill in → MetaBlock. Utility components used inside those sections → Block.
+
+### Step 2 — Check existing blocks first
+
+Before creating anything, run `ls Blocks/` in your mind (or via the file tree). If a block already exists for the requested section, reuse it — just queue and render it in the page template. Only create a new block if none matches.
+
+### Step 3 — Create missing blocks
+
+For each new MetaBlock needed:
+
+```bash
+# Preferred — scaffolds all files and runs dump-autoload reminder
+php bin/taw make:block SectionName --type=meta --with-style
+```
+
+Or manually create:
+- `Blocks/SectionName/SectionName.php` — the block class (see catalog below for typical fields)
+- `Blocks/SectionName/index.php` — the template
+
+Then run `composer dump-autoload`.
+
+### Step 4 — Create or update the page template
+
+WordPress page templates live in the theme root. Naming conventions:
+
+| Template file | When it loads |
+|---|---|
+| `page.php` | All pages (fallback) |
+| `front-page.php` | The site's front page |
+| `page-{slug}.php` | Page with that slug (e.g. `page-about.php`) |
+| `page-{id}.php` | Page with that post ID |
+
+**Template skeleton:**
+
+```php
+<?php
+// page-home.php — example for a homepage
+
+use TAW\Core\Block\BlockRegistry;
+
+// 1. Queue all blocks BEFORE get_header() so assets land in <head>
+BlockRegistry::queue('hero', 'features', 'testimonials', 'cta');
+
+get_header();
+?>
+
+<?php BlockRegistry::render('hero'); ?>
+<?php BlockRegistry::render('features'); ?>
+<?php BlockRegistry::render('testimonials'); ?>
+<?php BlockRegistry::render('cta'); ?>
+
+<?php get_footer();
+```
+
+> Never call `BlockRegistry::queue()` after `get_header()` — assets will miss `wp_head()`.
+
+### Step 5 — No changes to functions.php needed
+
+`BlockLoader::loadAll()` in `functions.php` auto-discovers every block in `Blocks/*/`. New blocks appear automatically after `composer dump-autoload`.
+
+---
+
+## Common Section Catalog
+
+A lookup table of the most common sections. Use these as the default starting point for fields and structure when a user asks for these sections by name (or by equivalent intent).
+
+### Hero
+
+**Type:** MetaBlock
+**Purpose:** Full-width above-the-fold opener — heading, tagline, background image, and CTA buttons.
+
+```php
+'fields' => [
+    ['id' => 'hero_heading', 'label' => 'Heading',    'type' => 'text',  'required' => true, 'width' => '50'],
+    ['id' => 'hero_tagline', 'label' => 'Tagline',    'type' => 'text',  'width' => '50'],
+    ['id' => 'hero_image',   'label' => 'Image',      'type' => 'image', 'width' => '50'],
+    ['id' => 'hero_cta_text','label' => 'CTA Text',   'type' => 'text',  'width' => '25'],
+    ['id' => 'hero_cta_url', 'label' => 'CTA URL',    'type' => 'url',   'width' => '25'],
+],
+```
+
+### Features / Services
+
+**Type:** MetaBlock
+**Purpose:** Section with a heading and a repeatable list of features/services (icon, title, description).
+
+```php
+'fields' => [
+    ['id' => 'features_heading',    'label' => 'Section Heading',    'type' => 'text', 'width' => '50'],
+    ['id' => 'features_subheading', 'label' => 'Section Subheading', 'type' => 'text', 'width' => '50'],
+    [
+        'id'           => 'features_items',
+        'label'        => 'Features',
+        'type'         => 'repeater',
+        'button_label' => 'Add Feature',
+        'fields' => [
+            ['id' => 'icon',        'label' => 'Icon',        'type' => 'image',    'width' => '25'],
+            ['id' => 'title',       'label' => 'Title',       'type' => 'text',     'width' => '75'],
+            ['id' => 'description', 'label' => 'Description', 'type' => 'textarea', 'rows' => 3],
+        ],
+    ],
+],
+```
+
+### Testimonials
+
+**Type:** MetaBlock
+**Purpose:** Social proof section with a repeatable list of quotes, author names, and photos.
+
+```php
+'fields' => [
+    ['id' => 'testimonials_heading', 'label' => 'Section Heading', 'type' => 'text'],
+    [
+        'id'           => 'testimonials_items',
+        'label'        => 'Testimonials',
+        'type'         => 'repeater',
+        'button_label' => 'Add Testimonial',
+        'fields' => [
+            ['id' => 'quote',   'label' => 'Quote',       'type' => 'textarea', 'rows' => 3],
+            ['id' => 'name',    'label' => 'Author Name', 'type' => 'text',     'width' => '50'],
+            ['id' => 'role',    'label' => 'Role/Company','type' => 'text',     'width' => '50'],
+            ['id' => 'avatar',  'label' => 'Photo',       'type' => 'image',    'width' => '50'],
+            ['id' => 'rating',  'label' => 'Rating (1–5)','type' => 'number',   'width' => '50'],
+        ],
+    ],
+],
+```
+
+### Pricing Table
+
+**Type:** MetaBlock
+**Purpose:** A section with repeatable pricing tiers (name, price, feature list, CTA).
+
+```php
+'fields' => [
+    ['id' => 'pricing_heading', 'label' => 'Heading', 'type' => 'text', 'width' => '50'],
+    [
+        'id'           => 'pricing_plans',
+        'label'        => 'Plans',
+        'type'         => 'repeater',
+        'button_label' => 'Add Plan',
+        'fields' => [
+            ['id' => 'name',     'label' => 'Plan Name', 'type' => 'text',   'width' => '33'],
+            ['id' => 'price',    'label' => 'Price',     'type' => 'text',   'width' => '33'],
+            ['id' => 'period',   'label' => 'Period',    'type' => 'text',   'width' => '33', 'placeholder' => '/mo'],
+            ['id' => 'features', 'label' => 'Features',  'type' => 'textarea', 'rows' => 5, 'placeholder' => 'One feature per line'],
+            ['id' => 'cta_text', 'label' => 'CTA Text',  'type' => 'text',   'width' => '50'],
+            ['id' => 'cta_url',  'label' => 'CTA URL',   'type' => 'url',    'width' => '50'],
+            ['id' => 'featured', 'label' => 'Highlighted', 'type' => 'checkbox'],
+        ],
+    ],
+],
+```
+
+### CTA (Call to Action)
+
+**Type:** MetaBlock
+**Purpose:** A full-width band with a heading, supporting text, and one or two buttons.
+
+```php
+'fields' => [
+    ['id' => 'cta_heading',     'label' => 'Heading',         'type' => 'text',  'required' => true, 'width' => '50'],
+    ['id' => 'cta_subtext',     'label' => 'Supporting text', 'type' => 'text',  'width' => '50'],
+    ['id' => 'cta_primary_text','label' => 'Primary CTA',     'type' => 'text',  'width' => '25'],
+    ['id' => 'cta_primary_url', 'label' => 'Primary URL',     'type' => 'url',   'width' => '25'],
+    ['id' => 'cta_secondary_text','label' => 'Secondary CTA', 'type' => 'text',  'width' => '25'],
+    ['id' => 'cta_secondary_url','label' => 'Secondary URL',  'type' => 'url',   'width' => '25'],
+    ['id' => 'cta_bg_color',    'label' => 'Background',      'type' => 'color', 'width' => '50'],
+],
+```
+
+### Team
+
+**Type:** MetaBlock
+**Purpose:** Team member grid with photo, name, role, bio, and optional social links.
+
+```php
+'fields' => [
+    ['id' => 'team_heading', 'label' => 'Heading', 'type' => 'text'],
+    [
+        'id'           => 'team_members',
+        'label'        => 'Team Members',
+        'type'         => 'repeater',
+        'button_label' => 'Add Member',
+        'fields' => [
+            ['id' => 'photo', 'label' => 'Photo',  'type' => 'image', 'width' => '25'],
+            ['id' => 'name',  'label' => 'Name',   'type' => 'text',  'width' => '37'],
+            ['id' => 'role',  'label' => 'Role',   'type' => 'text',  'width' => '37'],
+            ['id' => 'bio',   'label' => 'Bio',    'type' => 'textarea', 'rows' => 3],
+            [
+                'id' => 'social', 'label' => 'Social links', 'type' => 'group',
+                'fields' => [
+                    ['id' => 'linkedin', 'label' => 'LinkedIn', 'type' => 'url', 'width' => '50'],
+                    ['id' => 'twitter',  'label' => 'Twitter',  'type' => 'url', 'width' => '50'],
+                ],
+            ],
+        ],
+    ],
+],
+```
+
+### FAQ
+
+**Type:** MetaBlock
+**Purpose:** Accordion-style FAQ section with a heading and repeatable question/answer pairs.
+
+```php
+'fields' => [
+    ['id' => 'faq_heading', 'label' => 'Heading', 'type' => 'text', 'width' => '50'],
+    [
+        'id'           => 'faq_items',
+        'label'        => 'Questions',
+        'type'         => 'repeater',
+        'button_label' => 'Add Question',
+        'fields' => [
+            ['id' => 'question', 'label' => 'Question', 'type' => 'text',     'required' => true],
+            ['id' => 'answer',   'label' => 'Answer',   'type' => 'textarea', 'rows' => 4],
+        ],
+    ],
+],
+```
+
+### Contact
+
+**Type:** MetaBlock
+**Purpose:** Section with contact info + a Form rendered inline.
+
+Block class renders a `TAW\Core\Form\Form` instance directly inside its `index.php`. No special metabox fields beyond a heading; form configuration is hardcoded in the template.
+
+```php
+// Blocks/Contact/index.php
+use TAW\Core\Form\Form;
+
+$form = new Form([
+    'id'           => 'contact',
+    'submit_label' => 'Send Message',
+    'fields' => [
+        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true, 'width' => '50'],
+        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true, 'width' => '50'],
+        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+    ],
+]);
+$form->render();
+```
+
+### Stats / Numbers
+
+**Type:** MetaBlock
+**Purpose:** Row of key numbers/stats (value + label pairs).
+
+```php
+'fields' => [
+    ['id' => 'stats_heading', 'label' => 'Heading', 'type' => 'text'],
+    [
+        'id'           => 'stats_items',
+        'label'        => 'Stats',
+        'type'         => 'repeater',
+        'button_label' => 'Add Stat',
+        'max'          => 6,
+        'fields' => [
+            ['id' => 'value',  'label' => 'Value',  'type' => 'text', 'placeholder' => '99%', 'width' => '50'],
+            ['id' => 'label',  'label' => 'Label',  'type' => 'text', 'placeholder' => 'Satisfaction', 'width' => '50'],
+        ],
+    ],
+],
+```
+
+### Logo Bar / Partners
+
+**Type:** MetaBlock
+**Purpose:** Horizontal row of partner/client logos.
+
+```php
+'fields' => [
+    ['id' => 'logos_heading', 'label' => 'Eyebrow text', 'type' => 'text'],
+    [
+        'id'           => 'logos_items',
+        'label'        => 'Logos',
+        'type'         => 'repeater',
+        'button_label' => 'Add Logo',
+        'fields' => [
+            ['id' => 'logo', 'label' => 'Logo',    'type' => 'image', 'width' => '50'],
+            ['id' => 'url',  'label' => 'Link URL','type' => 'url',   'width' => '50'],
+            ['id' => 'name', 'label' => 'Alt text','type' => 'text',  'width' => '50'],
+        ],
+    ],
+],
+```
 
 ---
 

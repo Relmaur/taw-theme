@@ -1,6 +1,7 @@
 # CLAUDE.md — Claude Code Instructions
 
 > Full architecture docs: see `AGENTS.md` in this repo.
+> Full online documentation: https://emelambda.documentationai.com/ — fetch the relevant sub-page for deeper detail.
 
 ## Project
 
