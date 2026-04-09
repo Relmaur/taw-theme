@@ -8,6 +8,7 @@
  * @var string $tagline
  * @var string $heading
  * @var string $image_url
+ * @var string $content
  */
 
 // Guard: don't render if there's no content
@@ -31,6 +32,9 @@ $button = new Button();
             <?php if ($heading): ?>
                 <!-- <h1 class="hero__heading text-5xl"><?php echo esc_html($heading); ?></h1> -->
                 <h1 class="hero__heading text-5xl"><?php echo taw_editable($heading, 'hero', 'hero_heading'); ?></h1>
+            <?php endif; ?>
+            <?php if ($content): ?>
+                <div class="hero__text mt-4 text-lg text-gray-700"><?php echo taw_editable($content, 'hero', 'hero_content'); ?></div>
             <?php endif; ?>
             <div class="flex items-center justify-start mt-2 gap-2">
                 <?php $button->render(['text' => __('Get Started', 'taw-theme'), 'url' => '/contact']); ?>

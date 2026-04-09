@@ -37,6 +37,15 @@ class Hero extends MetaBlock
                     ],
                 ],
                 [
+                    'id' => 'hero_content',
+                    'label' => __('Content', 'taw-theme'),
+                    'type' => 'wysiwyg',
+                    'editor' => [      // ← Editable with settings
+                        'media_buttons' => false,
+                        'textarea_rows' => 5,
+                    ],
+                ],
+                [
                     'id'    => 'hero_image_url',
                     'label' => __('Hero Image', 'taw-theme'),
                     'type'  => 'image',
@@ -159,6 +168,7 @@ class Hero extends MetaBlock
         return [
             'heading' => $this->getMeta($postId, 'hero_heading'),
             'tagline' => $this->getMeta($postId, 'hero_tagline'),
+            'content' => $this->getMeta($postId, 'hero_content'),
             'image_url' => $image_url
         ];
     }
