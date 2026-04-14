@@ -153,10 +153,34 @@ class Hero extends MetaBlock
                                 ],
                             ],
                             'width' => '50'
-                        ]
+                        ],
                     ],
                     'description' => __('Add your team members. Drag to reorder.', 'taw-theme'),
                 ],
+                [
+                    'id' => 'nested_repeater',
+                    'label' => __('Nested Repeater', 'taw-theme'),
+                    'type' => 'repeater',
+                    'button_label' => __('Add Item', 'taw-theme'),
+                    'fields' => [
+                        [
+                            'id' => 'nested_text',
+                            'label' => __('Nested Text', 'taw-theme'),
+                            'type' => 'text',
+                        ],
+                        [
+                            'id' => 'nested_repeater_repeater',
+                            'label' => __('Nested Repeater', 'taw-theme'),
+                            'type' => 'repeater',
+                            'button_label' => __('Add Sub Item', 'taw-theme'),
+                            'fields' => [
+                                'id' => 'sub_nested_text',
+                                'label' => __('Sub Nested Text', 'taw-theme'),
+                                'type' => 'text',
+                            ]
+                        ]
+                    ],
+                ]
             ],
         ]);
     }
