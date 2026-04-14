@@ -37,6 +37,22 @@ Theme::performance(
 );
 
 /**
+ * CSS Studio — inject tawConfig so app.js can check the toggle.
+ * Only emitted when the Vite dev server is active (vite_is_dev()).
+ */
+add_action('wp_head', function () {
+    $is_dev = function_exists('vite_is_dev')
+        ? vite_is_dev()
+        : (bool) @fsockopen('localhost', 5173, $errno, $errstr, 0.1);
+
+    if (! $is_dev) {
+        return;
+    }
+    $enabled = (bool) \TAW\Core\OptionsPage\OptionsPage::get('css_studio_enabled');
+    echo '<script>window.tawConfig = window.tawConfig || {}; window.tawConfig.cssStudioEnabled = ' . ($enabled ? 'true' : 'false') . ';</script>' . PHP_EOL;
+}, 1);
+
+/**
  * Customize here:
  */
 add_action('admin_init', function () {

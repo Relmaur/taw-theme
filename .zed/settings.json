@@ -1,0 +1,13 @@
+{
+  "context_servers": {
+    "css-studio": {
+      "source": "custom",
+      "command": "npx",
+      "args": [
+        "-y",
+        "cssstudio"
+      ],
+      "env": {}
+    }
+  }
+}

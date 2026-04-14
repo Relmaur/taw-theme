@@ -13,4 +13,12 @@ window.Alpine = Alpine;
 // has had a chance to call Alpine.data() inside its alpine:init listener.
 document.addEventListener('DOMContentLoaded', () => Alpine.start());
 
+// 5. CSS Studio — dev-only visual editor.
+// Only loaded when Vite is in dev mode AND the "CSS Studio" toggle is enabled
+// in TAW Settings (wp-admin → TAW Settings → Developer Tools → CSS Studio).
+if (import.meta.env.DEV && window.tawConfig?.cssStudioEnabled) {
+    const { startStudio } = await import('cssstudio');
+    startStudio();
+}
+
 console.log('Vite is running. Alpine is active.');

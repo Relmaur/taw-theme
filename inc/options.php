@@ -15,10 +15,12 @@ new OptionsPage([
         ['id' => 'footer_text',   'label' => __('Footer Copyright', 'taw-theme'),  'type' => 'textarea'],
         ['id' => 'social_facebook',  'label' => __('Facebook URL', 'taw-theme'),   'type' => 'url'],
         ['id' => 'social_instagram', 'label' => __('Instagram URL', 'taw-theme'),  'type' => 'url'],
+        ['id' => 'css_studio_enabled', 'label' => __('Enable CSS Studio', 'taw-theme'), 'type' => 'checkbox'],
     ],
     'tabs' => [
         ['id' => 'general', 'label' => __('General', 'taw-theme'), 'fields' => ['company_name', 'company_phone', 'company_email']],
         ['id' => 'footer',  'label' => __('Footer', 'taw-theme'),  'fields' => ['footer_text']],
         ['id' => 'social',  'label' => __('Social', 'taw-theme'),  'fields' => ['social_facebook', 'social_instagram']],
+        ['id' => 'devtools', 'label' => __('Developer Tools', 'taw-theme'), 'fields' => ['css_studio_enabled']],
     ],
 ]);
