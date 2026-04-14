@@ -21,6 +21,8 @@ use TAW\Helpers\Image;
 
 $button = new Button();
 
+dump($nested);
+
 ?>
 
 <section class="hero" <?php echo taw_editor_section('hero'); ?>>

@@ -178,6 +178,19 @@ class Hero extends MetaBlock
                                     'id' => 'sub_nested_text',
                                     'label' => __('Sub Nested Text', 'taw-theme'),
                                     'type' => 'text',
+                                ],
+                                [
+                                    'id' => 'sub_sub_nested_repeater',
+                                    'label' => __('Sub Sub Nested Repeater', 'taw-theme'),
+                                    'type' => 'repeater',
+                                    'button_label' => __('Add Sub Sub Item', 'taw-theme'),
+                                    'fields' => [
+                                        [
+                                            'id' => 'sub_sub_nested_text',
+                                            'label' => __('Sub Sub Nested Text', 'taw-theme'),
+                                            'type' => 'text',
+                                        ],
+                                    ]
                                 ]
                             ]
                         ]
@@ -195,6 +208,7 @@ class Hero extends MetaBlock
             'heading' => $this->getMeta($postId, 'hero_heading'),
             'tagline' => $this->getMeta($postId, 'hero_tagline'),
             'content' => $this->getMeta($postId, 'hero_content'),
+            'nested' => $this->getMeta($postId, 'nested_repeater'),
             'image_url' => $image_url
         ];
     }
