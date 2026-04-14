@@ -174,9 +174,11 @@ class Hero extends MetaBlock
                             'type' => 'repeater',
                             'button_label' => __('Add Sub Item', 'taw-theme'),
                             'fields' => [
-                                'id' => 'sub_nested_text',
-                                'label' => __('Sub Nested Text', 'taw-theme'),
-                                'type' => 'text',
+                                [
+                                    'id' => 'sub_nested_text',
+                                    'label' => __('Sub Nested Text', 'taw-theme'),
+                                    'type' => 'text',
+                                ]
                             ]
                         ]
                     ],
