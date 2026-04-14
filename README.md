@@ -8,6 +8,8 @@ No Gutenberg blocks. No ACF dependency. No bloat. Just PHP classes, templates, a
 
 The framework internals (block system, metabox engine, Vite bridge) ship as the **[`taw/core`](https://github.com/Relmaur/taw-core) composer package** — versioned independently so you can update the framework across all your TAW sites with a single `composer update taw/core`.
 
+> **Framework API reference:** The [`taw/core` README](https://github.com/Relmaur/taw-core#readme) is the authoritative source for all framework internals — field types, Metabox config options, ViteLoader API, Visual Editor, and more. When this theme README and the `taw/core` README disagree, `taw/core` wins.
+
 ---
 
 ## Why TAW?
@@ -254,243 +256,51 @@ get_header();
 
 ---
 
-## Metabox Field Types
+## Metabox System
 
-All fields share common options. The `type` key selects the field type.
+> **Full reference: [taw/core README → Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
+> The `taw/core` repository is the single source of truth for all Metabox field types, options, retrieval API, repeater nesting, conditional logic, and tab configuration. The notes below are a quick orientation only — always defer to that README for authoritative detail.
 
-### Common field options
-
-| Option        | Type       | Description                                                              |
-| ------------- | ---------- | ------------------------------------------------------------------------ |
-| `id`          | `string`   | Unique field ID (without prefix)                                         |
-| `label`       | `string`   | Label shown above the field                                              |
-| `type`        | `string`   | Field type (see below)                                                   |
-| `description` | `string`   | Help text shown below the field                                          |
-| `placeholder` | `string`   | Input placeholder text                                                   |
-| `default`     | `mixed`    | Default value                                                            |
-| `required`    | `bool`     | Marks field as required — validation runs on save                        |
-| `validate`    | `callable` | Custom validation callback: `fn($value): true\|string`                   |
-| `sanitize`    | `string`   | Set to `'code'` to preserve raw HTML for `unfiltered_html` users         |
-| `width`       | `string`   | Column width as percentage (e.g., `'50'`, `'33.33'`). Default `'100'`   |
-| `conditions`  | `array`    | Conditional logic — show/hide based on other field values (see below)    |
-
-### Field type reference
-
-| Type           | Description                                                     | Extra options                                        |
-| -------------- | --------------------------------------------------------------- | ---------------------------------------------------- |
-| `text`         | Single-line text input                                          | `placeholder`                                        |
-| `textarea`     | Multi-line text area                                            | `placeholder`, `rows` (default 4)                    |
-| `wysiwyg`      | WordPress rich-text editor (TinyMCE)                            | `rows` (default 8), `media_buttons`, `teeny`         |
-| `url`          | URL input with browser validation                               | `placeholder`                                        |
-| `number`       | Numeric input                                                   | `min`, `max`, `step`, `placeholder`                  |
-| `range`        | Slider with a live value display                                | `min`, `max`, `step`, `unit` (e.g. `'px'`), `default` |
-| `select`       | Dropdown list                                                   | `options` (assoc array: `value => label`)            |
-| `checkbox`     | Toggle switch (saves `'1'` or `'0'`)                            |                                                      |
-| `color`        | WordPress color picker (hex)                                    | `default`                                            |
-| `image`        | WordPress media library image picker (saves attachment ID)      |                                                      |
-| `group`        | Flat group of sub-fields sharing a key prefix                   | `fields` (array of field defs)                       |
-| `repeater`     | Dynamic list of rows — each row has the same set of sub-fields  | `fields`, `min`, `max`                               |
-| `post_select`  | Searchable post picker powered by the TAW REST endpoint         | `post_type`, `multiple`, `max`                       |
-
-### Example: full field set
-
-```php
-new Metabox([
-    'id'     => 'taw_hero',
-    'title'  => 'Hero Section',
-    'screen' => 'page',
-    'fields' => [
-        // Layout with widths
-        [
-            'id' => 'heading',     
-            'label' => 'Heading',     
-            'type' => 'text',     
-            'width' => '50', 
-            'required' => true
-        ],
-        [
-            'id' => 'subheading',  
-            'label' => 'Subheading',  
-            'type' => 'text',     
-            'width' => '50'
-        ],
-
-        // Rich text
-        [
-            'id' => 'body',        
-            'label' => 'Body',        
-            'type' => 'wysiwyg', 
-            'rows' => 6
-        ],
-
-        // Select with options
-        [
-            'id' => 'style',
-            'label' => 'Style',
-            'type' => 'select',
-            'options' => ['light' => 'Light', 'dark' => 'Dark']
-        ],
-
-        // Toggle
-        [
-            'id' => 'show_cta',    
-            'label' => 'Show CTA',    
-            'type' => 'checkbox'
-        ],
-
-        // Color picker
-        [
-            'id' => 'bg_color',    
-            'label' => 'Background',  
-            'type' => 'color', 
-            'default' => '#ffffff'
-        ],
-
-        // Range slider
-        [
-            'id' => 'min_height',
-            'label' => 'Min Height',
-            'type' => 'range',
-            'min' => 400,
-            'max' => 900,
-            'step' => 50,
-            'unit' => 'px',
-            'default' => 600
-        ],
-
-        // Image
-        [
-            'id' => 'image',       
-            'label' => 'Background Image', 
-            'type' => 'image'
-        ],
-
-        // Post selector (single)
-        [
-            'id' => 'featured_post', 
-            'label' => 'Featured Post', 
-            'type' => 'post_select', 
-            'post_type' => 'post'
-        ],
-
-        // Post selector (multi, with max)
-        [
-            'id' => 'related',
-            'label' => 'Related Posts',
-            'type' => 'post_select',
-            'post_type' => 'post',
-            'multiple' => true,
-            'max' => 3
-        ],
-    ],
-]);
-```
-
----
-
-## Conditional Fields
-
-Fields can show or hide based on other field values. Conditions are evaluated live in the admin UI using Alpine.js, and also server-side during save.
-
-```php
-'fields' => [
-    ['id' => 'show_cta',   'label' => 'Show CTA',    'type' => 'checkbox'],
-    ['id' => 'cta_text',   'label' => 'CTA Text',    'type' => 'text',
-     'conditions' => [
-         ['field' => 'show_cta', 'operator' => '==', 'value' => '1'],
-     ]],
-    ['id' => 'cta_url',    'label' => 'CTA URL',     'type' => 'url',
-     'conditions' => [
-         ['field' => 'show_cta', 'operator' => '==', 'value' => '1'],
-     ]],
-],
-```
-
-**Supported operators:** `==`, `!=`, `contains`, `empty`, `!empty`
-
-All conditions in the array use AND logic — every condition must pass for the field to show.
-
----
-
-## Tabbed Metaboxes
-
-Group fields into tabs using the `tabs` key. Each tab references field IDs from the `fields` array.
-
-```php
-new Metabox([
-    'id'     => 'taw_hero',
-    'title'  => 'Hero Section',
-    'screen' => 'page',
-    'fields' => [
-        ['id' => 'heading',   'label' => 'Heading',   'type' => 'text'],
-        ['id' => 'image',     'label' => 'Image',     'type' => 'image'],
-        ['id' => 'bg_color',  'label' => 'Background','type' => 'color'],
-        ['id' => 'show_cta',  'label' => 'Show CTA',  'type' => 'checkbox'],
-        ['id' => 'cta_text',  'label' => 'CTA Text',  'type' => 'text'],
-    ],
-    'tabs' => [
-        ['label' => 'Content', 'fields' => ['heading', 'image']],
-        ['label' => 'Design',  'fields' => ['bg_color']],
-        ['label' => 'CTA',     'fields' => ['show_cta', 'cta_text']],
-    ],
-]);
-```
-
-### Other Metabox config options
-
-| Option     | Default      | Description                                                       |
-| ---------- | ------------ | ----------------------------------------------------------------- |
-| `screen`   | `'page'`     | Post type to attach to (e.g. `'post'`, `'page'`, custom type)    |
-| `context`  | `'normal'`   | Position: `'normal'`, `'side'`, `'advanced'`                     |
-| `priority` | `'high'`     | Order: `'high'`, `'default'`, `'low'`                            |
-| `prefix`   | `'_taw_'`    | Meta key prefix applied to all field IDs                         |
-| `icon`     | *(none)*     | SVG string — displayed as the metabox icon                        |
-| `show_on`  | *(none)*     | `callable(WP_Post): bool` — return `false` to hide the metabox   |
-
----
-
-## Metabox Retrieval API
-
-Use these static helpers inside `getData()` or anywhere in your templates.
+Register a metabox with a config array. The `screens` key accepts post types, page template filenames, and page slugs — mixed in the same array:
 
 ```php
 use TAW\Core\Metabox\Metabox;
 
-// Plain text / any scalar value
-$heading = Metabox::get($postId, 'hero_heading');
-
-// Checkbox → boolean (saves as '1'/'0', returns bool)
-$showCta = Metabox::get_bool($postId, 'show_cta');
-
-// Image attachment ID → URL
-$imageUrl = Metabox::get_image_url($postId, 'hero_image', 'large');
-
-// Color with fallback
-$bgColor = Metabox::get_color($postId, 'bg_color', '#ffffff');
-
-// post_select → array of post IDs (works for single and multi)
-$featuredId  = Metabox::get_posts($postId, 'featured_post')[0] ?? null;
-$relatedIds  = Metabox::get_posts($postId, 'related_posts');
-
-// repeater → array of rows, each an associative array
-$teamMembers = Metabox::get_repeater($postId, 'team_members');
-foreach ($teamMembers as $member) {
-    echo esc_html($member['name'] ?? '');
-    echo esc_html($member['role'] ?? '');
-}
+new Metabox([
+    'id'      => 'taw_hero',
+    'title'   => 'Hero Section',
+    'screens' => ['page'],                    // post type, slug, or template filename
+    'fields'  => [
+        ['id' => 'heading', 'label' => 'Heading', 'type' => 'text',  'required' => true, 'width' => '50'],
+        ['id' => 'image',   'label' => 'Image',   'type' => 'image', 'width' => '50'],
+    ],
+    'tabs' => [
+        ['id' => 'content', 'label' => 'Content', 'fields' => ['heading', 'image']],
+    ],
+]);
 ```
 
-Inside a `MetaBlock` you can also use the convenience wrappers (which delegate to `Metabox::get*`):
+**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `checkbox`, `color`, `image`, `files`, `group`, `repeater`, `post_select`
+
+**Common field options:** `id`, `label`, `type`, `description`, `placeholder`, `default`, `required`, `width`, `conditions`
+
+**Retrieval (inside `MetaBlock::getData()` or any template):**
 
 ```php
-protected function getData(int $postId): array
-{
-    return [
-        'heading'   => $this->getMeta($postId, 'hero_heading'),
-        'image_url' => $this->getImageUrl($postId, 'hero_image', 'large'),
-    ];
-}
+// Convenience wrappers on MetaBlock
+$this->getMeta($postId, 'hero_heading');
+$this->getImageUrl($postId, 'hero_image', 'large');
+
+// Static helpers on Metabox
+Metabox::get($postId, 'hero_heading');
+Metabox::get_bool($postId, 'show_cta');
+Metabox::get_image_url($postId, 'hero_image', 'large');
+Metabox::get_color($postId, 'bg_color', '#ffffff');
+Metabox::get_posts($postId, 'related_posts');     // post_select → int[]
+Metabox::get_repeater($postId, 'team_members');   // repeater → array of rows
 ```
+
+→ For conditional fields, repeater nesting, tabs, `show_on`, `context`, `prefix`, and the full options table, see the **[taw/core README](https://github.com/Relmaur/taw-core#metabox-system)**.
 
 ---
 
@@ -514,29 +324,9 @@ The `repeater` field type creates a sortable, dynamic list of rows. Each row con
 ]
 ```
 
-Sub-fields support the same types as top-level fields (including `image`, `color`, `post_select`, etc.). Rows are drag-and-drop sortable and individually collapsible.
+Sub-fields support the same types as top-level fields (including nested repeaters). Rows are drag-and-drop sortable and individually collapsible. Retrieve with `Metabox::get_repeater()`.
 
-Retrieve with `Metabox::get_repeater()` (see above).
-
----
-
-## Group Field
-
-The `group` type nests related sub-fields under a shared key prefix. Unlike a repeater, there is always exactly one row.
-
-```php
-[
-    'id'    => 'hero_cta',
-    'label' => 'CTA Button',
-    'type'  => 'group',
-    'fields' => [
-        ['id' => 'text', 'label' => 'Text', 'type' => 'text',  'width' => '50'],
-        ['id' => 'url',  'label' => 'URL',  'type' => 'url',   'width' => '50'],
-    ],
-]
-```
-
-Group sub-fields are stored as separate meta keys: `_taw_hero_cta_text`, `_taw_hero_cta_url`. Retrieve them with `Metabox::get($postId, 'hero_cta_text')`.
+→ Full repeater and `group` field documentation: **[taw/core README](https://github.com/Relmaur/taw-core#metabox-system)**
 
 ---
 
@@ -690,17 +480,28 @@ echo Image::preload_tag($hero_id, 'full');
 - JS is loaded as an ES module (`type="module"`).
 - All filenames are content-hashed for cache-busting.
 
-### Asset helper functions (from `vite-loader.php`)
+### Asset helpers (`TAW\Support\ViteLoader`)
 
-These are autoloaded globally — use them anywhere in your templates.
+`ViteLoader` is the OOP Vite bridge shipped in `taw/core`. It is PSR-4 autoloaded — no explicit include needed.
 
 ```php
-// Resolve a theme asset URL — returns hashed prod URL or dev server URL
-$fontUrl = vite_asset_url('resources/fonts/Inter-Regular.woff2');
+use TAW\Support\ViteLoader;
 
-// Check if the Vite dev server is running
-if (vite_is_dev()) { /* dev-only logic */ }
+// Resolve any theme asset URL — returns dev-server URL in dev, hashed build URL in prod
+$fontUrl = ViteLoader::assetUrl('resources/fonts/Inter-Regular.woff2');
+
+// Check if the Vite dev server is running (replaces the old vite_is_dev())
+if (ViteLoader::isDevServerRunning()) { /* dev-only logic */ }
+
+// Enqueue an additional Vite entry point (e.g. a standalone block script)
+ViteLoader::enqueueAsset('my-block', 'resources/js/my-block.js');
+
+// Override the main entry point — call BEFORE Theme::boot()
+ViteLoader::init('src/main.ts');
+Theme::boot();
 ```
+
+> **Note:** The legacy procedural functions `vite_asset_url()` and `vite_is_dev()` still exist inside `vite-loader.php` but are **not** in the composer `files` autoload and will not be available globally. Use `ViteLoader` instead.
 
 ### Block assets
 
@@ -880,6 +681,26 @@ Updates are cached for 6 hours to avoid GitHub rate limits. The updater prefers 
 
 ---
 
+## CSS Studio — Visual Dev Editor
+
+CSS Studio is a browser-based visual editor that streams live-page edits directly to your AI coding assistant. It is pre-installed in this theme.
+
+**Requires:** Node package `cssstudio` (installed), Vite dev server running (`npm run dev`), and the toggle enabled in WP Admin.
+
+**Toggle:** WP Admin → TAW Settings → Developer Tools → Enable CSS Studio
+
+**Start a session (inside Claude Code / your AI agent):**
+```
+/studio
+```
+
+When active, every change you make in the visual panel — text edits, style tweaks, attribute changes — is sent to the agent as structured data and applied to the source files automatically. The agent follows TAW-specific rules:
+
+- **Text/content edits:** if the element is already wired to a metabox field, the agent leaves the template alone and tells you to update the content in WP Admin. If it's hardcoded, it asks whether to keep it that way or wire it to a new metabox field.
+- **Style edits:** the agent always asks where to apply the change — Tailwind classes in the template, per-block SCSS (`style.scss`), or global SCSS.
+
+---
+
 ## Tech Stack
 
 | Technology                                                                 | Role                                                             |
@@ -906,10 +727,10 @@ Updates are cached for 6 hours to avoid GitHub rate limits. The updater prefers 
 | Forms             | Config-driven `Form` with CSRF, honeypot, validation, PRG (`TAW\Core\Form` in `taw/core`) |
 | Mail              | Fluent `Mailer` + MJML/HTML `MailTemplate` (`TAW\Core\Mail` in `taw/core`)              |
 | SVG               | Sanitized uploads + inline/img rendering (`TAW\Helpers\Svg` in `taw/core`)              |
-| Asset pipeline    | `utilities.php` (autoloaded from `taw/core`) + `BlockRegistry` queue system             |
-| Critical CSS      | `critical.scss` compiled and inlined in `<head>`                                        |
+| Asset pipeline    | `TAW\Support\ViteLoader` (PSR-4 from `taw/core`) — dev detection, manifest, enqueue, preloads |
+| Critical CSS      | `critical.scss` compiled and inlined in `<head>` via `ViteLoader::inlineCriticalCss()`  |
 | Async CSS         | Main CSS loaded non-render-blocking via `media="print"` + `onload` swap                 |
-| Fonts             | Self-hosted WOFF2 with preloads via `vite_asset_url()` (autoloaded from `taw/core`)     |
+| Fonts             | Self-hosted WOFF2 with preloads via `ViteLoader::assetUrl()` (from `taw/core`)          |
 | Performance       | `performance.php` removes WP bloat, adds resource hints (autoloaded from `taw/core`)    |
 | Theme updates     | GitHub Releases-based auto-updater (`TAW\Core\Theme\ThemeUpdater` in `taw/core`)        |
 | Framework updates | `composer update taw/core` — update across all sites independently                      |

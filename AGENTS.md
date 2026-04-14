@@ -5,6 +5,11 @@
 
 ---
 
+## Source of Truth
+
+**`taw/core` README (framework reference):** https://github.com/Relmaur/taw-core#readme
+This is the authoritative source for all framework internals — Metabox field types and options, ViteLoader API, Visual Editor, Forms, and more. Fetch it whenever you need detail beyond what this file covers, and always trust it over any conflicting information here.
+
 ## Full Documentation
 
 Official docs live at **https://emelambda.documentationai.com/**. Fetch the relevant page whenever you need deeper detail beyond what this file covers.
@@ -35,10 +40,10 @@ Official docs live at **https://emelambda.documentationai.com/**. Fetch the rele
 | `vendor/taw/core/src/Core/Rest/` | REST API endpoints (`SearchEndpoints`, `VisualEditorEndpoint`) |
 | `vendor/taw/core/src/Core/Form/` | Frontend form system (`Form`, `SubmissionsHandler`) |
 | `vendor/taw/core/src/Core/Mail/` | Email system (`Mailer`, `MailTemplate`, `MailTester`) |
-| `vendor/taw/core/src/Core/Editor/` | Visual Editor engine (⚠️ WIP) |
+| `vendor/taw/core/src/Core/Editor/` | Visual Editor engine — inline frontend editing for authenticated users |
 | `vendor/taw/core/src/Helpers/` | Utility helpers (`Framework`, `Image`, `Svg`, `Dump`, `Editor`) |
 | `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`) |
-| `vendor/taw/core/src/Support/` | `utilities.php`, `performance.php` — autoloaded by composer |
+| `vendor/taw/core/src/Support/` | `ViteLoader.php` — OOP Vite asset pipeline; `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
 | `Blocks/Menu/` | Boilerplate navigation block — two-row header with Alpine.js live-search overlay |
 | `inc/options.php` | Theme-level options page configuration |
@@ -451,8 +456,9 @@ BaseBlock (abstract)
 | `TAW\Core\Mail\Mailer` | Fluent `wp_mail()` wrapper with HTML template support |
 | `TAW\Core\Mail\MailTemplate` | File-based email template compiler. Looks for `mails/html/{name}.html`; falls back to MJML at runtime |
 | `TAW\Core\Mail\MailTester` | Admin page under Tools → Test Emails for testing compiled templates |
-| `TAW\Core\Editor\VisualEditor` | Visual Builder engine (**WIP**) |
-| `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint for the Visual Builder (**WIP**) |
+| `TAW\Core\Editor\VisualEditor` | Frontend inline editor — activated by `Theme::boot()`, toggled via admin bar or `?taw_visual_edit=1` |
+| `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint: `POST /taw/v1/visual-editor/save` — persists inline edits using the same pipeline as metabox saves |
+| `TAW\Support\ViteLoader` | OOP Vite bridge — dev-server detection (`isDevServerRunning()`), manifest parsing (`getManifest()`), asset URL resolution (`assetUrl()`), module preloading, critical CSS inlining (`inlineCriticalCss()`), and additional entry-point enqueuing (`enqueueAsset()`) |
 | `TAW\Helpers\Image` | Performance-optimized `<img>` tag generator with above/below-fold attributes |
 | `TAW\Helpers\Svg` | SVG upload enablement, sanitization on upload, and inline/img rendering |
 | `TAW\Helpers\Dump` | Debug panel helper — `dump()` / `dd()` global functions, renders in `wp_footer` (WP_DEBUG only) |
@@ -551,7 +557,7 @@ class Features extends MetaBlock
         new Metabox([
             'id'     => 'taw_features',
             'title'  => 'Features Section',
-            'screen' => 'page',
+            'screens' => ['page'],
             'fields' => [
                 [
                     'id'    => 'features_heading',
@@ -644,18 +650,22 @@ Usage in any template:
 
 Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-driven, supports:
 
-**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`
 
 **Features:**
+- `screens` key (array) — accepts post type slugs, page template filenames, page slugs, or mixed
 - `show_on` callback for conditional display (e.g., front page only)
 - `tabs` for grouped field organization
 - `width` property for side-by-side fields (e.g., `'width' => '50'`)
 - `sanitize` => `'code'` for raw code snippet fields
 - `group` type for nested field groups (e.g., CTA with text + URL)
-- `repeater` type for dynamic repeatable row groups
-- `post_selector` type for selecting related posts via a search-as-you-type UI (uses `taw/v1/search-posts`)
+- `repeater` type for dynamic repeatable row groups (nested repeaters supported)
+- `files` type — multi-file picker, drag-to-reorder, stores JSON array of attachment IDs
+- `post_select` type for selecting related posts via a search-as-you-type UI (uses `taw/v1/search-posts`)
 - `color` type renders a native color picker
 - `checkbox` type renders a boolean toggle
+
+→ Full reference: **[taw/core README — Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
 
 **Meta key pattern:** `_taw_{field_id}` (prefix configurable, default `_taw_`)
 
@@ -918,6 +928,7 @@ php bin/taw make:block Hero --type=meta --force
 | `--with-style` | Create a `style.scss` stub |
 | `--with-script` | Create a `script.js` stub |
 | `--force` / `-f` | Overwrite if block already exists |
+| `--group=path` | Place the block inside a subgroup, e.g. `--group=sections` → `Blocks/sections/Name/`; nested: `--group=ui/cards` → `Blocks/ui/cards/Name/` |
 
 After scaffolding, run `composer dump-autoload` to register the new class.
 
@@ -1035,10 +1046,26 @@ if (is_admin()) {
 
 ### How it works
 
-`vite-loader.php` (from `taw/core`, autoloaded via composer `files`) detects whether the Vite dev server is running via `fsockopen()` on port 5173.
+`TAW\Support\ViteLoader` (from `taw/core`, PSR-4 autoloaded) is the OOP Vite bridge. It detects whether the Vite dev server is running via `fsockopen()` on port 5173 and handles all asset enqueuing.
+
+`Theme::boot()` calls `ViteLoader::init('resources/js/app.js')` automatically — no manual setup needed for the main bundle.
+
+**Key static methods:**
+
+| Method | Description |
+|---|---|
+| `ViteLoader::isDevServerRunning()` | Returns `true` when the Vite dev server is reachable (replaces `vite_is_dev()`) |
+| `ViteLoader::assetUrl(string $path)` | Resolves a theme-relative path to the correct URL in dev and prod (replaces `vite_asset_url()`) |
+| `ViteLoader::enqueueAsset(string $handle, string $entry, array $deps, bool $enqueue)` | Register/enqueue an additional Vite entry point |
+| `ViteLoader::inlineCriticalCss(string $entry_key)` | Inline a compiled CSS entry into `<head>` (default: `resources/scss/critical.scss`) |
+| `ViteLoader::inlineCssFile(string $css_path, string $id)` | Inline an arbitrary compiled CSS file, rewriting relative asset URLs |
+| `ViteLoader::getManifest()` | Parse and return the Vite manifest (WP object-cache backed, 24 h TTL) |
+| `ViteLoader::distDir()` | Detect whether Vite wrote to `dist/` or `public/build/` |
+| `ViteLoader::distUrl(string $file)` | Build a full URL to a file inside the dist directory |
+| `ViteLoader::init(string $entry_point)` | Wire up WP hooks + enqueue main bundle (called by `Theme::boot()`) |
 
 - **Dev:** `app.js` (+ its CSS imports) served from `http://localhost:5173` with HMR
-- **Prod:** Reads `public/build/manifest.json` for hashed filenames
+- **Prod:** Reads `public/build/manifest.json` for hashed filenames (manifest cached in WP object cache)
 
 ### CSS loading pipeline (production)
 
@@ -1083,11 +1110,13 @@ Forces Vite to embed the full dev server URL in injected CSS (e.g. `url('http://
 - **Never** `@use 'fonts'` in `critical.scss` — inlined styles can't resolve relative asset paths
 - Register preloads via `vite_asset_url('resources/fonts/Name.woff2')` — returns dev server URL in dev and hashed build URL in prod
 
-### Helper: `vite_asset_url(string $path): string`
+### Helper: `ViteLoader::assetUrl(string $path): string`
 
 Resolves any theme asset to the correct URL in both modes:
 ```php
-vite_asset_url('resources/fonts/Roboto-Regular.woff2')
+use TAW\Support\ViteLoader;
+
+ViteLoader::assetUrl('resources/fonts/Roboto-Regular.woff2')
 // Dev  → 'http://localhost:5173/resources/fonts/Roboto-Regular.woff2'
 // Prod → 'https://example.com/.../public/build/assets/Roboto-Regular-B51t0g.woff2'
 ```
@@ -1105,9 +1134,51 @@ These become separate Rollup entry points → separate cached files in productio
 
 ### Script type="module"
 
-The `script_loader_tag` filter in `vite-loader.php` adds `type="module"` to:
-- All scripts from `VITE_SERVER` (dev)
-- `theme-app` and `taw-component-*` handles (prod)
+The `script_loader_tag` filter added by `ViteLoader::init()` applies `type="module"` to every handle registered via `ViteLoader::$moduleHandles`:
+- All scripts from the Vite dev server (dev)
+- `theme-app` and any handle passed to `enqueueAsset()` (prod)
+
+---
+
+## Block Variations
+
+A single MetaBlock class can be registered as multiple distinct instances using variations. Override `static::variations()` to return an array of variation strings — an empty string means the default instance (no suffix).
+
+```php
+class Hero extends MetaBlock
+{
+    protected string $id = 'hero';
+
+    public static function variations(): array
+    {
+        return ['', 'about'];  // registers 'hero' and 'hero--about'
+    }
+
+    protected function getData(int $postId): array
+    {
+        // $this->getVariation() returns '' or 'about'
+        return ['heading' => $this->getMeta($postId, 'hero_heading')];
+    }
+}
+```
+
+Each variation gets its own separate metabox data (different `post_meta` rows) but shares the same class, assets, and template. Variations share the asset handle (based on `$this->baseId`) so only one CSS/JS file is loaded even when both are on the same page.
+
+Rendered via `BlockRegistry::render('hero')` and `BlockRegistry::render('hero--about')` respectively.
+
+---
+
+## CSS Studio (Development)
+
+CSS Studio is a visual editor that streams live-page edits to this agent. It is installed and configured in this project.
+
+**Toggle:** WP Admin → TAW Settings → Developer Tools → Enable CSS Studio
+**Requires:** Vite dev server running (`npm run dev`)
+**Start session:** `/studio`
+
+When a session is active, this agent applies incoming changes following the TAW-specific rules in `.claude/skills/studio/SKILL.md`:
+- **Text/attr changes** — checks whether the element is already dynamic (PHP variable from metabox); if hardcoded, asks whether to keep it hardcoded or wire it to a new metabox field.
+- **Style changes** — always asks the user to choose: Tailwind classes in `index.php`, Block SCSS (`Blocks/{Name}/style.scss`), or Global SCSS (`resources/scss/app.scss`).
 
 ---
 
@@ -1149,7 +1220,9 @@ The `script_loader_tag` filter in `vite-loader.php` adds `type="module"` to:
 }
 ```
 
-`utilities.php` provides global helper functions: `vite_asset_url()`, `vite_is_dev()`, `dump()`, `dd()`, `taw_editable()`, `taw_editor_attrs()`, `taw_editor_attrs_array()`, `taw_editor_section()`.
+`utilities.php` provides global helper functions: `dump()`, `dd()`, `taw_editable()`, `taw_editor_attrs()`, `taw_editor_attrs_array()`, `taw_editor_section()`.
+
+> **Note:** `vite_asset_url()` and `vite_is_dev()` are **not** provided by `utilities.php`. Use `TAW\Support\ViteLoader::assetUrl()` and `TAW\Support\ViteLoader::isDevServerRunning()` instead. The legacy `vite-loader.php` procedural functions still exist in the package but are **not** in the composer `files` autoload — they will not be available unless explicitly included.
 
 Effective namespace mapping (combined):
 - `TAW\Core\Block\BaseBlock` → `vendor/taw/core/src/Core/Block/BaseBlock.php`

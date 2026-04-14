@@ -1,6 +1,7 @@
 # CLAUDE.md — Claude Code Instructions
 
 > Full architecture docs: see `AGENTS.md` in this repo.
+> **`taw/core` framework reference (source of truth):** https://github.com/Relmaur/taw-core#readme — fetch this when you need authoritative detail on any framework API (Metabox fields, ViteLoader, Visual Editor, etc.). When this file and the `taw/core` README disagree, `taw/core` wins.
 > Full online documentation: https://emelambda.documentationai.com/ — fetch the relevant sub-page for deeper detail.
 
 ## Project
@@ -15,9 +16,10 @@ npm run build            # Production build → public/build/
 composer install         # PHP deps (includes taw/core package)
 composer update taw/core # Update the core framework package
 composer dump-autoload   # Rebuild classmap after new block classes
-php bin/taw make:block Name --type=meta --with-style  # Scaffold a new block
-php bin/taw export:block Name                         # Export block as ZIP
-php bin/taw import:block path/to/Block.zip            # Import block from ZIP
+php bin/taw make:block Name --type=meta --with-style         # Scaffold a new block
+php bin/taw make:block Name --type=meta --group=sections     # Scaffold inside a subgroup (Blocks/sections/Name/)
+php bin/taw export:block Name                                # Export block as ZIP
+php bin/taw import:block path/to/Block.zip                   # Import block from ZIP
 ```
 
 ## Core Architecture
@@ -33,9 +35,10 @@ The package provides:
 - **Forms:** `Core\Form\Form`, `Core\Form\SubmissionsHandler`
 - **Mail:** `Core\Mail\Mailer`, `Core\Mail\MailTemplate`, `Core\Mail\MailTester`
 - **Helpers:** `Helpers\Framework`, `Helpers\Image`, `Helpers\Svg`, `Helpers\Dump`, `Helpers\Editor`
+- **Vite bridge:** `Support\ViteLoader` — OOP asset pipeline (dev-server detection, manifest parsing, enqueue, modulepreload, critical CSS inlining)
 - **CLI commands** and autoloads `utilities.php` and `performance.php` via composer `files`.
 
-`Core\Editor\VisualEditor` and `Core\Rest\VisualEditorEndpoint` are also part of the package but are **Work in Progress** — do not rely on them yet.
+`Core\Editor\VisualEditor` and `Core\Rest\VisualEditorEndpoint` — frontend inline editor for authenticated users. Enabled automatically by `Theme::boot()`. An **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` activates the editing shell. Changes save via `POST /wp-json/taw/v1/visual-editor/save`.
 
 The theme's own `inc/` only contains:
 - `options.php` — theme-level options page configuration (required from `functions.php`)
@@ -46,6 +49,8 @@ Dev blocks live in `Blocks/{Name}/{Name}.php` with namespace `TAW\Blocks\{Name}\
 Two block types:
 - **MetaBlock** — owns metaboxes, fetches post_meta, rendered via `BlockRegistry::render('id')`
 - **Block** — presentational, receives props, rendered directly: `(new Button())->render([...])`
+
+**Block Variations:** A MetaBlock can expose multiple registered instances of itself. Override `static::variations()` to return an array of variation strings (default `['']`). Access the active variation with `$this->getVariation()`. Useful for blocks like "Hero—home" and "Hero—about" sharing the same class and assets.
 
 Auto-discovery: `BlockLoader::loadAll()` scans `Blocks/*/` — no manual registration needed.
 
@@ -153,9 +158,10 @@ Templates live in `mails/html/{name}.html` (pre-compiled) or `mails/{name}.mjml`
 - `resources/js/app.js` imports `../css/app.css` (Tailwind v4) and `../scss/app.scss` (custom SCSS)
 - `resources/scss/critical.scss` — standalone Vite entry, inlined in `<head>` — keep under ~14 KB, **no `@font-face`**
 - Self-hosted fonts: WOFF2 in `resources/fonts/`, `@font-face` in `resources/scss/_fonts.scss`, `@use 'fonts'` in `app.scss` only
-- Add font preloads via `vite_asset_url('resources/fonts/Name.woff2')` (function provided by `taw/core`)
+- Add font preloads via `TAW\Support\ViteLoader::assetUrl('resources/fonts/Name.woff2')` — returns dev-server URL in dev, hashed build URL in prod
 - `utilities.php` and `performance.php` are part of the `taw/core` package — autoloaded via composer `files`
-- `utilities.php` provides global helpers: `vite_asset_url()`, `vite_is_dev()`, `dump()`, `dd()`, `taw_editable()`, `taw_editor_attrs()`
+- `utilities.php` provides global helpers: `dump()`, `dd()`, `taw_editable()`, `taw_editor_attrs()`, `taw_editor_attrs_array()`, `taw_editor_section()`
+- **Vite helpers are on `ViteLoader`, not `utilities.php`**: use `ViteLoader::isDevServerRunning()` (replaces `vite_is_dev()`) and `ViteLoader::assetUrl()` (replaces `vite_asset_url()`). The old `vite-loader.php` procedural functions exist but are **not** autoloaded — do not call them.
 
 ## Key Conventions
 
@@ -167,12 +173,23 @@ Templates live in `mails/html/{name}.html` (pre-compiled) or `mails/{name}.mjml`
 
 ## Metabox Field Types
 
-`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+
+→ Full field options, conditional logic, repeater nesting, and tabs: **[taw/core README — Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
 
 ## When Creating New Blocks
 
 1. **CLI (preferred):** `php bin/taw make:block Name --type=meta --with-style`, then `composer dump-autoload`
 2. **Manual:** Create `Blocks/{Name}/{Name}.php` and `Blocks/{Name}/index.php` — auto-discovered, no `functions.php` changes
+
+## CSS Studio (Development)
+
+CSS Studio is installed as a local dev tool. It lets you visually edit styles and content on the live page and streams changes here as structured data.
+
+- **Toggle:** WP Admin → TAW Settings → Developer Tools → Enable CSS Studio
+- **Active only when:** the Vite dev server is running (`npm run dev`) AND the toggle is on
+- **Start a session:** `/studio`
+- **Skill file:** `.claude/skills/studio/SKILL.md` — includes TAW-specific rules for content and style changes
 
 ## Don't
 
@@ -185,3 +202,4 @@ Templates live in `mails/html/{name}.html` (pre-compiled) or `mails/{name}.mjml`
 - Don't use `wp_nav_menu()` — use `Menu::get('location')` for full markup control
 - Don't look for `TAW\Core` or `TAW\Helpers` classes in `inc/` — they live in `vendor/taw/core/src/`
 - Don't edit files inside `vendor/` — to change framework behaviour, update the `taw/core` package in its own repo and bump the version
+- Don't call `vite_is_dev()` or `vite_asset_url()` — use `ViteLoader::isDevServerRunning()` and `ViteLoader::assetUrl()` from `TAW\Support\ViteLoader`
