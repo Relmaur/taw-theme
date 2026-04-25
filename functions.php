@@ -1,6 +1,7 @@
 <?php
 
 use TAW\Core\Theme\Theme;
+use TAW\Support\ViteLoader;
 
 /**
  * TAW Theme — Developer Customisations
@@ -14,6 +15,20 @@ require_once get_template_directory() . '/vendor/autoload.php';
 require_once get_template_directory() . '/inc/options.php';
 
 Theme::boot();
+
+// Block script.js files use ES module syntax (import/export).
+// BaseBlock::enqueueDevAssets() calls wp_enqueue_script() directly and bypasses
+// ViteLoader::enqueueAsset(), so block handles never land in $moduleHandles.
+// This late hook repairs that: it runs after all blocks are enqueued and pushes
+// every taw-block-* handle into the list that the addModuleType filter reads.
+add_action('wp_enqueue_scripts', static function (): void {
+    global $wp_scripts;
+    foreach ((array) ($wp_scripts->queue ?? []) as $handle) {
+        if (str_starts_with($handle, 'taw-block-')) {
+            ViteLoader::$moduleHandles[] = $handle;
+        }
+    }
+}, 999);
 
 // Add the necessary hooks to configure the theme. See inc/init.php for available hooks and documentation.
 Theme::performance(
