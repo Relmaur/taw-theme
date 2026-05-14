@@ -99,6 +99,6 @@ add_action('after_setup_theme', function () {
     ]);
 });
 
-add_action('after_setup_theme', function () {
+add_action('init', function () {
     load_theme_textdomain('taw-theme', get_template_directory() . '/languages');
-}, 1);
+});
