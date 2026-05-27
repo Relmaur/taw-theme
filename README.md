@@ -22,9 +22,9 @@ The framework internals (block system, metabox engine, Vite bridge) ship as the 
 
 **A real data layer.** MetaBlocks own their data through a bespoke metabox framework. No plugin dependencies for custom fields — field registration, rendering, retrieval, validation, and sanitization are all built in.
 
-**Rich field types.** `text`, `textarea`, `wysiwyg`, `image`, `url`, `number`, `range`, `select`, `checkbox`, `color`, `group`, `repeater`, `post_select` — with conditional logic, tabbed layouts, and responsive grid placement.
+**Rich field types.** `text`, `textarea`, `wysiwyg`, `image`, `url`, `number`, `range`, `select`, `checkbox`, `color`, `group`, `repeater`, `post_select`, `datepicker` — with conditional logic, tabbed layouts, and responsive grid placement.
 
-**Built-in form system.** `Form` handles CSRF, honeypot spam protection, field validation, PRG redirect, and email delivery. Drop it into any template with a config array — no plugin required.
+**Built-in form system.** `Form` handles CSRF, honeypot spam protection, field validation, AJAX submission (no page reload), and email delivery. Register it in your block's `boot()` method, display it in a template — no plugin required.
 
 **Transactional email.** `Mailer` wraps `wp_mail()` with a fluent API and MJML/HTML template support. Write templates once in MJML, compile to HTML, deploy. Includes a `MailTester` admin page for testing templates without real submissions.
 
@@ -36,7 +36,7 @@ The framework internals (block system, metabox engine, Vite bridge) ship as the 
 
 **AI-native DX.** Ships with `AGENTS.md`, `CLAUDE.md`, and Copilot/Windsurf instructions so any AI coding assistant understands the architecture out of the box.
 
-**Visual Editor** *(Work in Progress)* — a live content page editor is under active development inside `taw/core` (`TAW\Core\Editor\VisualEditor`). It is not ready for production use.
+**Visual Editor** — a live content page editor for authenticated users. Activated automatically by `Theme::boot()`. An **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` to any URL activates the editing shell.
 
 ---
 
@@ -91,7 +91,7 @@ composer dump-autoload
 
 namespace TAW\Blocks\Hero;
 
-use TAW\Core\MetaBlock;
+use TAW\Core\Block\MetaBlock;
 use TAW\Core\Metabox\Metabox;
 
 class Hero extends MetaBlock
@@ -101,9 +101,9 @@ class Hero extends MetaBlock
     protected function registerMetaboxes(): void
     {
         new Metabox([
-            'id'     => 'taw_hero',
-            'title'  => 'Hero Section',
-            'screen' => 'page',
+            'id'      => 'taw_hero',
+            'title'   => 'Hero Section',
+            'screens' => ['page'],
             'fields' => [
                 ['id' => 'hero_heading', 'label' => 'Heading', 'type' => 'text'],
                 ['id' => 'hero_image',   'label' => 'Image',   'type' => 'image'],
@@ -111,7 +111,7 @@ class Hero extends MetaBlock
         ]);
     }
 
-    protected function getData(int $postId): array
+    protected function getData(int|false $postId): array
     {
         return [
             'heading'   => $this->getMeta($postId, 'hero_heading'),
@@ -141,7 +141,7 @@ class Hero extends MetaBlock
 ```php
 <?php
 // front-page.php
-use TAW\Core\BlockRegistry;
+use TAW\Core\Block\BlockRegistry;
 
 BlockRegistry::queue('hero');
 get_header();
@@ -167,19 +167,19 @@ That's it. No registration step. The block auto-discovers itself, its metabox ap
 
 ### UI Block (Block)
 
-UI Blocks extend `TAW\Core\Block` and define a `defaults()` method instead of metaboxes:
+UI Blocks extend `TAW\Core\Block\Block` and define a `defaultData()` method instead of metaboxes:
 
 ```php
 // Blocks/Button/Button.php
 namespace TAW\Blocks\Button;
 
-use TAW\Core\Block;
+use TAW\Core\Block\Block;
 
 class Button extends Block
 {
     protected string $id = 'button';
 
-    protected function defaults(): array
+    protected function defaultData(): array
     {
         return [
             'text'   => '',
@@ -217,7 +217,7 @@ UI Blocks compose naturally inside MetaBlocks:
 ```php
 <?php
 // front-page.php
-use TAW\Core\BlockRegistry;
+use TAW\Core\Block\BlockRegistry;
 
 BlockRegistry::queue('hero', 'features', 'stats', 'testimonials', 'cta');
 get_header();
@@ -280,7 +280,7 @@ new Metabox([
 ]);
 ```
 
-**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `checkbox`, `color`, `image`, `files`, `group`, `repeater`, `post_select`
+**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `checkbox`, `color`, `image`, `files`, `group`, `repeater`, `post_select`, `datepicker`
 
 **Common field options:** `id`, `label`, `type`, `description`, `placeholder`, `default`, `required`, `width`, `conditions`
 
@@ -361,7 +361,7 @@ new OptionsPage([
 ### Retrieval
 
 ```php
-use TAW\Core\OptionsPage;
+use TAW\Core\OptionsPage\OptionsPage;
 
 $phone = OptionsPage::get('company_phone');
 $logo  = OptionsPage::get_image_url('logo', 'medium');
@@ -432,19 +432,19 @@ if ($menu && $menu->hasItems()) {
 use TAW\Helpers\Image;
 
 // Above-the-fold hero (eager, high priority)
-echo Image::render($hero_id, 'full', 'Hero image', ['above_fold' => true]);
+echo Image::render($hero_id, 'full', ['above_fold' => true]);
 
 // Regular image (lazy, low priority — the default)
-echo Image::render(get_post_thumbnail_id(), 'large', 'Post thumbnail');
+echo Image::render(get_post_thumbnail_id(), 'large');
 
 // With CSS class and custom sizes
-echo Image::render($id, 'large', 'Team photo', [
+echo Image::render($id, 'large', [
     'class' => 'rounded-lg shadow-md',
     'sizes' => '(max-width: 768px) 100vw, 50vw',
 ]);
 
 // With arbitrary extra attributes
-echo Image::render($id, 'medium', 'Logo', [
+echo Image::render($id, 'medium', [
     'attr' => ['id' => 'site-logo', 'data-hero' => 'true'],
 ]);
 ```
@@ -454,7 +454,7 @@ echo Image::render($id, 'medium', 'Logo', [
 Generate a `<link rel="preload">` for your single most important image. Call before `wp_head()` or hook at priority 1–2.
 
 ```php
-echo Image::preload_tag($hero_id, 'full');
+echo Image::preloadTag($hero_id, 'full');
 // → <link rel="preload" href="..." as="image" imagesrcset="..." imagesize="...">
 ```
 
@@ -521,37 +521,43 @@ The `BlockRegistry::queue('id')` call schedules assets for `<head>`. If you forg
 
 ## Forms
 
-`TAW\Core\Form\Form` is a configuration-driven frontend form that handles everything in one place: CSRF (nonces), honeypot spam protection, field validation, PRG redirect after success, and email delivery.
+`TAW\Core\Form\Form` is a configuration-driven frontend form that handles everything: CSRF (nonces), honeypot spam protection, field validation, AJAX submission via `admin-ajax.php` (no page reload), and email delivery.
+
+**Forms must be registered in the block's `boot()` method** — not in templates — so the AJAX handler exists on every request. Wrap the call in `add_action('init', ...)` so translations are safe:
 
 ```php
 use TAW\Core\Form\Form;
 
-$form = new Form([
-    'id'           => 'contact',
-    'submit_label' => 'Send Message',
-    'messages'     => ['success' => "Thanks! We'll be in touch."],
-    'email' => [
-        'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
-        'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
-    ],
-    'fields' => [
-        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
-        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
-        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
-    ],
-]);
-$form->render();
+// In your MetaBlock::boot():
+public static function boot(): void
+{
+    add_action('init', static function () {
+        Form::register([
+            'id'           => 'contact',
+            'submit_label' => 'Send Message',
+            'messages'     => ['success' => "Thanks! We'll be in touch."],
+            'email' => [
+                'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
+                'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
+            ],
+            'fields' => [
+                ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
+                ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
+                ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+            ],
+        ]);
+    });
+}
+
+// In the block's index.php template:
+Form::display('contact');
 ```
 
-**Form field types:** `text`, `email`, `textarea`, `select`, and any standard HTML input type (e.g. `tel`, `date`). Fields support `required`, `placeholder`, `rows`.
+**Form field types:** `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid %), `rows`, `conditions`.
 
 If both `email.to_self.template` and `email.to_client.template` are set, delivery uses `Mailer` + `MailTemplate` (see below). Otherwise falls back to plain-text `wp_mail()`.
 
-`TAW\Core\Form\SubmissionsHandler` stores successful submissions as a `taw_submission` CPT in WP Admin and optionally forwards them via webhook (n8n, Zapier, Make, etc.). Activate it in `functions.php`:
-
-```php
-new \TAW\Core\Form\SubmissionsHandler();
-```
+`TAW\Core\Form\SubmissionsHandler` stores successful submissions as a `taw_submission` CPT in WP Admin and optionally forwards them via webhook (n8n, Zapier, Make, etc.). **Auto-wired by `Theme::boot()`** — no manual instantiation needed.
 
 ---
 
@@ -769,7 +775,7 @@ taw-theme/
 │               │   ├── Rest/      #   SearchEndpoints, VisualEditorEndpoint
 │               │   ├── Form/      #   Form, SubmissionsHandler
 │               │   ├── Mail/      #   Mailer, MailTemplate, MailTester
-│               │   └── Editor/    #   VisualEditor (WIP)
+│               │   └── Editor/    #   VisualEditor — inline frontend editor
 │               ├── Helpers/   #   Framework, Image, Svg, Dump, Editor
 │               ├── CLI/       #   make:block, export:block, import:block commands
 │               └── Support/   #   utilities.php, performance.php (autoloaded)

@@ -50,6 +50,8 @@ Two block types:
 - **MetaBlock** — owns metaboxes, fetches post_meta, rendered via `BlockRegistry::render('id')`
 - **Block** — presentational, receives props, rendered directly: `(new Button())->render([...])`
 
+**`boot()` method:** Override `static boot(): void` on a MetaBlock for early-request setup (e.g. registering forms). Called during block discovery at `after_setup_theme`. Wrap any translation calls in `add_action('init', ...)` inside it.
+
 **Block Variations:** A MetaBlock can expose multiple registered instances of itself. Override `static::variations()` to return an array of variation strings (default `['']`). Access the active variation with `$this->getVariation()`. Useful for blocks like "Hero—home" and "Hero—about" sharing the same class and assets.
 
 Auto-discovery: `BlockLoader::loadAll()` scans `Blocks/*/` — no manual registration needed.
@@ -86,9 +88,9 @@ Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_
 `TAW\Helpers\Image` — performance-optimised `<img>` tag generator.
 
 ```php
-echo TAW\Helpers\Image::render($id, 'large', 'Alt text');
-echo TAW\Helpers\Image::render($id, 'full', 'Hero', ['above_fold' => true]);
-echo TAW\Helpers\Image::preload_tag($id, 'full'); // <link rel="preload">
+echo TAW\Helpers\Image::render($id, 'large', ['class' => 'my-img']);
+echo TAW\Helpers\Image::render($id, 'full', ['above_fold' => true]);
+echo TAW\Helpers\Image::preloadTag($id, 'full'); // <link rel="preload">
 ```
 
 `TAW\Helpers\Svg` — SVG upload enablement, sanitization, and rendering.
@@ -104,31 +106,41 @@ $url = Svg::url($attachment_id);
 
 ## Forms
 
-`TAW\Core\Form\Form` — configuration-driven frontend form with CSRF (nonces), honeypot, field validation, PRG pattern, and email delivery.
+`TAW\Core\Form\Form` — configuration-driven frontend form with CSRF (nonces), honeypot, field validation, AJAX submission, and email delivery. Submissions go to `admin-ajax.php` — no page reload.
+
+**Forms must be registered in the block's `boot()` method** (not in templates) so the AJAX handler exists on every request:
 
 ```php
 use TAW\Core\Form\Form;
 
-$form = new Form([
-    'id'           => 'contact',
-    'submit_label' => 'Send Message',
-    'email' => [
-        'to_self'   => ['subject' => 'New contact',        'template' => 'contact-self'],
-        'to_client' => ['subject' => 'Got your message',   'template' => 'contact-client'],
-    ],
-    'messages' => ['success' => "Thanks! We'll be in touch."],
-    'fields' => [
-        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
-        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
-        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
-    ],
-]);
-$form->render();
+// In your MetaBlock — register in boot(), wrapped in init action:
+public static function boot(): void
+{
+    add_action('init', static function () {
+        Form::register([
+            'id'           => 'contact',
+            'submit_label' => 'Send Message',
+            'email' => [
+                'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
+                'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
+            ],
+            'messages' => ['success' => "Thanks! We'll be in touch."],
+            'fields' => [
+                ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
+                ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
+                ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+            ],
+        ]);
+    });
+}
+
+// In the block's index.php template:
+Form::display('contact');
 ```
 
-Form field types: `text`, `email`, `textarea`, `select`, plus any standard HTML input type.
+Form field types: `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date` (and any standard HTML input type). Fields support `required`, `placeholder`, `width` (12-column grid), `conditions`.
 
-`TAW\Core\Form\SubmissionsHandler` — stores submissions as a `taw_submission` CPT and can forward them via webhook (n8n, Zapier, Make, etc.). Instantiate once in `functions.php`.
+`TAW\Core\Form\SubmissionsHandler` — stores submissions as a `taw_submission` CPT and optionally forwards them via webhook (n8n, Zapier, Make, etc.). **Auto-wired by `Theme::boot()`** — no manual instantiation needed.
 
 ## Mail
 
@@ -151,7 +163,7 @@ Templates live in `mails/html/{name}.html` (pre-compiled) or `mails/{name}.mjml`
 
 ## REST API
 
-`TAW\Core\Rest\SearchEndpoints` (from `taw/core`) — `GET taw/v1/search-posts`. Requires `edit_posts` capability. Powers the `post_selector` metabox field type. Registered automatically in `functions.php`.
+`TAW\Core\Rest\SearchEndpoints` (from `taw/core`) — `GET taw/v1/search-posts`. Requires `edit_posts` capability. Powers the `post_selector` metabox field type. Registered automatically via `Theme::boot()`.
 
 ## CSS / Asset Pipeline
 
@@ -173,7 +185,7 @@ Templates live in `mails/html/{name}.html` (pre-compiled) or `mails/{name}.mjml`
 
 ## Metabox Field Types
 
-`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`
 
 → Full field options, conditional logic, repeater nesting, and tabs: **[taw/core README — Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
 
@@ -203,3 +215,6 @@ CSS Studio is installed as a local dev tool. It lets you visually edit styles an
 - Don't look for `TAW\Core` or `TAW\Helpers` classes in `inc/` — they live in `vendor/taw/core/src/`
 - Don't edit files inside `vendor/` — to change framework behaviour, update the `taw/core` package in its own repo and bump the version
 - Don't call `vite_is_dev()` or `vite_asset_url()` — use `ViteLoader::isDevServerRunning()` and `ViteLoader::assetUrl()` from `TAW\Support\ViteLoader`
+- Don't use `new Form([...]) + $form->render()` — use `Form::register()` in `boot()` and `Form::display('id')` in templates
+- Don't manually instantiate `SubmissionsHandler` in `functions.php` — it's auto-wired by `Theme::boot()`
+- Don't register Forms inside templates — the AJAX handler won't exist when `admin-ajax.php` processes the submission

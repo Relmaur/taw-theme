@@ -298,22 +298,29 @@ A lookup table of the most common sections. Use these as the default starting po
 **Type:** MetaBlock
 **Purpose:** Section with contact info + a Form rendered inline.
 
-Block class renders a `TAW\Core\Form\Form` instance directly inside its `index.php`. No special metabox fields beyond a heading; form configuration is hardcoded in the template.
+Register the form in the block's `boot()` method; render it in `index.php` with `Form::display()`.
 
 ```php
-// Blocks/Contact/index.php
+// Blocks/Contact/Contact.php
 use TAW\Core\Form\Form;
 
-$form = new Form([
-    'id'           => 'contact',
-    'submit_label' => 'Send Message',
-    'fields' => [
-        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true, 'width' => '50'],
-        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true, 'width' => '50'],
-        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
-    ],
-]);
-$form->render();
+public static function boot(): void
+{
+    add_action('init', static function () {
+        Form::register([
+            'id'           => 'contact',
+            'submit_label' => 'Send Message',
+            'fields' => [
+                ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true, 'width' => 50],
+                ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true, 'width' => 50],
+                ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+            ],
+        ]);
+    });
+}
+
+// Blocks/Contact/index.php
+Form::display('contact');
 ```
 
 ### Stats / Numbers
@@ -395,7 +402,7 @@ vendor/taw/core/
 │   │   │   └── MenuItem.php         # Typed menu item with active-state helpers
 │   │   ├── Rest/
 │   │   │   ├── SearchEndpoints.php      # GET taw/v1/search-posts
-│   │   │   └── VisualEditorEndpoint.php # Visual Builder REST endpoint (⚠️ WIP)
+│   │   │   └── VisualEditorEndpoint.php # Visual Builder REST endpoint
 │   │   ├── Form/
 │   │   │   ├── Form.php             # Config-driven frontend form (CSRF, honeypot, PRG, email)
 │   │   │   └── SubmissionsHandler.php # CPT submission storage + webhook forwarding
@@ -404,7 +411,7 @@ vendor/taw/core/
 │   │   │   ├── MailTemplate.php     # MJML/HTML template compiler ({{variable}} syntax)
 │   │   │   └── MailTester.php       # Admin page: Tools → Test Emails
 │   │   └── Editor/
-│   │       └── VisualEditor.php     # Visual Builder engine (⚠️ WIP)
+│   │       └── VisualEditor.php     # Visual Builder engine — inline frontend editor
 │   ├── CLI/                         # Symfony Console commands
 │   │   ├── MakeBlockCommand.php
 │   │   ├── ExportBlockCommand.php
@@ -440,7 +447,7 @@ BaseBlock (abstract)
 | Class | Role |
 |---|---|
 | `TAW\Core\Block\BaseBlock` | Reflection-based auto-discovery of component directory, asset enqueuing (CSS/JS), template rendering via `extract()` |
-| `TAW\Core\Block\MetaBlock` | Extends BaseBlock. Registers metaboxes in constructor, provides `getData(int $postId)` and `render(?int $postId)` |
+| `TAW\Core\Block\MetaBlock` | Extends BaseBlock. Registers metaboxes via `registerMetaboxes()` (deferred to `init`), provides `getData(int|false $postId)` and `render(?int $postId)`. Override `static boot(): void` for early-request setup (e.g. form registration). |
 | `TAW\Core\Block\Block` | Extends BaseBlock. Defines `defaults()` for props, provides `render(array $props)` |
 | `TAW\Core\Block\BlockRegistry` | Static registry for MetaBlocks. Supports `register()`, `queue()`, `render()`, `enqueueQueuedAssets()` |
 | `TAW\Core\Block\BlockLoader` | Auto-discovers all MetaBlock classes by scanning `Blocks/*/` directories |
@@ -456,8 +463,8 @@ BaseBlock (abstract)
 | `TAW\Core\Mail\Mailer` | Fluent `wp_mail()` wrapper with HTML template support |
 | `TAW\Core\Mail\MailTemplate` | File-based email template compiler. Looks for `mails/html/{name}.html`; falls back to MJML at runtime |
 | `TAW\Core\Mail\MailTester` | Admin page under Tools → Test Emails for testing compiled templates |
-| `TAW\Core\Editor\VisualEditor` | Frontend inline editor — activated by `Theme::boot()`, toggled via admin bar or `?taw_visual_edit=1` |
-| `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint: `POST /taw/v1/visual-editor/save` — persists inline edits using the same pipeline as metabox saves |
+| `TAW\Core\Editor\VisualEditor` | Frontend inline editor — activated automatically by `Theme::boot()`. Toggled via the **Edit Visually** admin bar button or `?taw_visual_edit=1`. |
+| `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint: `POST /taw/v1/visual-editor/save` — persists inline edits using the same sanitization pipeline as metabox saves |
 | `TAW\Support\ViteLoader` | OOP Vite bridge — dev-server detection (`isDevServerRunning()`), manifest parsing (`getManifest()`), asset URL resolution (`assetUrl()`), module preloading, critical CSS inlining (`inlineCriticalCss()`), and additional entry-point enqueuing (`enqueueAsset()`) |
 | `TAW\Helpers\Image` | Performance-optimized `<img>` tag generator with above/below-fold attributes |
 | `TAW\Helpers\Svg` | SVG upload enablement, sanitization on upload, and inline/img rendering |
@@ -489,8 +496,9 @@ BlockLoader relies on this convention for auto-discovery. Breaking it will silen
 **MetaBlock** (data-owning sections):
 - Registered in `BlockRegistry` via `BlockLoader::loadAll()`
 - Owns metaboxes → appears in WP admin editor
-- Fetches its own data from `post_meta`
+- Fetches its own data from `post_meta` via `getData(int|false $postId)` — accepts `false` on 404 pages
 - Rendered via `BlockRegistry::render('hero')`
+- Override `static boot(): void` for early-request setup (form registration, early hooks). Called during block discovery at `after_setup_theme`. Wrap `__()` calls in `add_action('init', ...)` inside it.
 
 **Block** (presentational UI components):
 - NOT registered in the registry
@@ -514,7 +522,7 @@ get_footer()         → wp_footer()
 **Template pattern:**
 ```php
 <?php
-use TAW\Core\BlockRegistry;
+use TAW\Core\Block\BlockRegistry;
 
 // 1. Queue blocks BEFORE get_header (assets land in <head>)
 BlockRegistry::queue('hero', 'stats');
@@ -545,7 +553,7 @@ declare(strict_types=1);
 
 namespace TAW\Blocks\Features;
 
-use TAW\Core\MetaBlock;
+use TAW\Core\Block\MetaBlock;
 use TAW\Core\Metabox\Metabox;
 
 class Features extends MetaBlock
@@ -569,7 +577,7 @@ class Features extends MetaBlock
         ]);
     }
 
-    protected function getData(int $postId): array
+    protected function getData(int|false $postId): array
     {
         return [
             'heading' => $this->getMeta($postId, 'features_heading'),
@@ -619,7 +627,7 @@ declare(strict_types=1);
 
 namespace TAW\Blocks\Card;
 
-use TAW\Core\Block;
+use TAW\Core\Block\Block;
 
 class Card extends Block
 {
@@ -650,7 +658,7 @@ Usage in any template:
 
 Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-driven, supports:
 
-**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`
 
 **Features:**
 - `screens` key (array) — accepts post type slugs, page template filenames, page slugs, or mixed
@@ -664,6 +672,7 @@ Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-dri
 - `post_select` type for selecting related posts via a search-as-you-type UI (uses `taw/v1/search-posts`)
 - `color` type renders a native color picker
 - `checkbox` type renders a boolean toggle
+- `datepicker` type renders a jQuery UI date picker; stored as a date string (default `YYYY-MM-DD`); supports `date_format`, `min_date`, `max_date`
 
 → Full reference: **[taw/core README — Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
 
@@ -687,45 +696,56 @@ Provided by `taw/core` (namespace `TAW\Core\Form`).
 
 ### `Form`
 
-Configuration-driven frontend form. Handles CSRF protection (nonces), honeypot spam guard, field sanitization & validation, PRG redirect after success, and email delivery (plain-text fallback or MJML templates via `Mailer`).
+Configuration-driven frontend form. Handles CSRF protection (nonces), honeypot spam guard, field sanitization & validation, AJAX submission (via `admin-ajax.php`), and email delivery (plain-text fallback or MJML templates via `Mailer`).
+
+**Forms must be registered before templates load** — the AJAX handler registered inside a template doesn't exist when `admin-ajax.php` processes the submission. The correct place is the block's `boot()` method, wrapped in `add_action('init', ...)`:
 
 ```php
 use TAW\Core\Form\Form;
 
-$form = new Form([
-    'id'                   => 'contact',
-    'submit_label'         => 'Send Message',
-    'submit_loading_label' => 'Sending...',
-    'messages' => ['success' => "Thanks! We'll be in touch."],
-    'email' => [
-        'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
-        'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
-    ],
-    'fields' => [
-        ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
-        ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
-        ['id' => 'service', 'label' => 'Service', 'type' => 'select',
-         'options' => ['web' => 'Web Design', 'seo' => 'SEO']],
-        ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
-    ],
-]);
-$form->render();
+// In your MetaBlock::boot()
+public static function boot(): void
+{
+    add_action('init', static function () {
+        Form::register([
+            'id'                   => 'contact',
+            'submit_label'         => 'Send Message',
+            'submit_loading_label' => 'Sending...',
+            'messages' => ['success' => "Thanks! We'll be in touch."],
+            'email' => [
+                'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
+                'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
+            ],
+            'fields' => [
+                ['id' => 'name',    'label' => 'Name',    'type' => 'text',     'required' => true],
+                ['id' => 'email',   'label' => 'Email',   'type' => 'email',    'required' => true],
+                ['id' => 'service', 'label' => 'Service', 'type' => 'select',
+                 'options' => ['web' => 'Web Design', 'seo' => 'SEO']],
+                ['id' => 'message', 'label' => 'Message', 'type' => 'textarea', 'required' => true],
+            ],
+        ]);
+    });
+}
 ```
 
-**Form field types:** `text`, `email`, `textarea`, `select`, and any standard HTML input type (e.g. `tel`, `date`). Fields support `required`, `placeholder`, `rows` (textarea).
+Then render in a template:
+```php
+Form::display('contact');
+```
+
+**Form field types:** `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid %, e.g. `50`), `rows` (textarea), `conditions`.
 
 If `email.to_self.template` and `email.to_client.template` are both set, delivery uses `Mailer` + `MailTemplate`. Otherwise falls back to a plain-text `wp_mail()`.
+
+**Multi-column layout:** Use `width` on fields (as a percentage) to control the 12-column grid span. All fields collapse to full width on mobile.
+
+**Conditional fields:** Fields support a `conditions` array (same operators as Metabox: `==`, `!=`, `>`, `<`, `>=`, `<=`, `contains`). Hidden fields are excluded from validation and submission data — enforced in both JS and on the server.
 
 ### `SubmissionsHandler`
 
 Registers a `taw_submission` CPT for viewing submissions in WP Admin. Also provides a Settings → Form Webhook page for a webhook URL + HMAC secret.
 
-```php
-// In functions.php — register once to activate submission storage
-new \TAW\Core\Form\SubmissionsHandler();
-```
-
-Submissions are saved automatically by `Form::process()` after a successful send.
+**Auto-wired by `Theme::boot()`** — no manual instantiation needed. Submissions are saved automatically after a successful send.
 
 ---
 
@@ -960,17 +980,23 @@ Generates performance-optimised `<img>` tags with correct `loading`, `fetchprior
 use TAW\Helpers\Image;
 
 // Below the fold (default — most images)
-echo Image::render(get_post_thumbnail_id(), 'large', 'Alt text');
+echo Image::render(get_post_thumbnail_id(), 'large');
 
 // Above the fold (hero, banner) — eager + high priority
-echo Image::render($image_id, 'full', 'Hero image', [
+echo Image::render($image_id, 'full', [
     'above_fold' => true,
     'sizes'      => '100vw',
     'class'      => 'w-full object-cover',
 ]);
 
+// With extra attributes
+echo Image::render($id, 'large', [
+    'class' => 'rounded-lg shadow-md',
+    'attr'  => ['id' => 'site-logo'],
+]);
+
 // Generate a <link rel="preload"> tag for the hero image
-echo Image::preload_tag($image_id, 'full');
+echo Image::preloadTag($image_id, 'full');
 ```
 
 | Option | Type | Default | Description |
@@ -1154,7 +1180,7 @@ class Hero extends MetaBlock
         return ['', 'about'];  // registers 'hero' and 'hero--about'
     }
 
-    protected function getData(int $postId): array
+    protected function getData(int|false $postId): array
     {
         // $this->getVariation() returns '' or 'about'
         return ['heading' => $this->getMeta($postId, 'hero_heading')];
@@ -1338,7 +1364,7 @@ BlockRegistry::queue('post-header', 'related-posts');
 
 ### Accessing meta in MetaBlock::getData()
 ```php
-protected function getData(int $postId): array
+protected function getData(int|false $postId): array
 {
     return [
         'heading'   => $this->getMeta($postId, 'my_heading'),
@@ -1363,7 +1389,7 @@ protected function getData(int $postId): array
 
 ### Reading theme options in templates
 ```php
-use TAW\Core\OptionsPage;
+use TAW\Core\OptionsPage\OptionsPage;
 
 $phone = OptionsPage::get('company_phone');
 $logo  = OptionsPage::get_image_url('company_logo', 'medium');
@@ -1374,10 +1400,10 @@ $logo  = OptionsPage::get_image_url('company_logo', 'medium');
 use TAW\Helpers\Image;
 
 // Hero (above the fold)
-echo Image::render($hero_image_id, 'full', 'Hero image', ['above_fold' => true]);
+echo Image::render($hero_image_id, 'full', ['above_fold' => true]);
 
 // Card image (below the fold)
-echo Image::render($card_image_id, 'large', 'Card photo');
+echo Image::render($card_image_id, 'large');
 ```
 
 ---
