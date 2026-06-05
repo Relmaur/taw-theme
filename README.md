@@ -32,7 +32,7 @@ The framework internals (block system, metabox engine, Vite bridge) ship as the 
 
 **Theme-level options.** `OptionsPage` brings the same config-driven field experience to site-wide settings stored in `wp_options` — tabbed UI, validation, and a clean retrieval API included.
 
-**Modern frontend, classic WordPress.** Tailwind v4 for utility CSS, Alpine.js for interactivity, Vite for instant HMR — all wired into WordPress through a lightweight bridge. No React, no REST API overhead.
+**Modern frontend, classic WordPress.** Tailwind v4 for utility CSS, Alpine.js for interactivity, Swup for SPA-style page transitions, and Vite for instant HMR — all wired into WordPress through a lightweight bridge. No React, no REST API overhead.
 
 **AI-native DX.** Ships with `AGENTS.md`, `CLAUDE.md`, and Copilot/Windsurf instructions so any AI coding assistant understands the architecture out of the box.
 
@@ -326,6 +326,27 @@ The `repeater` field type creates a sortable, dynamic list of rows. Each row con
 
 Sub-fields support the same types as top-level fields (including nested repeaters). Rows are drag-and-drop sortable and individually collapsible. Retrieve with `Metabox::get_repeater()`.
 
+By default rows render as a collapsible accordion. Use `layout` to switch to a tabbed UI:
+
+| `layout` value | Description |
+|---|---|
+| _(omitted)_ | Accordion rows (default) |
+| `tabbed_horizontal` | Tabs along the top, content below |
+| `tabbed_vertical` | Tabs stacked in a left column, content on the right |
+
+```php
+[
+    'id'     => 'slides',
+    'label'  => 'Slides',
+    'type'   => 'repeater',
+    'layout' => 'tabbed_horizontal',
+    'fields' => [
+        ['id' => 'title', 'label' => 'Title', 'type' => 'text'],
+        ['id' => 'image', 'label' => 'Image', 'type' => 'image'],
+    ],
+]
+```
+
 → Full repeater and `group` field documentation: **[taw/core README](https://github.com/Relmaur/taw-core#metabox-system)**
 
 ---
@@ -464,14 +485,14 @@ echo Image::preloadTag($hero_id, 'full');
 
 ### Entry points
 
-| File                           | Role                                                              |
-| ------------------------------ | ----------------------------------------------------------------- |
-| `resources/js/app.js`          | Main JS entry — imports `app.css` and `app.scss`                  |
-| `resources/css/app.css`        | Tailwind v4 directives (imported by `app.js`, not a Vite entry)   |
-| `resources/scss/app.scss`      | Global custom SCSS — `@use 'fonts'` lives here                    |
-| `resources/scss/critical.scss` | Above-the-fold CSS — inlined in `<head>` as a `<style>` tag       |
-| `resources/scss/_fonts.scss`   | `@font-face` declarations — never add these to `critical.scss`    |
-| `resources/fonts/`             | Self-hosted WOFF2 font files                                      |
+| File                           | Role                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------- |
+| `resources/js/app.js`          | Main JS entry — Alpine, Swup, all block DOM init, imports `app.css`/`app.scss`  |
+| `resources/css/app.css`        | Tailwind v4 directives + any globally-needed third-party CSS (e.g. PhotoSwipe)  |
+| `resources/scss/app.scss`      | Global custom SCSS — `@use 'fonts'` lives here                                  |
+| `resources/scss/critical.scss` | Above-the-fold CSS — inlined in `<head>` as a `<style>` tag                     |
+| `resources/scss/_fonts.scss`   | `@font-face` declarations — never add these to `critical.scss`                  |
+| `resources/fonts/`             | Self-hosted WOFF2 font files                                                    |
 
 ### Production asset loading
 
@@ -511,11 +532,221 @@ Each block can have a `style.scss` (or `style.css`) and a `script.js`. Both are 
 Blocks/Hero/
 ├── Hero.php
 ├── index.php
-├── style.scss   ← per-block CSS
-└── script.js    ← per-block JS (loaded in footer, type="module")
+├── style.scss   ← per-block CSS (enqueued as <link> in <head>)
+└── script.js    ← per-block JS (type="module")
 ```
 
 The `BlockRegistry::queue('id')` call schedules assets for `<head>`. If you forget to queue, `BlockRegistry::render()` enqueues assets as a fallback (they land after `wp_head`, but a `<link>` is printed inline).
+
+**Block script responsibilities:** When a view-transition library is used (TAW ships with Swup), each block script only runs once — on the first page load. DOM initialization (Embla carousels, PhotoSwipe lightboxes, marquees, animations) should be handled centrally in `app.js` so it runs on every navigation. A block `script.js` is therefore best used for:
+
+1. **Alpine component registration** — `Alpine.data('componentName', factory)` for any `x-data="componentName"` elements in the block's template.
+2. **One-time global setup** — anything that binds to the document/window and doesn't need to re-run per navigation.
+
+See the **[Using JavaScript View Transition Libraries](#using-javascript-view-transition-libraries)** section below for the full lifecycle and patterns.
+
+---
+
+## Using JavaScript View Transition Libraries
+
+TAW ships with [Swup v4](https://swup.js.org/) for SPA-style page transitions, but the architectural patterns below apply equally to Barba.js, Taxi.js, the native View Transitions API, or any library that swaps page content without a full browser reload.
+
+### The core problem
+
+A view-transition library intercepts link clicks, fetches the new page, and **swaps a portion of the DOM** (in TAW, that portion is `<main id="content">`). Everything outside that container — the `<header>`, `<footer>`, and all scripts already loaded — stays alive for the whole session.
+
+This creates a fundamental mismatch: block JavaScript files execute **once** on the initial page load and never again. When the user navigates to a page that has a block whose script wasn't loaded on the first page, the DOM for that block appears but its JavaScript initialization never runs.
+
+### Root cause: block scripts live outside the swapped container
+
+WordPress enqueues block scripts in `<body>` (outside `<main id="content">`). A view-transition library replaces `#content`'s HTML on each navigation but leaves everything else untouched. Any script registered for a block that wasn't on the landing page is therefore **never executed** during the session — the block renders but stays inert.
+
+The two naive workarounds both fail:
+
+- **Re-running scripts on each swap** — if the library re-evaluates `<script>` tags inside the swapped container, scripts in `<body>` (outside the container) are still missed.
+- **Delegating to a custom event** — dispatching `myLib:page-view` and having each block script listen to it works only for scripts that have already loaded; a script that has never run has no listener to fire.
+
+### The reliable fix: centralize initialization in `app.js`
+
+The only script that reliably executes on every page is the **main entry point** — `app.js`. Moving all DOM-initialization logic there eliminates the timing dependency entirely.
+
+```js
+// app.js — import everything needed for all block types
+import EmblaCarousel      from 'embla-carousel';
+import AutoPlay           from 'embla-carousel-autoplay';
+import PhotoSwipeLightbox from 'photoswipe/lightbox';
+
+// Define one init function per block type
+function initGalleries()       { /* Embla on .image-gallery__embla    */ }
+function initTestimonials()    { /* Embla on .testimonials__embla     */ }
+function initPhotoSwipe()      { /* PhotoSwipe on [data-pswp-gallery] */ }
+function initStrategicAllies() { /* marquee on .strategic-allies__marquee */ }
+function initChangingNumbers() { /* count-up on [data-target]        */ }
+
+// Run everything on first load AND after every navigation
+function initAll() {
+    initOrnaments();
+    initGalleries();
+    initTestimonials();
+    initPhotoSwipe();
+    initStrategicAllies();
+    initChangingNumbers();
+}
+
+document.addEventListener('DOMContentLoaded', initAll);
+
+// Hook into your library's "content replaced" lifecycle event
+// (Swup: page:view | Barba: after | native VT API: after transition)
+yourTransitionLibrary.on('page:view', initAll);
+```
+
+**If you add a new block that needs per-navigation initialization, add its init function to `initAll()`.** Never rely solely on a block script's event listener.
+
+### Make every init function idempotent
+
+Because `initAll()` runs after every navigation — and block scripts may also run their own initialization as a fallback — each function must be safe to call multiple times on the same page.
+
+The pattern: set a guard attribute on the element after initialization. Check for its absence before running.
+
+```js
+function initGalleries() {
+    // :not([data-gallery-ready]) means "hasn't been initialized yet"
+    document.querySelectorAll('.image-gallery__embla:not([data-gallery-ready])').forEach(root => {
+        const viewport = root.querySelector('.image-gallery__viewport');
+        if (!viewport) return; // guard against partial / broken DOM
+
+        const embla = EmblaCarousel(viewport, { loop: true });
+        // ...setup buttons, dots, etc...
+
+        root.setAttribute('data-gallery-ready', ''); // mark as done
+        window._tawCleanup.add(() => embla.destroy()); // register teardown
+    });
+}
+```
+
+Guard attributes are only present on **live** DOM nodes. When the transition library swaps `#content`, the new HTML comes from the server without any guard attributes, so `initAll()` correctly re-initializes all blocks on the incoming page.
+
+### Teardown before the swap
+
+Libraries like Embla or Splide attach internal `ResizeObserver`s and event listeners to DOM nodes. If those nodes are removed without calling `.destroy()`, the observers keep firing against detached elements — a memory leak that accumulates across navigations.
+
+Register a teardown callback immediately after creating any such instance:
+
+```js
+// window._tawCleanup is a Set<() => void> initialized in app.js
+window._tawCleanup.add(() => embla.destroy());
+```
+
+Hook into your library's **before-swap** lifecycle event to run and clear all registered teardowns:
+
+```js
+// Swup:
+swup.hooks.before('content:replace', () => {
+    window._tawCleanup.forEach(fn => fn());
+    window._tawCleanup.clear();
+});
+
+// Barba.js:
+barba.hooks.before(() => {
+    window._tawCleanup.forEach(fn => fn());
+    window._tawCleanup.clear();
+});
+```
+
+### Alpine.js lifecycle
+
+Alpine binds reactive state to specific DOM nodes. When those nodes are replaced, the old bindings must be cleaned up (`Alpine.destroyTree`) and the new nodes must be initialized (`Alpine.initTree`). Alpine must only be **started** once — never call `Alpine.start()` again after the first page load.
+
+```js
+// Before the swap — destroy Alpine on the outgoing content
+yourLib.on('before-swap', () => {
+    Alpine.destroyTree(document.getElementById('content'));
+});
+
+// After the swap — initialize Alpine on the incoming content
+yourLib.on('after-swap', () => {
+    Alpine.initTree(document.getElementById('content'));
+});
+```
+
+Anything outside `#content` (e.g. a header menu component) is never touched by these calls and stays initialized throughout the session.
+
+### Alpine component registration from block scripts
+
+Block scripts that register named Alpine components (`Alpine.data('name', factory)`) must handle two scenarios: the script running before Alpine starts (first page load) and the script being injected and executed after Alpine has already started and called `initTree` (subsequent navigations).
+
+```js
+// Blocks/PostGrid/script.js
+
+const registerVideoModal = () => {
+    Alpine.data('videoModal', () => ({
+        isOpen: false, embedUrl: '',
+        openVideo(url) { this.embedUrl = url; this.isOpen = true; },
+        close()        { this.isOpen = false; this.embedUrl = ''; },
+    }));
+};
+
+if (window._alpineStarted) {
+    // The script loaded after Alpine.initTree already ran.
+    // Register the component, then re-initialize any elements that were
+    // processed without it (Alpine initialized them with empty data).
+    registerVideoModal();
+    document.querySelectorAll('[x-data="videoModal"]').forEach(el => {
+        Alpine.destroyTree(el);
+        Alpine.initTree(el);
+    });
+} else {
+    // Normal first-load path: register before Alpine.start() is called.
+    document.addEventListener('alpine:init', registerVideoModal);
+}
+```
+
+`window._alpineStarted` is set to `true` after `Alpine.start()` returns. Block scripts check this flag to know which path to take.
+
+### The `taw:page-view` custom event
+
+`app.js` dispatches a `taw:page-view` `CustomEvent` on `document` after `initAll()` completes on every navigation. Block scripts that need to react to page changes beyond what `initAll()` covers can listen to it:
+
+```js
+document.addEventListener('taw:page-view', () => {
+    updateActiveMenuLinks(); // example: logic specific to this block
+});
+```
+
+This event is also used by block scripts as a **fallback** for their own initialization. Since `app.js`'s `initAll()` runs first and sets the guard attributes, any duplicate attempt by a block script's listener is a no-op — the guards prevent double-initialization.
+
+### PhotoSwipe CSS — put it in your main stylesheet
+
+In dev mode, `import 'photoswipe/dist/photoswipe.css'` inside a JavaScript module makes Vite inject the CSS via a `<style>` tag through the HMR module system. When multiple entry points (e.g. `app.js` and several block scripts) each import the same CSS file, the HMR registry tracks multiple owners and can produce unreliable style injection.
+
+**The fix:** import third-party CSS that is needed globally into your main CSS entry rather than into JS files:
+
+```css
+/* resources/css/app.css */
+@import "tailwindcss";
+@import "photoswipe/dist/photoswipe.css"; /* always a real stylesheet, never JS-injected */
+```
+
+This keeps it as a genuine stylesheet in both dev and production — no JS-injection conflicts, no HMR edge cases, and the CSS is always available regardless of which block scripts have loaded.
+
+### In this theme (Swup v4)
+
+The transition animation is a simple opacity fade on `#content`:
+
+```scss
+#content { opacity: 1; transition: opacity 180ms ease; }
+html.is-animating #content { opacity: 0; }
+```
+
+Swup adds `html.is-animating` when navigation starts and removes it after the enter animation ends. The same CSS rule drives both the exit and the enter.
+
+Plugins:
+
+| Plugin | Purpose |
+|---|---|
+| `@swup/head-plugin` (`persistAssets: true`) | Syncs `<head>` elements; keeps already-loaded scripts across navigations |
+| `@swup/scroll-plugin` | Scrolls to top after each swap |
+| `@swup/preload-plugin` | Preloads target page on hover/focus |
 
 ---
 
@@ -553,7 +784,67 @@ public static function boot(): void
 Form::display('contact');
 ```
 
-**Form field types:** `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid %), `rows`, `conditions`.
+**Input field types:** `text`, `email`, `tel`, `url`, `number`, `textarea`, `select`, `radio` (pass `options`; accepts `layout`), `checkbox`, `checkbox_group` (pass `options`; stored as comma-separated string), `date` (accepts `min_date`, `max_date`). Any other value is passed straight through as the HTML `type` attribute.
+
+**Structural field types** (cosmetic only — no `id`, no validation, no submission data): `heading` (dark section banner with `label` and optional `subtitle`), `divider` (`<hr>`), `html` (raw HTML via `content` key, rendered with `wp_kses_post`).
+
+```php
+['type' => 'heading', 'label' => '1. Personal Data', 'subtitle' => 'General identification'],
+['type' => 'divider'],
+['type' => 'html', 'content' => '<p class="text-sm text-gray-500">All fields marked * are required.</p>'],
+```
+
+All input fields accept: `id`, `label`, `type`, `required`, `placeholder`, `width`, and `conditions`. All fields (including structural) accept `width` for column placement.
+
+**Conditional fields — AND / OR logic:** By default all conditions are combined with AND. Add `'relation' => 'any'` to switch to OR:
+
+```php
+[
+    'id'         => 'spouse_name',
+    'type'       => 'text',
+    'label'      => 'Spouse / Partner name',
+    'conditions' => [
+        'relation' => 'any',
+        'rules'    => [
+            ['field' => 'estado_civil', 'operator' => '==', 'value' => 'married'],
+            ['field' => 'estado_civil', 'operator' => '==', 'value' => 'cohabiting'],
+        ],
+    ],
+],
+```
+
+Supported operators: `==`, `!=`, `>`, `<`, `>=`, `<=`, `contains`. Conditions are enforced in JS and on the server — hidden fields are excluded from `FormData` and re-validated on the server regardless of client-side state.
+
+**Multi-step forms:** Replace the top-level `fields` key with `steps`. Each step has a `title` (shown in a numbered indicator) and its own `fields` array. The same field types, widths, and conditions work identically inside steps.
+
+```php
+Form::register([
+    'id'           => 'application',
+    'submit_label' => 'Submit',
+    'next_label'   => 'Continue',   // optional; default "Next"
+    'prev_label'   => 'Back',       // optional; default "Back"
+    'messages'     => ['success' => 'Your form has been received.'],
+    'steps' => [
+        [
+            'title'  => 'Personal Info',
+            'fields' => [
+                ['type' => 'heading', 'label' => '1. General Data'],
+                ['id' => 'nombre',    'label' => 'Name',  'type' => 'text', 'required' => true, 'width' => 50],
+                ['id' => 'email',     'label' => 'Email', 'type' => 'email', 'required' => true, 'width' => 50],
+            ],
+        ],
+        [
+            'title'  => 'Declaration',
+            'fields' => [
+                ['type' => 'html', 'content' => '<p>I declare that all information provided is true.</p>'],
+                ['id' => 'confirm', 'label' => 'I confirm', 'type' => 'checkbox', 'required' => true],
+            ],
+        ],
+    ],
+]);
+```
+
+**How it works:** Next validates required fields in the current step (client-side) before advancing. Back navigates without validation. Submit only appears on the last step. All fields from all steps are submitted in a single AJAX request; if server validation fails, the form auto-navigates back to the step containing the first failing field.
 
 If both `email.to_self.template` and `email.to_client.template` are set, delivery uses `Mailer` + `MailTemplate` (see below). Otherwise falls back to plain-text `wp_mail()`.
 
@@ -711,13 +1002,16 @@ When active, every change you make in the visual panel — text edits, style twe
 
 | Technology                                                                 | Role                                                             |
 | -------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [Tailwind CSS v4](https://tailwindcss.com/)                                | Utility-first CSS via the official Vite plugin                   |
-| [Alpine.js v3](https://alpinejs.dev/)                                      | Lightweight reactivity for interactive components                |
-| [Vite v7](https://vitejs.dev/)                                             | Build tool with instant HMR in development                       |
-| [SCSS](https://sass-lang.com/)                                             | Optional custom styles — global and per-block                    |
-| [Symfony Console](https://symfony.com/doc/current/components/console.html) | CLI scaffolding commands (`bin/taw`) — shipped inside `taw/core` |
-| PHP 8.1+                                                                   | PSR-4 autoloading via Composer                                   |
-| [`taw/core`](https://github.com/Relmaur/taw-core)                          | Versioned composer package containing all framework internals    |
+| [Tailwind CSS v4](https://tailwindcss.com/)                                | Utility-first CSS via the official Vite plugin                    |
+| [Alpine.js v3](https://alpinejs.dev/)                                      | Lightweight reactivity for interactive components                 |
+| [Swup v4](https://swup.js.org/)                                            | SPA-style page transitions — swaps `#content` without full reload |
+| [Embla Carousel](https://www.embla-carousel.com/)                          | Touch-friendly carousels (galleries, testimonials)                |
+| [PhotoSwipe v5](https://photoswipe.com/)                                   | Lightbox for images — lazy-loads the core on first open           |
+| [Vite v7](https://vitejs.dev/)                                             | Build tool with instant HMR in development                        |
+| [SCSS](https://sass-lang.com/)                                             | Optional custom styles — global and per-block                     |
+| [Symfony Console](https://symfony.com/doc/current/components/console.html) | CLI scaffolding commands (`bin/taw`) — shipped inside `taw/core`  |
+| PHP 8.1+                                                                   | PSR-4 autoloading via Composer                                    |
+| [`taw/core`](https://github.com/Relmaur/taw-core)                          | Versioned composer package containing all framework internals     |
 
 ### Architecture at a Glance
 
@@ -738,6 +1032,9 @@ When active, every change you make in the visual panel — text edits, style twe
 | Async CSS         | Main CSS loaded non-render-blocking via `media="print"` + `onload` swap                 |
 | Fonts             | Self-hosted WOFF2 with preloads via `ViteLoader::assetUrl()` (from `taw/core`)          |
 | Performance       | `performance.php` removes WP bloat, adds resource hints (autoloaded from `taw/core`)    |
+| Page transitions  | Swup v4 swaps `#content`; `app.js` owns all block DOM init via `initAll()` on `page:view` |
+| Alpine lifecycle  | `destroyTree` / `initTree` on content swap; `Alpine.start()` called once only           |
+| Embla teardown    | `window._tawCleanup` Set — callbacks registered after init, flushed before each swap    |
 | Theme updates     | GitHub Releases-based auto-updater (`TAW\Core\Theme\ThemeUpdater` in `taw/core`)        |
 | Framework updates | `composer update taw/core` — update across all sites independently                      |
 
