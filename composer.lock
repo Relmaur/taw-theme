@@ -788,16 +788,16 @@
         },
         {
             "name": "taw/core",
-            "version": "v1.15.52",
+            "version": "v1.16.51",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Relmaur/taw-core.git",
-                "reference": "0b9b07307dab45ee64001fc1ad1591f4ed7efe03"
+                "reference": "1eee88a099abac6de62f36058145b84e6f7d92c4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/0b9b07307dab45ee64001fc1ad1591f4ed7efe03",
-                "reference": "0b9b07307dab45ee64001fc1ad1591f4ed7efe03",
+                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/1eee88a099abac6de62f36058145b84e6f7d92c4",
+                "reference": "1eee88a099abac6de62f36058145b84e6f7d92c4",
                 "shasum": ""
             },
             "require": {
@@ -807,6 +807,9 @@
             },
             "require-dev": {
                 "spatie/mjml-php": "^1.0"
+            },
+            "suggest": {
+                "emailit/emailit-php": "Required for EmailConfig::useEmailit() — route all wp_mail() through the Emailit REST API"
             },
             "type": "library",
             "autoload": {
@@ -829,10 +832,10 @@
             ],
             "description": "TAW Theme Framework — block system, metabox engine, Vite asset pipeline for WordPress",
             "support": {
-                "source": "https://github.com/Relmaur/taw-core/tree/v1.15.52",
+                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.51",
                 "issues": "https://github.com/Relmaur/taw-core/issues"
             },
-            "time": "2026-06-05T04:52:13+00:00"
+            "time": "2026-06-11T05:51:29+00:00"
         }
     ],
     "packages-dev": [],
