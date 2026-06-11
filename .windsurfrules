@@ -52,9 +52,14 @@ SVG helper:
 - TAW\Helpers\Svg::inline($id, ['class' => '...']) — inline <svg>
 
 Forms:
-- TAW\Core\Form\Form — config-driven frontend form (CSRF, honeypot, validation, PRG, email)
-- TAW\Core\Form\SubmissionsHandler — CPT submission storage + webhook forwarding
-- Field types: text, email, textarea, select, any HTML input type
+- TAW\Core\Form\Form — config-driven frontend form (CSRF, honeypot, validation, AJAX via admin-ajax.php, email delivery)
+- Register with Form::register([...]) in MetaBlock::boot() wrapped in add_action('init', ...) — NEVER in templates
+- Display with Form::display('id') in the template
+- TAW\Core\Form\SubmissionsHandler — CPT submission storage + webhook forwarding; auto-wired by Theme::boot(), do not instantiate manually
+- Input field types: text, email, tel, url, number, textarea, select, radio, checkbox, checkbox_group, date
+- Structural fields (no data): heading, divider, html
+- Supports multi-step forms (steps key) and AND/OR conditional logic (conditions)
+- Never use new Form([...]) + $form->render() — that API is removed
 
 Mail:
 - TAW\Core\Mail\Mailer — fluent wp_mail() wrapper: ->to()->subject()->template()->setVariables()->send()
@@ -67,4 +72,12 @@ Debug:
 REST API:
 - GET taw/v1/search-posts — powers the post_select metabox field type
 
-Metabox field types: text, textarea, wysiwyg, url, number, range, select, image, group, checkbox, color, repeater, post_select
+Metabox field types: text, textarea, wysiwyg, url, number, range, select, image, files, group, checkbox, color, repeater, post_select, datepicker
+
+Visual Editor:
+- Enabled automatically by Theme::boot()
+- Edit Visually button in admin bar; ?taw_visual_edit=1 activates inline editing shell
+
+Asset helpers:
+- Use ViteLoader::assetUrl('resources/fonts/Name.woff2') — not vite_asset_url()
+- Use ViteLoader::isDevServerRunning() — not vite_is_dev()

@@ -54,25 +54,33 @@ Use `TAW\Core\Menu\Menu::get('location')` instead of `wp_nav_menu()` — returns
 
 ## Forms
 
-`TAW\Core\Form\Form` — configuration-driven frontend form. Handles CSRF, honeypot, validation, PRG redirect, and email delivery (plain-text or MJML templates).
+`TAW\Core\Form\Form` — configuration-driven frontend form. Handles CSRF, honeypot, validation, AJAX submission (`admin-ajax.php`), and email delivery.
+
+**Register in the block's `boot()` method** (not in templates) so the AJAX handler exists on every request:
 
 ```php
-$form = new Form([
-    'id' => 'contact', 'submit_label' => 'Send',
-    'email' => [
-        'to_self'   => ['subject' => 'New contact',      'template' => 'contact-self'],
-        'to_client' => ['subject' => 'Got your message', 'template' => 'contact-client'],
-    ],
-    'fields' => [
-        ['id' => 'name',  'type' => 'text',     'label' => 'Name',    'required' => true],
-        ['id' => 'email', 'type' => 'email',    'label' => 'Email',   'required' => true],
-        ['id' => 'msg',   'type' => 'textarea', 'label' => 'Message', 'required' => true],
-    ],
-]);
-$form->render();
+// In MetaBlock::boot()
+public static function boot(): void
+{
+    add_action('init', static function () {
+        Form::register([
+            'id'     => 'contact',
+            'fields' => [
+                ['id' => 'name',    'type' => 'text',     'label' => 'Name',    'required' => true],
+                ['id' => 'email',   'type' => 'email',    'label' => 'Email',   'required' => true],
+                ['id' => 'message', 'type' => 'textarea', 'label' => 'Message', 'required' => true],
+            ],
+        ]);
+    });
+}
+
+// In index.php template:
+Form::display('contact');
 ```
 
-`TAW\Core\Form\SubmissionsHandler` — CPT submission storage + webhook. Instantiate in `functions.php`.
+Field types: `text`, `email`, `tel`, `url`, `number`, `textarea`, `select`, `radio`, `checkbox`, `checkbox_group`, `date`. Structural types (no data): `heading`, `divider`, `html`. Supports multi-step forms (`steps` key) and AND/OR conditional logic (`conditions`).
+
+`TAW\Core\Form\SubmissionsHandler` — CPT submission storage + webhook forwarding. **Auto-wired by `Theme::boot()`** — do not instantiate manually.
 
 ## Mail
 
@@ -100,16 +108,22 @@ Templates live in `mails/html/{name}.html` (production) or `mails/{name}.mjml` (
 - `resources/scss/critical.scss` is a standalone Vite entry compiled and **inlined** in `<head>` — keep under ~14 KB, no `@font-face` inside it
 - Main CSS loads asynchronously (non-render-blocking via `media="print"`) in production
 - Self-hosted fonts live in `resources/fonts/`; `@font-face` goes in `resources/scss/_fonts.scss`, used via `@use 'fonts'` in `app.scss` only
-- `vite_asset_url()` resolves font/asset paths correctly in both dev and prod (autoloaded from `utilities.php`)
+- Use `ViteLoader::assetUrl('resources/fonts/Name.woff2')` to resolve font/asset paths in both dev and prod — never `vite_asset_url()` or `vite_is_dev()`
 
 ## When generating code
 
 - New blocks: extend `TAW\Core\Block\MetaBlock` or `TAW\Core\Block\Block`, follow the naming convention exactly
 - Use `use TAW\Core\Block\MetaBlock;`, `use TAW\Core\Block\Block;`, `use TAW\Core\Metabox\Metabox;`, `use TAW\Core\Block\BlockRegistry;`, `use TAW\Core\OptionsPage\OptionsPage;`
 - Templates: use `esc_html()`, `esc_url()`, `esc_attr()` for all output
-- Metabox/OptionsPage field types: `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+- Metabox/OptionsPage field types: `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`
 - Meta keys follow pattern `_taw_{field_id}`; option keys follow the same pattern
 - Styles: Tailwind utilities in templates, custom CSS/SCSS in block's `style.css`/`style.scss`
 - Never add block registrations to `functions.php`
 - Never use `wp_nav_menu()` — use `Menu::get('location')` instead
 - Never edit files inside `vendor/taw/core/` — changes will be lost on the next `composer update`
+- Never use `new Form([...]) + $form->render()` — use `Form::register()` in `boot()` and `Form::display('id')` in templates
+- Never register Forms in templates — the AJAX handler won't exist when `admin-ajax.php` runs
+
+## Visual Editor
+
+Enabled automatically by `Theme::boot()`. An **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` activates the inline editing shell. Changes save via `POST /wp-json/taw/v1/visual-editor/save`.
