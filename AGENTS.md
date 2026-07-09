@@ -688,6 +688,34 @@ Metabox::get_posts(int $postId, string $fieldId): array   // post_select → arr
 Metabox::get_repeater(int $postId, string $fieldId): array // repeater → array of rows
 ```
 
+### Locking Metabox Order
+
+By default WordPress lets any user drag-and-drop reorder metaboxes, saved per-user, so the same edit screen can look different for every editor. `TAW\Core\Metabox\MetaboxOrder` forces a fixed order and disables dragging.
+
+Explicit order:
+
+```php
+use TAW\Core\Metabox\MetaboxOrder;
+
+MetaboxOrder::lock('page', ['hero_settings', 'video_settings', 'faq_settings']);
+```
+
+Or derive the order automatically per-post from the page template's `BlockRegistry::render()` call sequence — call once in `functions.php`, after `Theme::boot()`:
+
+```php
+MetaboxOrder::lockFromTemplate(); // screen defaults to 'page'
+```
+
+This works via a static scan of the template file (never executed in wp-admin), so the edit screen's metabox order always matches the order blocks actually render in on the front end. Boxes not tied to a block on the page (e.g. core WordPress boxes) keep their relative position and render after the ordered ones.
+
+Template resolution mirrors WordPress's own hierarchy, not just the raw Page Attributes selection:
+
+- If the post has an explicit page template selected (`get_page_template_slug()`), that file is used.
+- Otherwise, if the post is the site's static front page (Settings → Reading), `front-page.php` is used automatically — no `Template Name:` header or Page Attributes selection required.
+- Posts matching neither are left unordered.
+
+The posts page (`page_for_posts` / `home.php`) isn't handled by the same filename-convention resolution yet.
+
 ---
 
 ## Form System

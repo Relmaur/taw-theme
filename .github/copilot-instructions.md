@@ -15,7 +15,7 @@ To update the framework: `composer update taw/core`.
 ## Key Architecture
 
 - **Block system:** `TAW\Core\Block\BaseBlock`, `Block`, `MetaBlock`, `BlockLoader`, `BlockRegistry` — in `vendor/taw/core/src/Core/Block/`
-- **Data:** `TAW\Core\Metabox\Metabox`, `TAW\Core\OptionsPage\OptionsPage`
+- **Data:** `TAW\Core\Metabox\Metabox`, `TAW\Core\Metabox\MetaboxOrder`, `TAW\Core\OptionsPage\OptionsPage`
 - **Theme:** `TAW\Core\Theme\Theme`, `TAW\Core\Theme\ThemeUpdater`
 - **Navigation:** `TAW\Core\Menu\Menu`, `TAW\Core\Menu\MenuItem`
 - **REST:** `TAW\Core\Rest\SearchEndpoints`
@@ -39,6 +39,10 @@ Or manually create `Blocks/{Name}/{Name}.php` + `Blocks/{Name}/index.php` — no
 `OptionsPage` (from `taw/core`) stores site-wide settings in `wp_options` with the same field config as Metabox.
 - Configured in `inc/options.php`
 - Retrieve: `OptionsPage::get('field_id')`, `OptionsPage::get_image_url('field_id', 'size')`
+
+## Metabox Order
+
+`MetaboxOrder::lockFromTemplate()` — call once in `functions.php` after `Theme::boot()` — locks each page's metabox order to its template's `BlockRegistry::render()` sequence and disables drag-and-drop reordering. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` for an explicit order.
 
 ## Navigation Menus
 

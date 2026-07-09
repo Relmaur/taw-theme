@@ -2,6 +2,7 @@
 
 use TAW\Core\Theme\Theme;
 use TAW\Support\ViteLoader;
+use TAW\Core\Metabox\MetaboxOrder;
 
 /**
  * TAW Theme — Developer Customisations
@@ -15,6 +16,13 @@ require_once get_template_directory() . '/vendor/autoload.php';
 require_once get_template_directory() . '/inc/options.php';
 
 Theme::boot();
+
+/**
+ * Lock each page's metabox order to match its template's
+ * BlockRegistry::render() sequence — no more drag-and-drop drift between
+ * the edit screen and what actually renders on the front end.
+ */
+MetaboxOrder::lockFromTemplate();
 
 // Add the necessary hooks to configure the theme. See inc/init.php for available hooks and documentation.
 Theme::performance(

@@ -302,6 +302,12 @@ Metabox::get_repeater($postId, 'team_members');   // repeater → array of rows
 
 → For conditional fields, repeater nesting, tabs, `show_on`, `context`, `prefix`, and the full options table, see the **[taw/core README](https://github.com/Relmaur/taw-core#metabox-system)**.
 
+### Locking Metabox Order
+
+`MetaboxOrder::lockFromTemplate()` — called once in `functions.php` after `Theme::boot()` — locks each page's metabox order to match its template's `BlockRegistry::render()` sequence and disables drag-and-drop reordering, so the admin edit screen never drifts from what actually renders on the front end. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` for an explicit order instead.
+
+→ Full template-resolution details: **[taw/core README → Locking Metabox Order](https://github.com/Relmaur/taw-core#locking-metabox-order)**.
+
 ---
 
 ## Repeater Field

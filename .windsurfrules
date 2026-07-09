@@ -38,6 +38,10 @@ Options page:
 - OptionsPage (from taw/core) stores site settings in wp_options, same field config as Metabox
 - Configured in inc/options.php; retrieve with OptionsPage::get('field_id')
 
+Metabox order:
+- MetaboxOrder::lockFromTemplate() — call once in functions.php after Theme::boot() — locks each page's metabox order to its template's BlockRegistry::render() sequence and disables drag-and-drop reordering
+- MetaboxOrder::lock('page', ['id1', 'id2']) for an explicit order instead
+
 Navigation menus:
 - Use TAW\Core\Menu\Menu::get('location') instead of wp_nav_menu()
 - Returns typed Menu / MenuItem tree with active-state and children support

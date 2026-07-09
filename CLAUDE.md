@@ -125,6 +125,10 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 
 → Full field options, conditional logic, repeater nesting, and tabs: **[taw/core README — Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
 
+## Metabox Order
+
+`MetaboxOrder::lockFromTemplate()` (called once in `functions.php` after `Theme::boot()`) locks each page's metabox order to match its template's `BlockRegistry::render()` call sequence and disables drag-and-drop reordering, so the edit screen never drifts from what actually renders. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` for an explicit order instead. See AGENTS.md or taw/core README for template-resolution details.
+
 ## When Creating New Blocks
 
 1. **CLI (preferred):** `php bin/taw make:block Name --type=meta --with-style`, then `composer dump-autoload`
