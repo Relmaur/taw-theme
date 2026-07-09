@@ -158,3 +158,4 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 - Don't use `new Form([...]) + $form->render()` — use `Form::register()` in `boot()` and `Form::display('id')` in templates
 - Don't manually instantiate `SubmissionsHandler` in `functions.php` — it's auto-wired by `Theme::boot()`
 - Don't register Forms inside templates — the AJAX handler won't exist when `admin-ajax.php` processes the submission
+- Don't wire up `ThemeUpdater` on a client site with customizations — it does full theme-zip replacement, which would wipe `Blocks/`/`functions.php` changes. Use the `update-theme` skill instead

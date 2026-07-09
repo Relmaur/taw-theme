@@ -982,6 +982,8 @@ Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_
 
 `ThemeUpdater` hooks into WordPress's update system to check a GitHub Releases URL for new versions. When a newer release is found, the standard "Update Available" notice appears in the admin.
 
+> **Not for client sites with customizations.** This does a full theme-directory replacement from a ZIP — clicking "Update Now" would overwrite any `Blocks/`, page templates, or `functions.php` changes you've made. For real client sites, use the `update-theme` AI skill instead, which syncs the shared scaffold via a `git merge` and never touches what you've built. Only wire this up for a deployment that deliberately wants full-replacement updates.
+
 ```php
 // In functions.php or a plugin
 new TAW\Core\ThemeUpdater([

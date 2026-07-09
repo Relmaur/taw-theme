@@ -84,7 +84,8 @@ Rules:
 
 ## Step 6 — Verify
 
-- Confirm every queued block id matches an actual `$id` property in `Blocks/*/*.php`.
+- Confirm every queued block id matches an actual `$id` property in `Blocks/*/*.php`. `php bin/taw inspect` reports the live registered block ids/fields if you want to double-check without reading source.
+- Run `php bin/ci/check-getdata-signature.php` — same check CI runs, catches the `getData(int|false $postId)` signature bug across every block in the project in one shot.
 - **Check the site loads at all before checking anything page-specific** (e.g. `curl -sL -o /dev/null -w '%{http_code}' <site-url>/`). `BlockLoader::loadAll()` auto-discovers and instantiates *every* block in `Blocks/*/` on *every* request, so a fatal error in any single block file — including ones you didn't touch this session — takes the entire site down, not just the page you built. If you get a 500/503, check `wp-content/debug.log` before assuming the problem is in your new code; it may be pre-existing breakage you've just now exposed by loading a page for the first time since it broke.
 - If a dev server is running, load the actual page and check section order and rendering top to bottom, plus that new blocks' metaboxes appear correctly in wp-admin.
 - Report back the final section list and which blocks were reused vs newly created.

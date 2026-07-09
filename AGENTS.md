@@ -1127,6 +1127,8 @@ Provided by `taw/core` (namespace `TAW\Core\ThemeUpdater`).
 
 Hooks into WordPress's theme update system to pull releases from a GitHub repository. When a new tag is published, WordPress shows the standard "Update Available" notice and one-click update UI.
 
+> **⚠️ Do not wire this up on a real client site alongside `update-theme`.** `ThemeUpdater` does a **full theme directory replacement** from a ZIP when an admin clicks "Update Now" in wp-admin — exactly the destructive, all-or-nothing behavior the `update-theme` skill's `git merge`-based sync was built to avoid. On a client site with customized `Blocks/`, page templates, and `functions.php`, clicking that button would silently overwrite all of it. This class is dormant by default (not currently instantiated in this project's `functions.php`) — keep it that way for client sites. It may be appropriate for a genuinely zero-customization deployment that intentionally wants full-replacement updates, but that's the exception, not the default, and should be a deliberate choice, not something enabled by copy-pasting the example below.
+
 Activated in `functions.php`:
 ```php
 if (is_admin()) {
