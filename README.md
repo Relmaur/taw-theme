@@ -49,13 +49,21 @@ This theme itself is a scaffold on top of that framework: every real site is a d
 # Move to themes directory of your WordPress installation
 cd wp-content/themes/
 
+# --keep-vcs is REQUIRED, not optional — see warning below.
 # This command will create the starter theme with the correct structure and dependencies. Replace <theme_name> with your desired theme folder name.
-composer create-project taw/theme <theme_name>  --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
+composer create-project taw/theme <theme_name> --keep-vcs --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
+
+cd <theme_name>
+git remote rename origin upstream          # taw-theme becomes the update source
+git remote add origin <your-client-repo-url>   # the client's own repo
+git push -u origin master                  # or main, whatever your default branch is called
 
 composer install       # PHP deps — pulls taw/core framework package
 npm install            # Frontend dependencies
 npm run dev            # Vite dev server with HMR
 ```
+
+> **`--keep-vcs` is mandatory.** By default `composer create-project` deletes the `.git` directory after cloning, which severs all shared history with `taw-theme`. The `update-theme` skill relies on that shared history — it syncs base-theme updates via a real `git merge`, and `git merge` needs a common ancestor commit to work. Without `--keep-vcs` (and the `upstream`/`origin` remote setup above), a client project silently loses the ability to receive scaffold updates from day one, and the only fix later is a manual, file-by-file port instead of a clean merge. The same applies if you use GitHub's "Use this template" button instead of this command — that feature also deliberately creates history-less repos. Always clone/keep-vcs, never template.
 
 Activate the theme in WordPress admin. You're building.
 

@@ -61,6 +61,8 @@ This is a **separate repo from `taw/core`** (https://github.com/Relmaur/taw-core
    > `git remote add upstream https://github.com/Relmaur/taw-theme.git`
    Don't add the remote yourself without asking.
 
+**This whole skill depends on the project having been set up with shared git history against `taw-theme`** (via `composer create-project --keep-vcs` or a plain `git clone`, per `AGENTS.md` § "Starting a New Client Project" — never GitHub's "Use this template" button, which severs history). If `git merge-base HEAD <remote>/<branch>` errors instead of printing a commit hash, there is no common ancestor and this skill cannot work here — stop and tell the user explicitly, rather than attempting `--allow-unrelated-histories` or any other workaround. A project in that state needs a one-time manual, file-by-file port instead (diff the specific paths in the tiers below by hand against the canonical repo) — that's a separate, much more manual exercise, not something to improvise silently under this skill's name.
+
 ## Step 2 — Preconditions
 
 ```bash

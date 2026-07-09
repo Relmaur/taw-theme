@@ -21,7 +21,8 @@
  * This separation means:
  *   - Core commands can be updated via `composer update taw/core`
  *   - The theme root is always correct regardless of core's location
- *   - WordPress doesn't need to be loaded
+ *   - WordPress doesn't need to be loaded (except InspectCommand, which
+ *     boots WP itself to read live registry state — see its own docblock)
  */
 
 // Theme root = the directory containing bin/
@@ -44,6 +45,7 @@ use Symfony\Component\Console\Application;
 use TAW\CLI\MakeBlockCommand;
 use TAW\CLI\ExportBlockCommand;
 use TAW\CLI\ImportBlockCommand;
+use TAW\CLI\InspectCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -53,5 +55,6 @@ $app = new Application('TAW CLI', '1.0.0');
 $app->add(new MakeBlockCommand($themeDir));
 $app->add(new ExportBlockCommand($themeDir));
 $app->add(new ImportBlockCommand($themeDir));
+$app->add(new InspectCommand($themeDir));
 
 $app->run();

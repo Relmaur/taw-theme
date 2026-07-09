@@ -31,6 +31,40 @@ Official docs live at **https://taw.mlizardo.com/**. Fetch the relevant page whe
 
 ---
 
+## Starting a New Client Project
+
+**Never use GitHub's "Use this template" button, and never run `composer create-project` without `--keep-vcs`.** Both deliberately produce a repo with no shared git history against `taw-theme` — and the `update-theme` skill syncs future scaffold updates via a real `git merge`, which requires a common ancestor commit to work at all. Skip this step and the project silently loses the ability to receive base-theme updates from day one; the only fix later is a slow, manual, file-by-file port instead of a clean merge (this has already happened to at least one real client project).
+
+Correct setup:
+
+```bash
+composer create-project taw/theme <theme_name> --keep-vcs --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
+cd <theme_name>
+git remote rename origin upstream          # taw-theme becomes the update source
+git remote add origin <client-repo-url>    # the client's own repo
+git push -u origin master                  # or main
+```
+
+Equivalent via plain `git clone` also works and is arguably simpler to reason about:
+
+```bash
+git clone git@github.com:Relmaur/taw-theme.git <theme_name>
+cd <theme_name>
+git remote rename origin upstream
+git remote add origin <client-repo-url>
+git push -u origin master
+```
+
+Either way, verify shared history exists before doing any other work on a new project:
+
+```bash
+git merge-base HEAD upstream/main   # must print a commit hash, not an error
+```
+
+If asked to scaffold a new client project, do this setup first, unprompted — it's cheap now and expensive to discover missing later.
+
+---
+
 ## Quick Orientation
 
 | Path | Purpose |
@@ -45,7 +79,7 @@ Official docs live at **https://taw.mlizardo.com/**. Fetch the relevant page whe
 | `vendor/taw/core/src/Core/Mail/` | Email system (`Mailer`, `MailTemplate`, `MailTester`) |
 | `vendor/taw/core/src/Core/Editor/` | Visual Editor engine — inline frontend editing for authenticated users |
 | `vendor/taw/core/src/Helpers/` | Utility helpers (`Framework`, `Image`, `Svg`, `Dump`, `Editor`) |
-| `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`) |
+| `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`, `inspect`) |
 | `vendor/taw/core/src/Support/` | `ViteLoader.php` — OOP Vite asset pipeline; `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
 | `Blocks/Menu/` | Boilerplate navigation block — two-row header with Alpine.js live-search overlay |
@@ -998,6 +1032,17 @@ Import a block from a ZIP archive exported by `export:block`.
 ```bash
 php bin/taw import:block path/to/Hero.zip
 ```
+
+### `inspect`
+
+Live introspection of the *current* site state — the registered blocks and their actual metabox field schemas, registered forms, the installed `taw/core` version, and whether `MetaboxOrder` is locked. Unlike the other CLI commands, this one boots WordPress (it needs `after_setup_theme`/`init` to have fired for the registries to be populated), so it must be run from within the theme in an environment where WordPress can actually connect to its database.
+
+```bash
+php bin/taw inspect          # human-readable summary (table output)
+php bin/taw inspect --json   # machine-readable, for AI agents / scripts
+```
+
+Prefer this over `grep`-ing `Blocks/*/*.php` by hand to answer "what blocks/fields/forms actually exist right now" — it reports live registry state, not static source, so it reflects reality even if a block's `getData()` doesn't match its `registerMetaboxes()`, or a form was conditionally registered.
 
 ---
 

@@ -22,6 +22,7 @@ php bin/taw make:block Name --type=meta --with-style         # Scaffold a new bl
 php bin/taw make:block Name --type=meta --group=sections     # Scaffold inside a subgroup (Blocks/sections/Name/)
 php bin/taw export:block Name                                # Export block as ZIP
 php bin/taw import:block path/to/Block.zip                   # Import block from ZIP
+php bin/taw inspect --json                                   # Live registry dump: blocks, fields, forms, taw/core version — prefer this over grepping Blocks/ by hand
 ```
 
 ## Core Architecture
