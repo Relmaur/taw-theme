@@ -27,9 +27,11 @@ php bin/taw inspect --json                                   # Live registry dum
 
 ## Core Architecture
 
-Framework internals live in **`vendor/taw/core/src/`** (namespaces `TAW\Core`, `TAW\Helpers`, `TAW\Support`). Do **not** look for them in `inc/` — that folder only holds `options.php` and Metabox view templates. See AGENTS.md for the full class/path map.
+Framework internals live in **`vendor/taw/core/src/`** (namespaces `TAW\Core`, `TAW\Helpers`, `TAW\Support`). Do **not** look for them in `inc/` — that folder holds only theme-owned config: `options.php`, `performance.php`, `customizations.php`, and Metabox view templates. See AGENTS.md for the full class/path map.
 
 The theme's `composer.json` PSR-4 maps only `TAW\\Blocks\\` → `Blocks/`. Everything else comes from `taw/core`.
+
+**`functions.php` is 100% framework-owned** — just `require vendor/autoload.php` + `Theme::bootstrapFullSite(get_template_directory())`. Never hand-edit it; it's blindly overwritten by `update-theme`, no merge or shared history required. All site-specific setup goes in `inc/options.php` (OptionsPage fields), `inc/performance.php` (returns the config array for `performance()`), and `inc/customizations.php` (theme supports, nav menus, any other hooks) — `bootstrapFullSite()` loads each automatically if present, and none of the three are ever touched by updates.
 
 Two block types:
 - **MetaBlock** — owns metaboxes, fetches post_meta, rendered via `BlockRegistry::render('id')`
@@ -130,7 +132,7 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 
 ## Metabox Order
 
-`MetaboxOrder::lockFromTemplate()` (called once in `functions.php` after `Theme::boot()`) locks each page's metabox order to match its template's `BlockRegistry::render()` call sequence and disables drag-and-drop reordering, so the edit screen never drifts from what actually renders. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` for an explicit order instead. See AGENTS.md or taw/core README for template-resolution details.
+`MetaboxOrder::lockFromTemplate()` — called automatically by `Theme::bootstrapFullSite()`, nothing to add in `functions.php` — locks each page's metabox order to match its template's `BlockRegistry::render()` call sequence and disables drag-and-drop reordering, so the edit screen never drifts from what actually renders. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` in `inc/customizations.php` for an explicit order instead. See AGENTS.md or taw/core README for template-resolution details.
 
 ## When Creating New Blocks
 
@@ -145,6 +147,7 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 
 ## Don't
 
+- Don't hand-edit `functions.php` — it's 100% framework-owned. Put site-specific hooks in `inc/customizations.php`, performance config in `inc/performance.php`, OptionsPage fields in `inc/options.php`
 - Don't manually register blocks in functions.php
 - Don't call wp_enqueue_style/script for block assets directly
 - Don't mismatch folder/class names (breaks auto-discovery)
@@ -158,4 +161,4 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 - Don't use `new Form([...]) + $form->render()` — use `Form::register()` in `boot()` and `Form::display('id')` in templates
 - Don't manually instantiate `SubmissionsHandler` in `functions.php` — it's auto-wired by `Theme::boot()`
 - Don't register Forms inside templates — the AJAX handler won't exist when `admin-ajax.php` processes the submission
-- Don't wire up `ThemeUpdater` on a client site with customizations — it does full theme-zip replacement, which would wipe `Blocks/`/`functions.php` changes. Use the `update-theme` skill instead
+- Don't wire up `ThemeUpdater` on a client site with customizations — it does full theme-zip replacement, which would wipe `Blocks/` and every `inc/` file. Use the `update-theme` skill instead

@@ -49,21 +49,20 @@ This theme itself is a scaffold on top of that framework: every real site is a d
 # Move to themes directory of your WordPress installation
 cd wp-content/themes/
 
-# --keep-vcs is REQUIRED, not optional — see warning below.
 # This command will create the starter theme with the correct structure and dependencies. Replace <theme_name> with your desired theme folder name.
-composer create-project taw/theme <theme_name> --keep-vcs --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
+composer create-project taw/theme <theme_name> --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
 
 cd <theme_name>
-git remote rename origin upstream          # taw-theme becomes the update source
-git remote add origin <your-client-repo-url>   # the client's own repo
-git push -u origin master                  # or main, whatever your default branch is called
+git init && git add -A && git commit -m "Initial commit"
+git remote add origin <your-client-repo-url>
+git push -u origin main
 
 composer install       # PHP deps — pulls taw/core framework package
 npm install            # Frontend dependencies
 npm run dev            # Vite dev server with HMR
 ```
 
-> **`--keep-vcs` is mandatory.** By default `composer create-project` deletes the `.git` directory after cloning, which severs all shared history with `taw-theme`. The `update-theme` skill relies on that shared history — it syncs base-theme updates via a real `git merge`, and `git merge` needs a common ancestor commit to work. Without `--keep-vcs` (and the `upstream`/`origin` remote setup above), a client project silently loses the ability to receive scaffold updates from day one, and the only fix later is a manual, file-by-file port instead of a clean merge. The same applies if you use GitHub's "Use this template" button instead of this command — that feature also deliberately creates history-less repos. Always clone/keep-vcs, never template.
+Start with a clean, single-commit history — no `--keep-vcs`, no shared ancestry with `taw-theme` required. The `update-theme` AI skill syncs future scaffold updates via a direct file copy of a small, precisely-delimited set of framework-owned paths (`functions.php`, `.claude/skills/`, `bin/`, CI config — see `AGENTS.md` § "The `functions.php` Bootstrap"), not a git merge, so it works regardless of this project's own history.
 
 Activate the theme in WordPress admin. You're building.
 
@@ -314,7 +313,7 @@ Metabox::get_repeater($postId, 'team_members');   // repeater → array of rows
 
 ### Locking Metabox Order
 
-`MetaboxOrder::lockFromTemplate()` — called once in `functions.php` after `Theme::boot()` — locks each page's metabox order to match its template's `BlockRegistry::render()` sequence and disables drag-and-drop reordering, so the admin edit screen never drifts from what actually renders on the front end. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` for an explicit order instead.
+`MetaboxOrder::lockFromTemplate()` runs automatically — `Theme::bootstrapFullSite()` calls it unconditionally, nothing to add to `functions.php`. It locks each page's metabox order to match its template's `BlockRegistry::render()` sequence and disables drag-and-drop reordering, so the admin edit screen never drifts from what actually renders on the front end. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` in `inc/customizations.php` for an explicit order instead.
 
 → Full template-resolution details: **[taw/core README → Locking Metabox Order](https://github.com/Relmaur/taw-core#locking-metabox-order)**.
 
@@ -539,6 +538,8 @@ Theme::boot();
 ```
 
 > **Note:** The legacy procedural functions `vite_asset_url()` and `vite_is_dev()` still exist inside `vite-loader.php` but are **not** in the composer `files` autoload and will not be available globally. Use `ViteLoader` instead.
+
+> **Overriding the entry point is the one case that needs `Theme::boot()` called manually instead of `bootstrapFullSite()`.** Since `functions.php` is framework-owned and always calls `bootstrapFullSite()`, a project needing a non-default entry point has to intentionally opt out of that in `functions.php` itself — which then makes `functions.php` a piece of site-specific code `update-theme` shouldn't blindly overwrite anymore. This is a rare, deliberate exception; flag it clearly if you do this so a future update doesn't silently clobber it.
 
 ### Block assets
 
@@ -885,7 +886,7 @@ use TAW\Core\Mail\Mailer;
 
 Templates live in `mails/html/{name}.html` (pre-compiled, used in production) or `mails/{name}.mjml` (compiled at runtime via `spatie/mjml-php` — dev only). Use `{{variable_name}}` placeholders.
 
-`MailTester` adds a **Tools → Test Emails** admin page for sending test emails against any compiled template. Register it with `(new \TAW\Core\Mail\MailTester())->register()` in `functions.php`.
+`MailTester` adds a **Tools → Test Emails** admin page for sending test emails against any compiled template. Register it with `(new \TAW\Core\Mail\MailTester())->register()` in `inc/customizations.php` (not `functions.php`, which is framework-owned).
 
 ---
 
@@ -956,7 +957,7 @@ const params = new URLSearchParams({
 
 ## Navigation Menus — registration
 
-Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_menus()`. Edit that array directly to add or rename locations. Assign menus to locations in WordPress admin → Appearance → Menus.
+Menus (`primary`, `footer`) are registered in `inc/customizations.php` via `register_nav_menus()` (not `functions.php`, which is framework-owned). Edit that array directly to add or rename locations. Assign menus to locations in WordPress admin → Appearance → Menus.
 
 ---
 
@@ -982,10 +983,10 @@ Menus (`primary`, `footer`) are registered in `functions.php` via `register_nav_
 
 `ThemeUpdater` hooks into WordPress's update system to check a GitHub Releases URL for new versions. When a newer release is found, the standard "Update Available" notice appears in the admin.
 
-> **Not for client sites with customizations.** This does a full theme-directory replacement from a ZIP — clicking "Update Now" would overwrite any `Blocks/`, page templates, or `functions.php` changes you've made. For real client sites, use the `update-theme` AI skill instead, which syncs the shared scaffold via a `git merge` and never touches what you've built. Only wire this up for a deployment that deliberately wants full-replacement updates.
+> **Not for client sites with customizations.** This does a full theme-directory replacement from a ZIP — clicking "Update Now" would overwrite any `Blocks/`, page templates, or `inc/` changes you've made. For real client sites, use the `update-theme` AI skill instead, which copies only a small, precisely-delimited set of framework-owned paths and never touches what you've built. Only wire this up for a deployment that deliberately wants full-replacement updates.
 
 ```php
-// In functions.php or a plugin
+// In inc/customizations.php (not functions.php, which is framework-owned) or a plugin
 new TAW\Core\ThemeUpdater([
     'slug'       => 'taw-theme',
     'github_url' => 'https://api.github.com/repos/your-username/taw-theme/releases/latest',
@@ -1075,8 +1076,10 @@ taw-theme/
 │       ├── index.php          #   Template (receives extract()-ed vars from getData())
 │       ├── style.scss         #   Optional per-block styles
 │       └── script.js          #   Optional per-block JS
-├── inc/
-│   └── options.php            # Theme options page configuration
+├── inc/                        # Theme-owned config — never touched by update-theme
+│   ├── options.php            #   OptionsPage field configuration
+│   ├── performance.php        #   Config array passed to Theme::performance()
+│   └── customizations.php     #   Theme supports, nav menus, and any other site-specific hooks
 ├── vendor/
 │   └── taw/
 │       └── core/              # ← Framework internals (managed via composer)
@@ -1103,7 +1106,7 @@ taw-theme/
 │   ├── fonts/                 # Self-hosted WOFF2 files
 │   └── js/app.js              # Alpine.js + global JS entry point
 ├── public/build/              # Compiled assets (gitignored)
-├── functions.php              # Developer customisations — theme setup, menus, performance config
+├── functions.php              # 100% framework-owned — two lines, never hand-edited (see inc/ above)
 ├── vite.config.js             # Vite configuration
 ├── composer.json              # PHP deps — TAW\Blocks\ → Blocks/, requires taw/core
 ├── package.json               # Node deps + scripts
@@ -1162,7 +1165,7 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 - **`make-metablock`** — "add a pricing table section" → a fully wired MetaBlock (class, metabox fields, template, styles)
 - **`build-page`** — "build a homepage with hero, features, and a contact form" → an entire page assembled from existing and newly-scaffolded blocks
 - **`figma-to-block`** — "implement this Figma design" → a block whose markup and metabox fields match the design, driven by the Figma MCP tools
-- **`update-theme`** — "update the theme" → pulls the latest shared scaffold from the canonical `taw-theme` repo via a real `git merge`, without ever touching your `Blocks/`, templates, or content
+- **`update-theme`** — "update the theme" → copies a small, precisely-delimited set of framework-owned paths (`functions.php`, `.claude/skills/`, `bin/`, CI config) from the canonical `taw-theme` repo, direct file sync, no merge, no shared git history needed, never touching your `Blocks/`, templates, or content
 - **`studio`** — applies live CSS Studio visual edits back into source
 
 **Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.

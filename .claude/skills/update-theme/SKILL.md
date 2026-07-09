@@ -2,38 +2,35 @@
 name: update-theme
 description: >
     Pulls the latest base-theme scaffold from the canonical taw-theme repository into this
-    site instance via a real git merge, without touching what the user has built. Anything
-    the user hasn't modified merges in silently; anything upstream changed that the user has
-    also customized surfaces as a conflict, resolved per a reviewed tiered policy; anything
-    that only exists locally (the user's own Blocks/, templates, content) is left alone
-    automatically by git's own merge semantics. Triggers on "update the theme" / "sync the
+    site instance via a direct manifest-based file sync — no git merge, no shared git history
+    required. A small set of paths (functions.php, .claude/skills/, .agents/skills/, bin/,
+    CI config) is unambiguously framework-owned and always safe to overwrite outright; a
+    second set (docs/build config) is diffed and applied only after confirmation; everything
+    else (Blocks/, inc/options.php, inc/performance.php, inc/customizations.php, page
+    templates, content) is never read or touched. Triggers on "update the theme" / "sync the
     theme" / "pull theme updates".
-argument-hint: "[optional: --dry-run to preview without merging]"
+argument-hint: "[optional: --dry-run to preview without applying]"
 ---
 
 ## Overview
 
-Every real client site is a divergent instance of the same `taw-theme` scaffold — same `.claude/skills/`, `bin/` CLI, framework docs, build config — plus that client's own `Blocks/`, page templates, and content layered on top. This skill syncs the shared scaffold with the canonical repo using a **real `git merge`**, not a hand-maintained file copy list, because git's merge algorithm already gives the correct safety property for free:
+Every real client site is a divergent instance of the same `taw-theme` scaffold. This skill syncs the shared, framework-owned parts of that scaffold from the canonical repo — **by directly copying specific files/directories from a fresh checkout, not by running `git merge`.**
 
-- A path the user never modified locally, that upstream changed → merges in cleanly, no conflict, no risk (there's nothing local to lose).
-- A path that only exists locally and was never part of upstream (the user's own `Blocks/Contact`, `page-contact.php`, etc.) → git's merge never touches it at all, because merging only ever considers paths where at least one side changed relative to the common ancestor.
-- A path both sides changed (the user customized something upstream also touched, e.g. `Blocks/Menu` or `functions.php`) → surfaces as a real merge conflict. This is the only category needing a judgment call, and it's resolved per the tiered policy below rather than guessed at blindly.
+**Why not `git merge` (the previous design):** a merge needs a common ancestor commit, which meant every client project had to be created via a full clone/`--keep-vcs` and could never have a truly fresh, single-commit history. That constraint is gone now. As of `taw/core` v1.16.63, `functions.php` is 100% framework-owned by construction — it's two lines (`require autoload` + `Theme::bootstrapFullSite(...)`), and every genuinely site-specific thing that used to live inside it (theme supports, nav menus, performance tuning) now lives in three files (`inc/options.php`, `inc/performance.php`, `inc/customizations.php`) that this skill never touches. Combined with the other framework-only paths (`.claude/skills/`, `bin/`, CI config), there's now a small, precisely delimited set of paths where "is this safe to overwrite" is a fact about the *path*, not something that requires diffing against a shared history to determine. No merge, no conflicts, no `MERGE_HEAD`, no `git merge-base` precondition — this works identically whether the client project was cloned, `git init`'d fresh, or anything else.
 
-This is a deliberate change from an earlier, narrower design that only synced a hand-picked allowlist of paths via `git checkout <remote> -- <path>`. That version is too conservative — it can't safely pick up upstream improvements to files it didn't know to list (e.g. a fix to `Blocks/Button`). A full merge, with conflict resolution scoped by tier, covers the whole tree correctly while still protecting user work, because protection now comes from git's own diff-since-common-ancestor logic instead of a list someone has to remember to keep current.
+## The manifest
 
-## Conflict-resolution tiers
-
-These tiers only matter for paths that actually **conflict** during the merge (both sides changed the same content) — for every other path, the merge algorithm already resolved things correctly with no input needed.
-
-**Tier 1 — always resolve conflicts by taking upstream's side, no confirmation.** Pure agent/CLI tooling; the user is not expected to hand-edit these, so a conflict here almost certainly just means both sides touched the same line incidentally, and upstream's version is correct.
+**Tier 1 — always overwrite, no confirmation needed.** Nothing client-specific has ever lived in these paths since the `functions.php`/`inc/` split; overwriting them is always correct.
 
 ```
+functions.php
 .claude/skills/
 .agents/skills/
 bin/
+.github/workflows/ci.yml
 ```
 
-**Tier 2 — show the conflict, resolve only after explicit confirmation.** Nominally framework docs/config, but can legitimately accumulate client-specific additions (a new catalog entry in `AGENTS.md`, an added dependency in `package.json`). Never resolve silently.
+**Tier 2 — diff, apply only after explicit confirmation.** Nominally framework docs/config, but can legitimately accumulate client-specific additions over a project's life (a new catalog entry in `AGENTS.md`, an added dependency in `package.json`). Never overwrite silently.
 
 ```
 AGENTS.md
@@ -46,74 +43,76 @@ package.json
 vite.config.js
 ```
 
-**Everything else that conflicts — default to keeping the local (user's) side, flag for manual review.** This includes explicitly client-owned territory (`Blocks/`, `inc/options.php`, page templates, `functions.php`, `resources/scss/_fonts.scss`, `resources/fonts/`, `release-notes.md`) and anything genuinely unclassified. When in doubt, protect the user's version and surface it rather than guessing which side is "correct" — a false negative (missed upstream improvement, easy to reapply later) is far cheaper than a false positive (destroyed client customization).
+**Never touched — not read, not diffed, entirely out of scope:**
 
-## Step 1 — Identify the upstream remote
-
-**The canonical repo is https://github.com/Relmaur/taw-theme.** This is the source of truth for the shared scaffold — every real client site is a divergent instance of it. (Note: this specific working copy's `origin` remote uses the URL `git@github.com:Relmaur/taw.git`, an older SSH-style alias that resolves to the exact same repo — confirmed via `git ls-remote`, both return identical refs. Don't be thrown by the different-looking remote name; it is the canonical repo.)
-
-This is a **separate repo from `taw/core`** (https://github.com/Relmaur/taw-core, the framework package installed via composer at `vendor/taw/core/`) — don't conflate the two. `taw/core` updates via `composer update taw/core`; the theme scaffold updates via this skill. See `AGENTS.md` § "Source of Truth" for both.
-
-1. If a remote named `upstream` exists, use it.
-2. Otherwise, if this working copy's `origin` points at the canonical repo (as above — or confirm with the user if a different URL is configured and it's unclear whether it's a personal fork or the canonical repo itself), use `origin`.
-3. Otherwise, stop and tell the user to add one:
-   > No remote pointing at the canonical taw-theme repo was found. Add one, e.g.:
-   > `git remote add upstream https://github.com/Relmaur/taw-theme.git`
-   Don't add the remote yourself without asking.
-
-**This whole skill depends on the project having been set up with shared git history against `taw-theme`** (via `composer create-project --keep-vcs` or a plain `git clone`, per `AGENTS.md` § "Starting a New Client Project" — never GitHub's "Use this template" button, which severs history). If `git merge-base HEAD <remote>/<branch>` errors instead of printing a commit hash, there is no common ancestor and this skill cannot work here — stop and tell the user explicitly, rather than attempting `--allow-unrelated-histories` or any other workaround. A project in that state needs a one-time manual, file-by-file port instead (diff the specific paths in the tiers below by hand against the canonical repo) — that's a separate, much more manual exercise, not something to improvise silently under this skill's name.
-
-## Step 2 — Preconditions
-
-```bash
-git status --short
+```
+Blocks/
+inc/options.php
+inc/performance.php
+inc/customizations.php
+page*.php, front-page.php, index.php
+resources/scss/_fonts.scss
+resources/fonts/
+release-notes.md
 ```
 
-**The working tree must be clean before starting a merge.** If there are uncommitted changes, stop and tell the user to commit or stash them first — don't stash on their behalf (see the project's standing git safety rules). A merge with a dirty tree either gets refused by git outright or produces a confusing result mixing uncommitted work with merge conflicts.
+Anything not listed under Tier 1 or Tier 2 is implicitly never-touched. Don't expand either tier on your own initiative mid-run — this list was deliberately reviewed; if something seems like it should move tiers, ask first.
 
-Determine the remote's default branch (almost always `main`; confirm with `git remote show <remote>` if unsure).
+## Step 1 — Identify the canonical repo
 
-## Step 3 — Fetch and start the merge
+**The canonical repo is https://github.com/Relmaur/taw-theme.** This is a **separate repo from `taw/core`** (https://github.com/Relmaur/taw-core, the framework package updated via `composer update taw/core`) — don't conflate the two. See `AGENTS.md` § "Source of Truth".
 
-```bash
-git fetch <remote>
-git merge --no-commit --no-ff <remote>/<branch>
-```
+No remote setup is required for this skill to work (unlike the old git-merge design) — it only needs read access to fetch the repo's current contents, which a shallow clone gives it regardless of whether this project has any relationship to `taw-theme` in its own git history.
 
-`--no-commit` is essential — it stops git from finalizing the merge automatically even when everything merges cleanly, so there's always a review point before anything is committed. `--no-ff` keeps an honest merge commit (once the user commits) rather than silently fast-forwarding, which matters here since this branch has its own history the merge commit should visibly record.
-
-If `git merge` fails outright (e.g. unrelated histories, or the merge can't even start) report the exact error and stop — don't attempt workarounds like `--allow-unrelated-histories` without asking, since that flag exists specifically to bypass a safety check.
-
-## Step 4 — Resolve conflicts by tier
+## Step 2 — Fetch a throwaway copy of the canonical repo
 
 ```bash
-git status --short
+git clone --depth=1 https://github.com/Relmaur/taw-theme.git /tmp/taw-theme-update-<random>
 ```
 
-Conflicted paths show as `UU` (or `AA`/`DD` for add/delete conflicts). For each:
+A shallow clone (`--depth=1`) is enough and fast — this skill only ever reads specific files out of it, never anything history-related. If a local `upstream` remote already exists and points at the canonical repo, using that as the clone source instead is fine too, but it's not required.
 
-- **Tier 1 path** → `git checkout --theirs -- <path> && git add <path>` — no confirmation needed.
-- **Tier 2 path** → show the conflicting hunks (`git diff -- <path>`) or a summary for large files, ask the user how to resolve (take upstream / keep local / hand-merge), then `git add <path>` once resolved.
-- **Everything else** → `git checkout --ours -- <path> && git add <path>` (keep the user's version), and list it explicitly in the final report as "upstream had a change here that was skipped to protect local customization — review manually if you want it."
+## Step 3 — Apply Tier 1 (no confirmation)
 
-Non-conflicted paths that the merge already changed (files upstream touched that the user never modified) need no action — they're already staged correctly by the merge itself. This is the majority of what a routine sync should do.
+For each Tier 1 path, copy it from the fresh checkout into this project, overwriting whatever is there:
 
-## Step 5 — Report, don't commit
+```bash
+cp /tmp/taw-theme-update-<random>/functions.php ./functions.php
+rsync -a --delete /tmp/taw-theme-update-<random>/.claude/skills/ ./.claude/skills/
+rsync -a --delete /tmp/taw-theme-update-<random>/.agents/skills/ ./.agents/skills/
+rsync -a --delete /tmp/taw-theme-update-<random>/bin/ ./bin/
+cp /tmp/taw-theme-update-<random>/.github/workflows/ci.yml ./.github/workflows/ci.yml
+```
 
-Summarize:
-- What merged in cleanly with no conflict (the routine, safe case)
-- What conflicted and how each was resolved, grouped by tier
-- Anything left for manual review (Tier 2 declines, "everything else" skips)
+(`rsync -a --delete` for directories so a file removed upstream — e.g. a retired skill — is actually removed locally too, not just left behind. Plain `cp` is fine for single files.) If a Tier 1 path doesn't exist upstream (unlikely) or doesn't exist locally yet (e.g. a brand-new skill), that's fine — copy handles both add and update.
 
-**Do not run `git commit`.** The merge is left in progress (`MERGE_HEAD` present) per the project's standing rule to never commit unless explicitly asked. Tell the user to review with `git diff --staged` and either:
-- `git commit` to finalize the merge, or
-- `git merge --abort` to cancel entirely and discard all of it if the result doesn't look right.
+## Step 4 — Diff and confirm Tier 2
+
+For each Tier 2 path:
+
+```bash
+diff -u ./AGENTS.md /tmp/taw-theme-update-<random>/AGENTS.md
+```
+
+Show the diff (or a summary for large files, e.g. dependency-only changes in `composer.json`/`package.json`). Ask the user whether to apply it — per-file or batched, your judgment, but never apply without the user having seen the diff. Only after confirmation, copy the file over. If declined, skip it and say so explicitly in the final report — don't silently drop it.
+
+## Step 5 — Clean up and report
+
+```bash
+rm -rf /tmp/taw-theme-update-<random>
+```
+
+Summarize: what was applied (Tier 1), what was applied vs skipped (Tier 2), and remind the user this only touched the manifest paths above — nothing in `Blocks/`, `inc/`, page templates, or content was read or modified.
+
+**Do not commit these changes.** Leave them staged/modified in the working tree per the project's standing git rules (never commit unless the user explicitly asks). Suggest reviewing with `git diff` / `git status` and committing when ready.
+
+If nothing in either tier had upstream changes, say so plainly — "already up to date" is a valid, expected outcome, not a failure.
 
 ## Don't
 
-- Don't start a merge against a dirty working tree.
-- Don't resolve Tier 2 conflicts without showing the diff and getting confirmation first.
-- Don't default an unclassified conflict to "take upstream" — default to keeping the local version and flagging it, never the reverse.
-- Don't commit the merge — leave that decision to the user.
-- Don't use `--allow-unrelated-histories` or other safety-bypassing flags without asking first.
-- Don't auto-add an `upstream` remote or assume `origin` is canonical when a separate client fork is plausible — ask if unclear.
+- Don't touch, diff, or even read anything outside the two tiers above without asking first.
+- Don't run `git merge`/`git pull` against the whole working tree — this skill deliberately avoids that now.
+- Don't auto-apply Tier 2 changes without showing the diff and getting confirmation.
+- Don't commit the synced changes — leave that decision and action to the user.
+- Don't leave the temporary clone directory behind — clean it up even if the run is interrupted partway.
+- Don't assume a project without a git relationship to `taw-theme` is broken or needs special handling — that's no longer a precondition this skill has.

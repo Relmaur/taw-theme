@@ -20,9 +20,11 @@ For authoritative/current API detail, prefer the `mcp__taw-docs__search_document
 - `TAW\Helpers\*` → `vendor/taw/core/src/Helpers/` (Framework, Image, Svg, Dump, Editor)
 - `TAW\CLI\*` → `vendor/taw/core/src/CLI/`
 - `utilities.php` and `performance.php` → `vendor/taw/core/src/Support/` (autoloaded by composer)
-- The theme's `inc/` only has `options.php` and Metabox view templates
+- The theme's `inc/` holds only theme-owned config (`options.php`, `performance.php`, `customizations.php`) and Metabox view templates
 
 Do NOT edit anything inside `vendor/taw/core/`. To update the framework: `composer update taw/core`.
+
+`functions.php` is 100% framework-owned — two lines, require autoload + `Theme::bootstrapFullSite(get_template_directory())`. Never hand-edit it; site-specific hooks go in `inc/customizations.php`.
 
 Key rules:
 - Blocks live in Blocks/{Name}/{Name}.php — folder MUST match class name
@@ -43,8 +45,8 @@ Options page:
 - Configured in inc/options.php; retrieve with OptionsPage::get('field_id')
 
 Metabox order:
-- MetaboxOrder::lockFromTemplate() — call once in functions.php after Theme::boot() — locks each page's metabox order to its template's BlockRegistry::render() sequence and disables drag-and-drop reordering
-- MetaboxOrder::lock('page', ['id1', 'id2']) for an explicit order instead
+- MetaboxOrder::lockFromTemplate() runs automatically via Theme::bootstrapFullSite() — nothing to add to functions.php
+- MetaboxOrder::lock('page', ['id1', 'id2']) in inc/customizations.php for an explicit order instead
 
 Navigation menus:
 - Use TAW\Core\Menu\Menu::get('location') instead of wp_nav_menu()

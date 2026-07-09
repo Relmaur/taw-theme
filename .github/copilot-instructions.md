@@ -8,9 +8,11 @@ A classic WordPress theme with a custom block system, Vite v7, Tailwind v4, Alpi
 
 ## Core Package
 
-Framework internals (`TAW\Core`, `TAW\Helpers`, `TAW\CLI`) live in the **`taw/core` composer package** (https://github.com/Relmaur/taw-core), installed at `vendor/taw/core/src/`. The theme's own `inc/` only contains `options.php` and Metabox view templates. **Do not look for `TAW\Core` classes in `inc/`**, and do not edit anything inside `vendor/`.
+Framework internals (`TAW\Core`, `TAW\Helpers`, `TAW\CLI`) live in the **`taw/core` composer package** (https://github.com/Relmaur/taw-core), installed at `vendor/taw/core/src/`. The theme's own `inc/` holds only theme-owned config (`options.php`, `performance.php`, `customizations.php`) and Metabox view templates. **Do not look for `TAW\Core` classes in `inc/`**, and do not edit anything inside `vendor/`.
 
-To update the framework: `composer update taw/core`. To update this theme's own shared scaffold (separate repo, https://github.com/Relmaur/taw-theme) from upstream without touching site-specific content: the `update-theme` skill.
+`functions.php` is 100% framework-owned (two lines: require autoload, call `Theme::bootstrapFullSite(get_template_directory())`) — never hand-edit it. Site-specific hooks go in `inc/customizations.php` instead.
+
+To update the framework: `composer update taw/core`. To update this theme's own shared scaffold (separate repo, https://github.com/Relmaur/taw-theme) from upstream without touching site-specific content: the `update-theme` skill — direct file copy of a small delimited set of paths, no git merge, no shared history needed.
 
 For authoritative/current API detail, prefer the `mcp__taw-docs__search_documentation` MCP tool (if available) over guessing.
 
@@ -44,7 +46,7 @@ Or manually create `Blocks/{Name}/{Name}.php` + `Blocks/{Name}/index.php` — no
 
 ## Metabox Order
 
-`MetaboxOrder::lockFromTemplate()` — call once in `functions.php` after `Theme::boot()` — locks each page's metabox order to its template's `BlockRegistry::render()` sequence and disables drag-and-drop reordering. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` for an explicit order.
+`MetaboxOrder::lockFromTemplate()` runs automatically via `Theme::bootstrapFullSite()` — nothing to add to `functions.php`. Locks each page's metabox order to its template's `BlockRegistry::render()` sequence and disables drag-and-drop reordering. Use `MetaboxOrder::lock('page', ['id1', 'id2'])` in `inc/customizations.php` for an explicit order instead.
 
 ## Navigation Menus
 

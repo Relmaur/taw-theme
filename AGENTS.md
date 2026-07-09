@@ -8,7 +8,7 @@
 ## Source of Truth
 
 **Canonical repos:**
-- **`taw-theme`** (this scaffold): https://github.com/Relmaur/taw-theme — every real client site is a divergent instance of this repo. Synced into a client site via the `update-theme` skill (`git merge`, never touches client-built content).
+- **`taw-theme`** (this scaffold): https://github.com/Relmaur/taw-theme — every real client site is a divergent instance of this repo. Synced into a client site via the `update-theme` skill (direct file copy of a small delimited set of framework-owned paths — no git merge, no shared history needed — see § "Starting a New Client Project" and § "The `functions.php` Bootstrap" below).
 - **`taw/core`** (the framework package, installed at `vendor/taw/core/`): https://github.com/Relmaur/taw-core#readme — this is the authoritative source for all framework internals: Metabox field types and options, ViteLoader API, Visual Editor, Forms, and more. Always trust it over any conflicting information in this file. Synced via `composer update taw/core`, independently of `taw-theme` — these are two separate repos with two separate update paths, don't conflate them.
 
 **Live documentation lookup — prefer the MCP tool over fetching a URL by hand:** if the `mcp__taw-docs__search_documentation` tool is available, use it first for any framework API question (hybrid semantic + keyword search over the current docs). It returns the up-to-date indexed content directly rather than requiring a URL guess. Fall back to `WebFetch` on the URLs below only if the MCP tool isn't available in the current environment.
@@ -33,35 +33,53 @@ Official docs live at **https://taw.mlizardo.com/**. Fetch the relevant page whe
 
 ## Starting a New Client Project
 
-**Never use GitHub's "Use this template" button, and never run `composer create-project` without `--keep-vcs`.** Both deliberately produce a repo with no shared git history against `taw-theme` — and the `update-theme` skill syncs future scaffold updates via a real `git merge`, which requires a common ancestor commit to work at all. Skip this step and the project silently loses the ability to receive base-theme updates from day one; the only fix later is a slow, manual, file-by-file port instead of a clean merge (this has already happened to at least one real client project).
+**Shared git history with `taw-theme` is no longer required.** Earlier versions of this doc required `composer create-project --keep-vcs` or a full `git clone` specifically because `update-theme` used to sync via `git merge`, which needs a common ancestor commit. As of `taw/core` v1.16.63 (the `functions.php`/`inc/` split — see § "The `functions.php` Bootstrap" below) and the corresponding `update-theme` rewrite, that's no longer how updates work: the skill copies a small, precisely delimited set of framework-owned paths directly from a fresh checkout of `taw-theme`, regardless of this project's own git history. A brand-new project can `git init` with a single clean commit and `update-theme` will still work, forever.
 
-Correct setup:
-
-```bash
-composer create-project taw/theme <theme_name> --keep-vcs --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
-cd <theme_name>
-git remote rename origin upstream          # taw-theme becomes the update source
-git remote add origin <client-repo-url>    # the client's own repo
-git push -u origin master                  # or main
-```
-
-Equivalent via plain `git clone` also works and is arguably simpler to reason about:
+Simplest setup — just get the files, start your own history:
 
 ```bash
-git clone git@github.com:Relmaur/taw-theme.git <theme_name>
-cd <theme_name>
-git remote rename origin upstream
+composer create-project taw/theme <client-name> --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
+cd <client-name>
+git init
+git add -A
+git commit -m "Initial commit"
 git remote add origin <client-repo-url>
-git push -u origin master
+git push -u origin main
 ```
 
-Either way, verify shared history exists before doing any other work on a new project:
+(`--keep-vcs` is no longer necessary — omitting it is fine, and gives the cleaner single-commit history most people actually want.) A plain `git clone` still works too if you'd rather keep `taw-theme`'s full history for reference; it's just no longer *required* for anything.
 
 ```bash
-git merge-base HEAD upstream/main   # must print a commit hash, not an error
+composer install
+npm install
+npm run dev
 ```
 
-If asked to scaffold a new client project, do this setup first, unprompted — it's cheap now and expensive to discover missing later.
+Activate the theme in WP admin. The `.claude/skills/` are already in the repo — an agent can start scaffolding blocks/pages immediately.
+
+---
+
+## The `functions.php` Bootstrap
+
+`functions.php` is 100% framework-owned:
+
+```php
+<?php
+
+require_once get_template_directory() . '/vendor/autoload.php';
+
+TAW\Core\Theme\Theme::bootstrapFullSite(get_template_directory());
+```
+
+That's the whole file. Never hand-edit it — `update-theme` overwrites it unconditionally, no diff, no confirmation, because nothing site-specific can live there by construction. `bootstrapFullSite()` (in `taw/core`) does everything that used to be spelled out line-by-line in every theme's `functions.php`: it calls `Theme::boot()`, locks metabox order via `MetaboxOrder::lockFromTemplate()`, wires the CSS Studio dev-mode config injection, and auto-loads three theme-owned files **if they exist** — none of which `update-theme` ever touches:
+
+| File | Purpose |
+|---|---|
+| `inc/options.php` | `OptionsPage` field configuration (pre-existing convention) |
+| `inc/performance.php` | Returns the config array passed to `Theme::performance()` |
+| `inc/customizations.php` | Theme supports, `register_nav_menus()`, textdomain loading, `MetaboxOrder::lock()` for an explicit order, `Svg::register()`, `MailTester`, or any other site-specific hook |
+
+Any code that used to go directly in `functions.php` — theme supports, nav menu locations, `Svg::register()`, an explicit `MetaboxOrder::lock()` call, anything wrapped in `add_action(...)` — goes in `inc/customizations.php` instead. This is what makes `update-theme` a plain file copy instead of a merge: the boundary between "framework" and "this client's site" is a fact about which file something is in, not something that has to be computed from a diff.
 
 ---
 
@@ -83,16 +101,18 @@ If asked to scaffold a new client project, do this setup first, unprompted — i
 | `vendor/taw/core/src/Support/` | `ViteLoader.php` — OOP Vite asset pipeline; `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
 | `Blocks/Menu/` | Boilerplate navigation block — two-row header with Alpine.js live-search overlay |
-| `inc/options.php` | Theme-level options page configuration |
+| `inc/options.php` | OptionsPage field configuration — theme-owned, never touched by updates |
+| `inc/performance.php` | Returns the config array passed to `Theme::performance()` — theme-owned, never touched by updates |
+| `inc/customizations.php` | Theme supports, nav menu registration, textdomain, any other site-specific hooks — theme-owned, never touched by updates |
 | `resources/js/app.js` | Alpine.js + global JS — imports Tailwind CSS and custom SCSS |
 | `resources/css/app.css` | Tailwind v4 directives (`@import "tailwindcss"`) — imported by `app.js` |
 | `resources/scss/app.scss` | Global custom SCSS (fonts, overrides) — imported by `app.js` |
 | `resources/scss/critical.scss` | Above-the-fold CSS — compiled and inlined in `<head>` |
 | `resources/scss/_fonts.scss` | `@font-face` declarations for self-hosted fonts |
 | `resources/fonts/` | Self-hosted WOFF2 font files |
-| `functions.php` | Developer customisations — theme supports, nav menus, performance config. Calls `TAW\Core\Theme::boot()`. |
+| `functions.php` | **100% framework-owned** — two lines: require the autoloader, call `TAW\Core\Theme\Theme::bootstrapFullSite(get_template_directory())`. Never hand-edit; blindly overwritten by `update-theme`. |
 
-> **Important:** `TAW\Core`, `TAW\Helpers`, and `TAW\CLI` classes live inside the `taw/core` composer package (`vendor/taw/core/src/`), **not** in `inc/`. The theme's `inc/` only holds `options.php` and any Metabox view templates. Do not edit files inside `vendor/`.
+> **Important:** `TAW\Core`, `TAW\Helpers`, and `TAW\CLI` classes live inside the `taw/core` composer package (`vendor/taw/core/src/`), **not** in `inc/`. The theme's `inc/` holds only theme-owned config (`options.php`, `performance.php`, `customizations.php`) and Metabox view templates. Do not edit files inside `vendor/`.
 
 ---
 
@@ -729,21 +749,15 @@ Metabox::get_repeater(int $postId, string $fieldId): array // repeater → array
 
 By default WordPress lets any user drag-and-drop reorder metaboxes, saved per-user, so the same edit screen can look different for every editor. `TAW\Core\Metabox\MetaboxOrder` forces a fixed order and disables dragging.
 
-Explicit order:
+**`MetaboxOrder::lockFromTemplate()` runs automatically** — `Theme::bootstrapFullSite()` (called by `functions.php`) calls it unconditionally, nothing to add. It works via a static scan of each page's template file (never executed in wp-admin), so the edit screen's metabox order always matches the order blocks actually render in on the front end. Boxes not tied to a block on the page (e.g. core WordPress boxes) keep their relative position and render after the ordered ones.
+
+To use an **explicit** order instead of the automatic template-derived one, add this to `inc/customizations.php` (never `functions.php` — that file is framework-owned and never touched by updates):
 
 ```php
 use TAW\Core\Metabox\MetaboxOrder;
 
 MetaboxOrder::lock('page', ['hero_settings', 'video_settings', 'faq_settings']);
 ```
-
-Or derive the order automatically per-post from the page template's `BlockRegistry::render()` call sequence — call once in `functions.php`, after `Theme::boot()`:
-
-```php
-MetaboxOrder::lockFromTemplate(); // screen defaults to 'page'
-```
-
-This works via a static scan of the template file (never executed in wp-admin), so the edit screen's metabox order always matches the order blocks actually render in on the front end. Boxes not tied to a block on the page (e.g. core WordPress boxes) keep their relative position and render after the ordered ones.
 
 Template resolution mirrors WordPress's own hierarchy, not just the raw Page Attributes selection:
 
@@ -855,7 +869,7 @@ Use `{{variable_name}}` placeholders in templates. `all_fields` is auto-populate
 WP Admin page (Tools → Test Emails) for sending test emails against compiled templates.
 
 ```php
-// In functions.php
+// In inc/customizations.php — never functions.php, which is framework-owned
 (new \TAW\Core\Mail\MailTester())->register();
 ```
 
@@ -897,7 +911,7 @@ OptionsPage::get_image_url('company_logo', 'large'); // returns URL string
 
 **Option key pattern:** `_taw_{field_id}` (same prefix convention as Metabox)
 
-The theme's default options page is configured in `inc/options.php` and required from `functions.php`. To add a new options page, create a new file in `inc/` and require it in `functions.php`.
+The theme's default options page is configured in `inc/options.php`, auto-loaded by `Theme::bootstrapFullSite()` if the file exists — nothing to require manually. To add a *second* options page, create a new file in `inc/` and require it from `inc/customizations.php` (not `functions.php`, which only auto-loads `options.php`/`performance.php`/`customizations.php` by convention, not arbitrary extra files).
 
 ---
 
@@ -956,7 +970,7 @@ if ($menu && $menu->hasItems()):
 | `children()` | `MenuItem[]` | Child items |
 | `classes()` | `string[]` | Custom classes (WP defaults stripped) |
 
-Menus are registered in `functions.php` via `register_nav_menus()`. The theme registers `primary` and `footer` by default — edit that array directly to add or rename locations.
+Menus are registered in `inc/customizations.php` via `register_nav_menus()` (not `functions.php`, which is framework-owned). The default scaffold registers `primary` and `footer` — edit that array directly to add or rename locations.
 
 ---
 
@@ -1093,7 +1107,7 @@ Enables SVG uploads in WordPress (sanitized via `enshrined/svg-sanitize` on uplo
 ```php
 use TAW\Helpers\Svg;
 
-// Call once in theme setup (functions.php) to allow SVG uploads + auto-sanitize:
+// Call once, e.g. in inc/customizations.php, to allow SVG uploads + auto-sanitize:
 Svg::register();
 
 // Render as <img> tag (safe; scripts inside SVG can't execute):
@@ -1127,7 +1141,7 @@ Provided by `taw/core` (namespace `TAW\Core\ThemeUpdater`).
 
 Hooks into WordPress's theme update system to pull releases from a GitHub repository. When a new tag is published, WordPress shows the standard "Update Available" notice and one-click update UI.
 
-> **⚠️ Do not wire this up on a real client site alongside `update-theme`.** `ThemeUpdater` does a **full theme directory replacement** from a ZIP when an admin clicks "Update Now" in wp-admin — exactly the destructive, all-or-nothing behavior the `update-theme` skill's `git merge`-based sync was built to avoid. On a client site with customized `Blocks/`, page templates, and `functions.php`, clicking that button would silently overwrite all of it. This class is dormant by default (not currently instantiated in this project's `functions.php`) — keep it that way for client sites. It may be appropriate for a genuinely zero-customization deployment that intentionally wants full-replacement updates, but that's the exception, not the default, and should be a deliberate choice, not something enabled by copy-pasting the example below.
+> **⚠️ Do not wire this up on a real client site alongside `update-theme`.** `ThemeUpdater` does a **full theme directory replacement** from a ZIP when an admin clicks "Update Now" in wp-admin — exactly the destructive, all-or-nothing behavior `update-theme`'s manifest-based sync was built to avoid. On a client site with customized `Blocks/`, page templates, and `inc/` files, clicking that button would silently overwrite all of it. This class is dormant by default (not currently instantiated in this project's `functions.php`) — keep it that way for client sites. It may be appropriate for a genuinely zero-customization deployment that intentionally wants full-replacement updates, but that's the exception, not the default, and should be a deliberate choice, not something enabled by copy-pasting the example below.
 
 Activated in `functions.php`:
 ```php
