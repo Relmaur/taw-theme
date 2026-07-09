@@ -1148,16 +1148,32 @@ taw-theme/
 
 ---
 
-## AI-Friendly
+## AI-Ready
 
-This repo ships with architecture documentation for AI coding assistants:
+TAW isn't just documented for AI coding assistants — it ships a working toolkit for them, in the same spirit as Laravel Boost. Point an agent at a TAW project and it can build pages, sync with upstream, and inspect the live site state, not just read about how to.
 
+**Architecture docs**, picked up automatically by any LLM-powered tool:
 - **`AGENTS.md`** — comprehensive architecture guide (Claude Code, Cursor, generic agents)
 - **`CLAUDE.md`** — Claude Code-specific instructions
 - **`.github/copilot-instructions.md`** — GitHub Copilot instructions
 - **`.windsurfrules`** — Windsurf/Codeium instructions
 
-Any LLM-powered tool will automatically pick up the project's conventions, naming patterns, and anti-patterns. Point your AI at the repo and start building.
+**Claude Code skills** (`.claude/skills/`), invoked by name or triggered by plain-language requests:
+- **`make-metablock`** — "add a pricing table section" → a fully wired MetaBlock (class, metabox fields, template, styles)
+- **`build-page`** — "build a homepage with hero, features, and a contact form" → an entire page assembled from existing and newly-scaffolded blocks
+- **`figma-to-block`** — "implement this Figma design" → a block whose markup and metabox fields match the design, driven by the Figma MCP tools
+- **`update-theme`** — "update the theme" → pulls the latest shared scaffold from the canonical `taw-theme` repo via a real `git merge`, without ever touching your `Blocks/`, templates, or content
+- **`studio`** — applies live CSS Studio visual edits back into source
+
+**Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.
+
+**CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, and a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug).
+
+**Live documentation lookup** — the `mcp__taw-docs__search_documentation` MCP tool, when available, searches the current framework docs directly rather than requiring a URL guess.
+
+Two separate, independently-versioned sources of truth back all of this — don't conflate them:
+- **[`taw-theme`](https://github.com/Relmaur/taw-theme)** — this scaffold. Synced into a client site via `update-theme`.
+- **[`taw/core`](https://github.com/Relmaur/taw-core)** — the framework package. Synced via `composer update taw/core`.
 
 ---
 
