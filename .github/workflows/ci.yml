@@ -23,6 +23,16 @@ jobs:
       - name: Validate composer.json
         run: composer validate --no-check-all --no-check-publish
 
+      - name: Authenticate composer with GitHub
+        # taw/core is installed from a VCS (github.com) repository, not
+        # Packagist — Composer's GitHub driver uses the GitHub API to
+        # resolve tags/refs, and unauthenticated API access is capped at
+        # 60 requests/hour PER IP. Actions runners share IPs across
+        # countless concurrent workflows worldwide, so that cap is hit
+        # constantly without this. GITHUB_TOKEN is provided free by
+        # Actions and raises the limit to 5000/hour — no repo secret needed.
+        run: composer config -g github-oauth.github.com "${{ secrets.GITHUB_TOKEN }}"
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
