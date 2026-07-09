@@ -45,7 +45,7 @@ Auto-discovery: `BlockLoader::loadAll()` scans `Blocks/*/` — no manual registr
 
 Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` → assets land in `<head>`. Fallback prints inline if forgotten.
 
-**Visual Editor:** Enabled automatically by `Theme::boot()`. **Edit Visually** button in admin bar; `?taw_visual_edit=1` activates the editing shell.
+**Visual Editor:** Opt-in — call `TAW\Core\Editor\VisualEditor::enable()` in `inc/customizations.php` (must run before `Theme::boot()`, which `bootstrapFullSite()` already guarantees). Without it, `Theme::boot()`'s internal `VisualEditor::init()` silently no-ops. Once enabled: **Edit Visually** button in admin bar; `?taw_visual_edit=1` activates the editing shell.
 
 ## Options Page
 

@@ -85,8 +85,8 @@ REST API:
 Metabox field types: text, textarea, wysiwyg, url, number, range, select, image, files, group, checkbox, color, repeater, post_select, datepicker
 
 Visual Editor:
-- Enabled automatically by Theme::boot()
-- Edit Visually button in admin bar; ?taw_visual_edit=1 activates inline editing shell
+- Opt-in — call VisualEditor::enable() in inc/customizations.php (must run before Theme::boot(); without it, boot()'s VisualEditor::init() silently no-ops)
+- Once enabled: Edit Visually button in admin bar; ?taw_visual_edit=1 activates inline editing shell
 
 Asset helpers:
 - Use ViteLoader::assetUrl('resources/fonts/Name.woff2') — not vite_asset_url()

@@ -38,7 +38,7 @@ This theme itself is a scaffold on top of that framework: every real site is a d
 
 **AI-native DX.** Ships with `AGENTS.md`, `CLAUDE.md`, and Copilot/Windsurf instructions so any AI coding assistant understands the architecture out of the box.
 
-**Visual Editor** — a live content page editor for authenticated users. Activated automatically by `Theme::boot()`. An **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` to any URL activates the editing shell.
+**Visual Editor** — a live content page editor for authenticated users. Opt-in: call `TAW\Core\Editor\VisualEditor::enable()` in `inc/customizations.php`. Once enabled, an **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` to any URL activates the editing shell.
 
 ---
 

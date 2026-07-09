@@ -77,7 +77,7 @@ That's the whole file. Never hand-edit it — `update-theme` overwrites it uncon
 |---|---|
 | `inc/options.php` | `OptionsPage` field configuration (pre-existing convention) |
 | `inc/performance.php` | Returns the config array passed to `Theme::performance()` |
-| `inc/customizations.php` | Theme supports, `register_nav_menus()`, textdomain loading, `MetaboxOrder::lock()` for an explicit order, `Svg::register()`, `MailTester`, or any other site-specific hook |
+| `inc/customizations.php` | Theme supports, `register_nav_menus()`, textdomain loading, `VisualEditor::enable()`, `MetaboxOrder::lock()` for an explicit order, `Svg::register()`, `MailTester`, or any other site-specific hook |
 
 Any code that used to go directly in `functions.php` — theme supports, nav menu locations, `Svg::register()`, an explicit `MetaboxOrder::lock()` call, anything wrapped in `add_action(...)` — goes in `inc/customizations.php` instead. This is what makes `update-theme` a plain file copy instead of a merge: the boundary between "framework" and "this client's site" is a fact about which file something is in, not something that has to be computed from a diff.
 
@@ -520,7 +520,7 @@ BaseBlock (abstract)
 | `TAW\Core\Mail\Mailer` | Fluent `wp_mail()` wrapper with HTML template support |
 | `TAW\Core\Mail\MailTemplate` | File-based email template compiler. Looks for `mails/html/{name}.html`; falls back to MJML at runtime |
 | `TAW\Core\Mail\MailTester` | Admin page under Tools → Test Emails for testing compiled templates |
-| `TAW\Core\Editor\VisualEditor` | Frontend inline editor — activated automatically by `Theme::boot()`. Toggled via the **Edit Visually** admin bar button or `?taw_visual_edit=1`. |
+| `TAW\Core\Editor\VisualEditor` | Frontend inline editor — **opt-in**: call `VisualEditor::enable()` in `inc/customizations.php` (must run before `Theme::boot()`; `bootstrapFullSite()` already loads `customizations.php` first). `Theme::boot()`'s internal `VisualEditor::init()` silently no-ops without it. Once enabled, toggled via the **Edit Visually** admin bar button or `?taw_visual_edit=1`. |
 | `TAW\Core\Rest\VisualEditorEndpoint` | REST endpoint: `POST /taw/v1/visual-editor/save` — persists inline edits using the same sanitization pipeline as metabox saves |
 | `TAW\Support\ViteLoader` | OOP Vite bridge — dev-server detection (`isDevServerRunning()`), manifest parsing (`getManifest()`), asset URL resolution (`assetUrl()`), module preloading, critical CSS inlining (`inlineCriticalCss()`), and additional entry-point enqueuing (`enqueueAsset()`) |
 | `TAW\Helpers\Image` | Performance-optimized `<img>` tag generator with above/below-fold attributes |
@@ -1164,7 +1164,7 @@ if (is_admin()) {
 
 ### How it works
 
-`TAW\Support\ViteLoader` (from `taw/core`, PSR-4 autoloaded) is the OOP Vite bridge. It detects whether the Vite dev server is running via `fsockopen()` on port 5173 and handles all asset enqueuing.
+`TAW\Support\ViteLoader` (from `taw/core`, PSR-4 autoloaded) is the OOP Vite bridge. It detects whether the Vite dev server is running by connecting to it (port 5173 by default, or whatever `vite.config.js`'s `hotFilePlugin` last wrote to `public/build/hot`, if the dev server is currently running) and verifying an actual Vite response (`GET /@vite/client` → HTTP 200) — a bare port-open check isn't sufficient, since any unrelated process (another dev server, a Docker container, anything) can end up bound to that port for reasons that have nothing to do with this project, producing a false positive that silently breaks asset loading in production. `vite.config.js` deliberately sets `strictPort: true` rather than letting Vite auto-move to a different port on conflict — the `server.origin` setting (needed for correct absolute font URLs) is hardcoded to port 5173, and an auto-moved port would go stale with no error, only fonts silently 404ing. If `npm run dev` fails to start, something else has port 5173 — find it with `lsof -i :5173` and stop it (or reconfigure that other project).
 
 `Theme::boot()` calls `ViteLoader::init('resources/js/app.js')` automatically — no manual setup needed for the main bundle.
 

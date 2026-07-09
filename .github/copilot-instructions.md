@@ -134,4 +134,4 @@ Templates live in `mails/html/{name}.html` (production) or `mails/{name}.mjml` (
 
 ## Visual Editor
 
-Enabled automatically by `Theme::boot()`. An **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` activates the inline editing shell. Changes save via `POST /wp-json/taw/v1/visual-editor/save`.
+Opt-in — call `VisualEditor::enable()` in `inc/customizations.php` (must run before `Theme::boot()`; without it `Theme::boot()`'s `VisualEditor::init()` silently no-ops). Once enabled: an **Edit Visually** button appears in the admin bar; appending `?taw_visual_edit=1` activates the inline editing shell. Changes save via `POST /wp-json/taw/v1/visual-editor/save`.
