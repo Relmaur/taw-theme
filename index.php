@@ -13,7 +13,7 @@ BlockRegistry::queue('hero', 'pricing_table');
 get_header();
 ?>
 
-<?php // 3. Render blocks (HTML only, assets already handled) 
+<?php // 3. Render blocks (HTML only, assets already handled)
 ?>
 
 <?php BlockRegistry::render('hero'); ?>

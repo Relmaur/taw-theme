@@ -27,7 +27,7 @@ class PricingTable extends MetaBlock
         ]);
     }
 
-    protected function getData(int $postId): array
+    protected function getData(int|false $postId): array
     {
         return [
             'heading' => $this->getMeta($postId, 'pricing_table_heading'),

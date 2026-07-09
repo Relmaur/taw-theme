@@ -1,8 +1,10 @@
 # CLAUDE.md — Claude Code Instructions
 
 > Full architecture docs + code examples: **`AGENTS.md`** in this repo.
-> **`taw/core` framework reference (source of truth):** https://github.com/Relmaur/taw-core#readme — fetch when you need authoritative detail on any framework API. When this file and the `taw/core` README disagree, `taw/core` wins.
-> Full online documentation: https://emelambda.documentationai.com/
+> **This theme's canonical scaffold (source of truth for base-theme sync):** https://github.com/Relmaur/taw-theme — synced via the `update-theme` skill.
+> **`taw/core` framework reference (source of truth for framework APIs):** https://github.com/Relmaur/taw-core#readme — fetch when you need authoritative detail on any framework API. When this file and the `taw/core` README disagree, `taw/core` wins. Separate repo/update path from `taw-theme` — see `composer update taw/core`.
+> **Live doc lookup:** prefer the `mcp__taw-docs__search_documentation` MCP tool (if available) over fetching docs by hand — it's a hybrid semantic+keyword search over the current indexed docs.
+> Full online documentation: https://taw.mlizardo.com/
 
 ## Project
 

@@ -7,24 +7,27 @@
 
 ## Source of Truth
 
-**`taw/core` README (framework reference):** https://github.com/Relmaur/taw-core#readme
-This is the authoritative source for all framework internals — Metabox field types and options, ViteLoader API, Visual Editor, Forms, and more. Fetch it whenever you need detail beyond what this file covers, and always trust it over any conflicting information here.
+**Canonical repos:**
+- **`taw-theme`** (this scaffold): https://github.com/Relmaur/taw-theme — every real client site is a divergent instance of this repo. Synced into a client site via the `update-theme` skill (`git merge`, never touches client-built content).
+- **`taw/core`** (the framework package, installed at `vendor/taw/core/`): https://github.com/Relmaur/taw-core#readme — this is the authoritative source for all framework internals: Metabox field types and options, ViteLoader API, Visual Editor, Forms, and more. Always trust it over any conflicting information in this file. Synced via `composer update taw/core`, independently of `taw-theme` — these are two separate repos with two separate update paths, don't conflate them.
+
+**Live documentation lookup — prefer the MCP tool over fetching a URL by hand:** if the `mcp__taw-docs__search_documentation` tool is available, use it first for any framework API question (hybrid semantic + keyword search over the current docs). It returns the up-to-date indexed content directly rather than requiring a URL guess. Fall back to `WebFetch` on the URLs below only if the MCP tool isn't available in the current environment.
 
 ## Full Documentation
 
-Official docs live at **https://emelambda.documentationai.com/**. Fetch the relevant page whenever you need deeper detail beyond what this file covers.
+Official docs live at **https://taw.mlizardo.com/**. Fetch the relevant page whenever you need deeper detail beyond what this file covers.
 
 | Topic | URL |
 |---|---|
-| Introduction & concepts | https://emelambda.documentationai.com/introduction |
-| Quickstart / project setup | https://emelambda.documentationai.com/quickstart |
-| TAW Theme (boot, performance) | https://emelambda.documentationai.com/taw-theme |
-| TAW Core (framework internals) | https://emelambda.documentationai.com/taw-core |
-| Blocks & BlockRegistry | https://emelambda.documentationai.com/taw-core-blocks |
-| Assets & Vite integration | https://emelambda.documentationai.com/taw-core-assets-vite |
-| Metabox & Editor tooling | https://emelambda.documentationai.com/taw-core-metabox |
-| Setup guide | https://emelambda.documentationai.com/help-center/guides/setup-project |
-| Changelog | https://emelambda.documentationai.com/changelog |
+| Introduction & concepts | https://taw.mlizardo.com/introduction |
+| Quickstart / project setup | https://taw.mlizardo.com/quickstart |
+| TAW Theme (boot, performance) | https://taw.mlizardo.com/taw-theme |
+| TAW Core (framework internals) | https://taw.mlizardo.com/taw-core |
+| Blocks & BlockRegistry | https://taw.mlizardo.com/taw-core-blocks |
+| Assets & Vite integration | https://taw.mlizardo.com/taw-core-assets-vite |
+| Metabox & Editor tooling | https://taw.mlizardo.com/taw-core-metabox |
+| Setup guide | https://taw.mlizardo.com/help-center/guides/setup-project |
+| Changelog | https://taw.mlizardo.com/changelog |
 
 ---
 

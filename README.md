@@ -8,7 +8,9 @@ No Gutenberg blocks. No ACF dependency. No bloat. Just PHP classes, templates, a
 
 The framework internals (block system, metabox engine, Vite bridge) ship as the **[`taw/core`](https://github.com/Relmaur/taw-core) composer package** — versioned independently so you can update the framework across all your TAW sites with a single `composer update taw/core`.
 
-> **Framework API reference:** The [`taw/core` README](https://github.com/Relmaur/taw-core#readme) is the authoritative source for all framework internals — field types, Metabox config options, ViteLoader API, Visual Editor, and more. When this theme README and the `taw/core` README disagree, `taw/core` wins.
+This theme itself is a scaffold on top of that framework: every real site is a divergent instance of **[`taw-theme`](https://github.com/Relmaur/taw-theme)**, the canonical repo. Sync the shared scaffold (agent skills, CLI, framework docs, build config) — without touching anything you've built — with the `update-theme` skill.
+
+> **Framework API reference:** The [`taw/core` README](https://github.com/Relmaur/taw-core#readme) is the authoritative source for all framework internals — field types, Metabox config options, ViteLoader API, Visual Editor, and more. When this theme README and the `taw/core` README disagree, `taw/core` wins. For live lookups, the `mcp__taw-docs__search_documentation` MCP tool (when available) searches the current indexed docs directly.
 
 ---
 

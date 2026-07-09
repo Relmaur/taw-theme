@@ -22,7 +22,7 @@ class Hero extends MetaBlock
                     'id'       => 'hero_heading',
                     'label'    => __('Heading', 'taw-theme'),
                     'type'     => 'text',
-                    'width'    => '33.33',
+                    'width'    => '50',
                     'required' => true,
                     'editor' => true
                 ],
@@ -30,7 +30,7 @@ class Hero extends MetaBlock
                     'id'       => 'hero_tagline',
                     'label'    => __('Tagline', 'taw-theme'),
                     'type'     => 'text',
-                    'width'    => '33.33',
+                    'width'    => '50',
                     'required' => true,
                     'editor'   => [      // ← Editable with settings
                         'max_length' => 200,
@@ -49,7 +49,7 @@ class Hero extends MetaBlock
                     'id'    => 'hero_image_url',
                     'label' => __('Hero Image', 'taw-theme'),
                     'type'  => 'image',
-                    'width' => '33.33',
+                    'width' => '50',
                     'editor' => [      // ← Editable with settings
                         'preview_size' => 'medium',
                     ],
@@ -59,7 +59,7 @@ class Hero extends MetaBlock
                     'label'       => __('Show Tagline', 'taw-theme'),
                     'type'        => 'checkbox',
                     'description' => __('Enable or disable the tagline above the heading.', 'taw-theme'),
-                    'width'       => '33.33'
+                    'width'       => '50'
                 ],
                 [
                     'id'          => 'hero_padding',
@@ -71,7 +71,7 @@ class Hero extends MetaBlock
                     'unit'        => 'px',
                     'default'     => 80,
                     'description' => __('Vertical padding for the hero section.', 'taw-theme'),
-                    'width'       => '33.33',
+                    'width'       => '50',
                 ],
                 [
                     'id'          => 'hero_bg_color',
@@ -79,7 +79,7 @@ class Hero extends MetaBlock
                     'type'        => 'color',
                     // 'default'     => '#0f172a',
                     'description' => __('Background color for the hero section.', 'taw-theme'),
-                    'width'       => '33.33',
+                    'width'       => '50',
                 ],
                 [
                     'id'          => 'featured_post',
@@ -200,7 +200,7 @@ class Hero extends MetaBlock
         ]);
     }
 
-    protected function getData(int $postId): array
+    protected function getData(int|false $postId): array
     {
         $image_url = $this->getMeta($postId, 'hero_image_url') ? $this->getMeta($postId, 'hero_image_url') : 'https://placehold.co/600x400';
 

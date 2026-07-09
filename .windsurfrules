@@ -4,7 +4,11 @@ Full architecture docs: see AGENTS.md in the repo root.
 
 ## Core Package
 
-Framework internals live in the `taw/core` composer package at `vendor/taw/core/src/` — NOT in `inc/`.
+Framework internals live in the `taw/core` composer package (https://github.com/Relmaur/taw-core) at `vendor/taw/core/src/` — NOT in `inc/`. Update via `composer update taw/core`.
+
+This theme itself is a scaffold synced from a separate canonical repo, https://github.com/Relmaur/taw-theme, via the `update-theme` skill — don't conflate the two update paths.
+
+For authoritative/current API detail, prefer the `mcp__taw-docs__search_documentation` MCP tool (if available) over guessing.
 - `TAW\Core\Block\*` → `vendor/taw/core/src/Core/Block/` (BaseBlock, Block, MetaBlock, BlockLoader, BlockRegistry)
 - `TAW\Core\Metabox\*` → `vendor/taw/core/src/Core/Metabox/`
 - `TAW\Core\OptionsPage\*` → `vendor/taw/core/src/Core/OptionsPage/`
