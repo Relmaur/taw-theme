@@ -14,6 +14,11 @@ add_action('admin_init', function () {
 });
 
 add_action('after_setup_theme', function () {
+    // Textdomain loading is handled by Theme::bootstrapFullSite() itself,
+    // on an earlier after_setup_theme priority than this callback — don't
+    // add load_theme_textdomain() here, it would just double-load. See
+    // Theme.php's bootstrapFullSite() docblock.
+
     add_theme_support('title-tag');
     add_theme_support('post-thumbnails');
     add_theme_support('html5', [
@@ -36,8 +41,4 @@ add_action('after_setup_theme', function () {
         'primary' => __('Primary Menu', 'taw-theme'),
         'footer'  => __('Footer Menu', 'taw-theme'),
     ]);
-});
-
-add_action('init', function () {
-    load_theme_textdomain('taw-theme', get_template_directory() . '/languages');
 });

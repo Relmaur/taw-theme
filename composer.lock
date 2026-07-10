@@ -788,25 +788,27 @@
         },
         {
             "name": "taw/core",
-            "version": "v1.16.66",
+            "version": "v1.16.67",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Relmaur/taw-core.git",
-                "reference": "4d00f4e272e5e6cdababfbbdfdebe572eedcab54"
+                "reference": "000a0b0edbb0b629d7aa47f309d098c56b4fe8b4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/4d00f4e272e5e6cdababfbbdfdebe572eedcab54",
-                "reference": "4d00f4e272e5e6cdababfbbdfdebe572eedcab54",
+                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/000a0b0edbb0b629d7aa47f309d098c56b4fe8b4",
+                "reference": "000a0b0edbb0b629d7aa47f309d098c56b4fe8b4",
                 "shasum": ""
             },
             "require": {
                 "enshrined/svg-sanitize": "^0.22.0",
-                "php": ">=8.1",
+                "php": ">=8.2",
                 "symfony/console": "^7.4"
             },
             "require-dev": {
-                "spatie/mjml-php": "^1.0"
+                "phpstan/phpstan": "^2.2",
+                "spatie/mjml-php": "^1.0",
+                "szepeviktor/phpstan-wordpress": "^2.0"
             },
             "suggest": {
                 "emailit/emailit-php": "Required for EmailConfig::useEmailit() — route all wp_mail() through the Emailit REST API"
@@ -821,6 +823,11 @@
                     "src/Support/utilities.php"
                 ]
             },
+            "scripts": {
+                "phpstan": [
+                    "phpstan analyse --memory-limit=-1"
+                ]
+            },
             "license": [
                 "GPL-2.0-or-later"
             ],
@@ -832,10 +839,10 @@
             ],
             "description": "TAW Theme Framework — block system, metabox engine, Vite asset pipeline for WordPress",
             "support": {
-                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.66",
+                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.67",
                 "issues": "https://github.com/Relmaur/taw-core/issues"
             },
-            "time": "2026-07-09T23:33:53+00:00"
+            "time": "2026-07-10T16:21:03+00:00"
         }
     ],
     "packages-dev": [
