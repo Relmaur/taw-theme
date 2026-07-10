@@ -98,7 +98,7 @@ public static function boot(): void
 Form::display('contact');
 ```
 
-Field types: `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid), `conditions`, and validation rules (`min_length`, `max_length`, `pattern`, `min`/`max`). Also supports multi-step forms (`steps` key), AND/OR conditional logic, email delivery (`email` key), and structural fields (`heading`, `divider`, `html`). See AGENTS.md or taw/core README for full config.
+Field types: `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid), `conditions`, and validation rules (`min_length`, `max_length`, `pattern`, `min`/`max`) — each with an optional `{rule}_message` custom error string. Also supports multi-step forms (`steps` key), AND/OR conditional logic, email delivery (`email` key), and structural fields (`heading`, `divider`, `html`). See AGENTS.md or taw/core README for full config.
 
 `TAW\Core\Form\SubmissionsHandler` — auto-wired by `Theme::boot()`, no manual instantiation needed.
 

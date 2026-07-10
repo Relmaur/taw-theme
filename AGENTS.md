@@ -835,6 +835,8 @@ Form::register([
 
 Validation rules run server-side (the authoritative check) and also render as native HTML `minlength`/`maxlength`/`pattern`/`min`/`max` attributes for client-side UX — the HTML attributes are a convenience, not a security boundary. An empty, non-required field never fails these.
 
+**Custom error messages per rule:** every rule (`required`, the built-in `email` format check, `min_length`, `max_length`, `pattern`, `min`, `max`) accepts a `{rule}_message` override — e.g. `'required_message' => 'Please tell us your name.'`, `'min_message' => 'You must be 18 or older.'` — falling back to a generic default (with the field's `label` interpolated) when not set.
+
 If `email.to_self.template` and `email.to_client.template` are both set, delivery uses `Mailer` + `MailTemplate`. Otherwise falls back to a plain-text `wp_mail()`.
 
 **Multi-column layout:** Use `width` on fields (as a percentage) to control the 12-column grid span. All fields collapse to full width on mobile.
