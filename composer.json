@@ -29,7 +29,7 @@
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "npm install --silent"
         ],
-        "phpstan": "phpstan analyse --memory-limit=512M"
+        "phpstan": "phpstan analyse --memory-limit=-1"
     },
     "config": {
         "sort-packages": true
