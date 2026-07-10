@@ -9,8 +9,8 @@ parameters:
 
     excludePaths:
         - vendor/
-        - node_modules/
-        - public/build/
+        - node_modules/ (?)
+        - public/build/ (?)
 
     ignoreErrors:
         # taw/core registers blocks/fields via magic array shapes the WP
