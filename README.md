@@ -1171,6 +1171,8 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 
 **Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.
 
+**Direct field read/write** — `php bin/taw fields:get`/`fields:set` let an agent read or write any Metabox/OptionsPage field's value directly, sanitized with the exact same rules as a real admin form save — no hand-encoding a repeater's JSON shape, no guessing which sanitizer applies to which field type. This is what turns "build this page from a Figma design" into something that can also populate the content, not just scaffold empty fields.
+
 **CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug), and PHPStan (level 5, WordPress-aware via `szepeviktor/phpstan-wordpress`) over `Blocks/` and `inc/`.
 
 **Live documentation lookup** — the `mcp__taw-docs__search_documentation` MCP tool, when available, searches the current framework docs directly rather than requiring a URL guess.

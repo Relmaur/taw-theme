@@ -1094,6 +1094,25 @@ php bin/taw inspect --json   # machine-readable, for AI agents / scripts
 
 Prefer this over `grep`-ing `Blocks/*/*.php` by hand to answer "what blocks/fields/forms actually exist right now" — it reports live registry state, not static source, so it reflects reality even if a block's `getData()` doesn't match its `registerMetaboxes()`, or a form was conditionally registered.
 
+### `fields:get` / `fields:set`
+
+Read or write a single Metabox/OptionsPage field's value directly, without going through the wp-admin UI. This is the same read/write primitive `VisualEditorEndpoint` uses for its REST-driven saves — the field's type is resolved from the live `Metabox` registry (the same one `inspect` reports), then dispatched to the matching type-aware getter/sanitizer. A repeater is read back as a decoded array and written with the exact sanitization a real admin form save would apply (XSS-stripping via `wp_kses_post()`/`sanitize_text_field()`, attachment IDs coerced with `absint()`, JSON re-encoded clean) — not a hand-rolled approximation.
+
+```bash
+php bin/taw fields:get 42 hero_heading --json
+php bin/taw fields:get 42 team_members --json                        # repeater comes back as a decoded array
+
+php bin/taw fields:set 42 hero_heading "Welcome"
+php bin/taw fields:set 42 team_members --file=/tmp/team.json         # --file avoids shell JSON-quoting for repeater/array-shaped values
+php bin/taw fields:set 42 hero_heading "Welcome" --dry-run           # preview the sanitized result without writing
+```
+
+For a group sub-field, use the compound ID exactly as `inspect` reports it (e.g. `hero_cta_text` for the `cta_text` sub-field of a `hero_cta` group) — it's registered in the field registry under that compound key already.
+
+**What this doesn't do:** it doesn't upload media (an `image`/`files` field value must already be a valid attachment ID — get one via `wp eval` or the Media Library first), and it doesn't check whether a field's owning block is actually attached to the target post's post type or template — same trust model as any other direct WordPress data write. If a field ID isn't found in the registry, the error message points at `inspect --json` to list what's actually registered.
+
+This is the "populate the content" half of a design-to-page pipeline: `figma-to-block`/`make-metablock` scaffold the block and its empty fields, `fields:set` fills them in.
+
 ---
 
 ## Image Helper

@@ -38,6 +38,10 @@ For authoritative/current API detail, prefer the `mcp__taw-docs__search_document
 Scaffold with the CLI: `php bin/taw make:block Name --type=meta --with-style`, then `composer dump-autoload`.
 Or manually create `Blocks/{Name}/{Name}.php` + `Blocks/{Name}/index.php` — no other changes needed.
 
+## Reading/writing field data directly
+
+`php bin/taw fields:get <post_id> <field_id> --json` / `fields:set <post_id> <field_id> <value>` read or write a Metabox/OptionsPage field with the exact same sanitization as a real admin save. Use `--file=path.json` for repeater/array values (avoids shell quoting), `--dry-run` to preview. Don't hand-craft repeater JSON or raw `wp post meta update` calls — this command already knows each field's shape and sanitizer.
+
 ## Options Page
 
 `OptionsPage` (from `taw/core`) stores site-wide settings in `wp_options` with the same field config as Metabox.
