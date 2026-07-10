@@ -41,6 +41,7 @@ README.md
 composer.json
 package.json
 vite.config.js
+phpstan.neon
 ```
 
 **Never touched — not read, not diffed, entirely out of scope:**

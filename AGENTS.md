@@ -1385,6 +1385,21 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw make:block Name` | Scaffold a new block |
 | `php bin/taw export:block Name` | Export a block as a ZIP |
 | `php bin/taw import:block path.zip` | Import a block from a ZIP |
+| `composer run phpstan` | Static analysis (`Blocks/`, `inc/`) — also runs in CI |
+
+---
+
+## Static Analysis
+
+PHPStan (level 5, config in `phpstan.neon`) analyzes `Blocks/` and `inc/`, loading WordPress core stubs via `szepeviktor/phpstan-wordpress` so core functions/classes (`add_action`, `WP_Query`, etc.) resolve correctly instead of erroring as unknown. Runs in CI on every push/PR alongside the lint and `getData()` signature checks.
+
+Prefer fixing types (accurate `@param`/`@return` PHPDoc for hook callbacks, REST request shapes, query results) over adding `ignoreErrors` entries. When an ignore is unavoidable, scope it narrowly and document why inline. Don't pre-emptively add a `phpstan-baseline.neon` — this repo has none because it's currently clean at level 5; only introduce one if adopting the check on a codebase with pre-existing legacy errors, and treat it as a migration aid to shrink over time, not a permanent suppression file.
+
+Sourced from the `wp-phpstan` skill in [WordPress/agent-skills](https://github.com/WordPress/agent-skills) — see that skill's `references/wordpress-annotations.md` and `references/third-party-classes.md` for WP-specific typing patterns and how to handle third-party plugin classes if this theme ever needs to integrate with one.
+
+### Other external WordPress skill references
+
+For general WP capabilities this framework doesn't already own an abstraction for, the same repo has a few more worth consulting on demand rather than vendoring wholesale: `wp-performance`, `wp-wpcli-and-ops`, `wp-playground`. **Do not** pull in `wp-block-development` or `wp-block-themes` — they teach native Gutenberg blocks and `theme.json`, both of which TAW replaces with its own MetaBlock/Block system and Vite pipeline; following them would actively fight this framework's conventions.
 
 ---
 
@@ -1515,3 +1530,4 @@ echo Image::render($card_image_id, 'large');
 - Look for `TAW\Core`, `TAW\Helpers`, or `TAW\CLI` classes in `inc/` — they live in `vendor/taw/core/src/`
 - Reference `TAW\Core\Framework` — it moved to `TAW\Helpers\Framework`
 - Reference `TAW\Core\BaseBlock` / `TAW\Core\MetaBlock` / `TAW\Core\Block` etc. without the `Block\` sub-namespace — e.g. use `TAW\Core\Block\MetaBlock`
+- Install `wp-block-development` or `wp-block-themes` from WordPress/agent-skills — they teach native Gutenberg blocks/`theme.json`, which conflicts with TAW's own MetaBlock/Block and Vite conventions

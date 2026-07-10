@@ -91,3 +91,7 @@ Visual Editor:
 Asset helpers:
 - Use ViteLoader::assetUrl('resources/fonts/Name.woff2') — not vite_asset_url()
 - Use ViteLoader::isDevServerRunning() — not vite_is_dev()
+
+Static analysis:
+- composer run phpstan — level 5, Blocks/ + inc/ only, WordPress-aware via szepeviktor/phpstan-wordpress, runs in CI
+- Prefer fixing types over adding ignoreErrors entries

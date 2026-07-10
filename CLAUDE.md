@@ -5,6 +5,7 @@
 > **`taw/core` framework reference (source of truth for framework APIs):** https://github.com/Relmaur/taw-core#readme — fetch when you need authoritative detail on any framework API. When this file and the `taw/core` README disagree, `taw/core` wins. Separate repo/update path from `taw-theme` — see `composer update taw/core`.
 > **Live doc lookup:** prefer the `mcp__taw-docs__search_documentation` MCP tool (if available) over fetching docs by hand — it's a hybrid semantic+keyword search over the current indexed docs.
 > Full online documentation: https://taw.mlizardo.com/
+> **External WordPress skill references (use, don't vendor):** for general WP capabilities TAW doesn't already own an abstraction for, consult specific skills from https://github.com/WordPress/agent-skills — `wp-phpstan` (static analysis, now set up — see below), `wp-performance`, `wp-wpcli-and-ops`, `wp-playground`. Do **not** pull in `wp-block-development` or `wp-block-themes` — those teach native Gutenberg blocks and `theme.json`, which TAW replaces with its own MetaBlock/Block system and Vite pipeline; following them would fight this framework's conventions.
 
 ## Project
 
@@ -23,6 +24,7 @@ php bin/taw make:block Name --type=meta --group=sections     # Scaffold inside a
 php bin/taw export:block Name                                # Export block as ZIP
 php bin/taw import:block path/to/Block.zip                   # Import block from ZIP
 php bin/taw inspect --json                                   # Live registry dump: blocks, fields, forms, taw/core version — prefer this over grepping Blocks/ by hand
+composer run phpstan                                          # Static analysis (Blocks/, inc/) — also runs in CI
 ```
 
 ## Core Architecture
@@ -139,6 +141,16 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 1. **CLI (preferred):** `php bin/taw make:block Name --type=meta --with-style`, then `composer dump-autoload`
 2. **Manual:** Create `Blocks/{Name}/{Name}.php` and `Blocks/{Name}/index.php` — auto-discovered, no `functions.php` changes
 
+## Static Analysis
+
+PHPStan (level 5) analyzes `Blocks/` and `inc/` only — `vendor/` and `public/build/` are excluded. Config is `phpstan.neon`, loading WordPress core stubs via `szepeviktor/phpstan-wordpress` so `add_action`, `WP_Query`, etc. resolve correctly instead of erroring as unknown functions/classes.
+
+```bash
+composer run phpstan   # also runs in CI on every push/PR
+```
+
+If a WordPress- or taw/core-specific pattern produces a false positive, prefer fixing the type (see the `wp-phpstan` skill's `references/wordpress-annotations.md` at https://github.com/WordPress/agent-skills) over adding an `ignoreErrors` entry. If an entry is unavoidable, keep it narrow and comment why. Don't introduce a `phpstan-baseline.neon` for new errors — only pre-existing legacy code would ever warrant one, and this repo currently has none.
+
 ## CSS Studio (Development)
 
 - **Toggle:** WP Admin → TAW Settings → Developer Tools → Enable CSS Studio
@@ -162,3 +174,4 @@ Templates in `mails/html/{name}.html` (or `mails/{name}.mjml` compiled at runtim
 - Don't manually instantiate `SubmissionsHandler` in `functions.php` — it's auto-wired by `Theme::boot()`
 - Don't register Forms inside templates — the AJAX handler won't exist when `admin-ajax.php` processes the submission
 - Don't wire up `ThemeUpdater` on a client site with customizations — it does full theme-zip replacement, which would wipe `Blocks/` and every `inc/` file. Use the `update-theme` skill instead
+- Don't install `wp-block-development` or `wp-block-themes` from WordPress/agent-skills — they teach native Gutenberg blocks/`theme.json`, which conflicts with TAW's own MetaBlock/Block and Vite conventions

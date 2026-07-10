@@ -28,9 +28,14 @@
         "post-create-project-cmd": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
             "npm install --silent"
-        ]
+        ],
+        "phpstan": "phpstan analyse --memory-limit=512M"
     },
     "config": {
         "sort-packages": true
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.2",
+        "szepeviktor/phpstan-wordpress": "^2.0"
     }
 }

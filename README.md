@@ -1148,6 +1148,7 @@ taw-theme/
 | `php bin/taw import:block path/to/Block.zip`         | Import a block from a ZIP                                |
 | `php bin/taw import:block path.zip --group=sections` | Import into a specific group                             |
 | `php bin/taw import:block path.zip --force`          | Overwrite if block already exists                        |
+| `composer run phpstan`                               | Static analysis (`Blocks/`, `inc/`) — also runs in CI     |
 
 ---
 
@@ -1170,7 +1171,7 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 
 **Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.
 
-**CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, and a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug).
+**CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug), and PHPStan (level 5, WordPress-aware via `szepeviktor/phpstan-wordpress`) over `Blocks/` and `inc/`.
 
 **Live documentation lookup** — the `mcp__taw-docs__search_documentation` MCP tool, when available, searches the current framework docs directly rather than requiring a URL guess.
 

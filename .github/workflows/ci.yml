@@ -45,3 +45,6 @@ jobs:
 
       - name: MetaBlock getData() signature check
         run: php bin/ci/check-getdata-signature.php
+
+      - name: PHPStan static analysis
+        run: composer run phpstan

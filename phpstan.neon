@@ -1,0 +1,17 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - Blocks/
+        - inc/
+
+    excludePaths:
+        - vendor/
+        - node_modules/
+        - public/build/
+
+    ignoreErrors:
+        # taw/core registers blocks/fields via magic array shapes the WP
+        # stubs can't see — narrow, documented exceptions only, never blanket.

@@ -118,6 +118,10 @@ Templates live in `mails/html/{name}.html` (production) or `mails/{name}.mjml` (
 - Self-hosted fonts live in `resources/fonts/`; `@font-face` goes in `resources/scss/_fonts.scss`, used via `@use 'fonts'` in `app.scss` only
 - Use `ViteLoader::assetUrl('resources/fonts/Name.woff2')` to resolve font/asset paths in both dev and prod — never `vite_asset_url()` or `vite_is_dev()`
 
+## Static Analysis
+
+`composer run phpstan` — level 5, `Blocks/` + `inc/` only, WordPress-aware via `szepeviktor/phpstan-wordpress`. Runs in CI. Prefer fixing types over adding `ignoreErrors`.
+
 ## When generating code
 
 - New blocks: extend `TAW\Core\Block\MetaBlock` or `TAW\Core\Block\Block`, follow the naming convention exactly
