@@ -151,6 +151,18 @@ composer run phpstan   # also runs in CI on every push/PR
 
 If a WordPress- or taw/core-specific pattern produces a false positive, prefer fixing the type (see the `wp-phpstan` skill's `references/wordpress-annotations.md` at https://github.com/WordPress/agent-skills) over adding an `ignoreErrors` entry. If an entry is unavoidable, keep it narrow and comment why. Don't introduce a `phpstan-baseline.neon` for new errors — only pre-existing legacy code would ever warrant one, and this repo currently has none.
 
+## WP-CLI — live site data access
+
+`bin/taw` scaffolds/introspects the *framework* (blocks, fields, forms). For live *content* (posts, options, users, `wp eval`, `wp shell`), use WordPress's own `wp` CLI — a host-level tool, not bundled by this theme, but present on virtually every real host and local dev environment.
+
+```bash
+wp post list --post_type=page --fields=ID,post_title,post_status
+wp option get siteurl
+wp eval 'echo home_url();'
+```
+
+**Local by Flywheel:** a bare `wp` command fails with a DB connection error even though the site works in-browser — `wp-config.php`'s `DB_HOST` is `localhost`, but Local runs a per-site MySQL instance on its own Unix socket. Fix: `php -d mysqli.default_socket=<socket> -d pdo_mysql.default_socket=<socket> "$(which wp)" ...`. Full walkthrough (finding the right socket when multiple Local sites are running) in AGENTS.md.
+
 ## CSS Studio (Development)
 
 - **Toggle:** WP Admin → TAW Settings → Developer Tools → Enable CSS Studio

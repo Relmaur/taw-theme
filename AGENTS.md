@@ -999,6 +999,42 @@ Search for posts across post types. Powers the `post_selector` metabox field typ
 
 ---
 
+## WP-CLI — live site data access
+
+`bin/taw` (below) is for framework-specific scaffolding — blocks, live registry introspection. It knows nothing about actual site *content*. For that, use WordPress's own official CLI, **WP-CLI** (the `wp` command) — it's not bundled by this theme (it's a host-level tool, present on virtually every real WordPress host and every local dev environment: Local, Herd, DDEV), but it's the single highest-leverage tool an agent has for reading or mutating live site data directly: posts, options, users, terms, transients, arbitrary PHP via `wp eval`/`wp eval-file`, even an interactive `wp shell`.
+
+```bash
+wp post list --post_type=page --fields=ID,post_title,post_status
+wp option get siteurl
+wp option get _taw_company_phone   # OptionsPage-backed option, prefix per Metabox field convention
+wp user list --fields=ID,user_login,roles
+wp eval 'echo home_url();'
+wp db query "SELECT COUNT(*) FROM wp_posts WHERE post_status='publish'"
+```
+
+> **Warning — Local by Flywheel connection quirk:** `wp-config.php`'s `DB_HOST` is `localhost`, but Local runs a per-site MySQL instance on its own Unix socket, not the system default. A bare `wp` command fails with `Error establishing a database connection` even though the site works fine in the browser. Fix by pointing PHP's own socket setting at Local's actual socket, not `wp-config.php`:
+>
+> ```bash
+> # Find the running mysqld's socket path for this site — Local names run
+> # dirs by an opaque site ID, not the site's human name, so verify which
+> # one is the right site if more than one Local site is running:
+> ps aux | grep mysqld
+> # → .../Local/run/<SITE_ID>/conf/mysql/my.cnf
+>
+> SOCK="$HOME/Library/Application Support/Local/run/<SITE_ID>/mysql/mysqld.sock"
+> php -d mysqli.default_socket="$SOCK" -d pdo_mysql.default_socket="$SOCK" \
+>   "$(which wp)" post list --path=/path/to/site/app/public
+> ```
+>
+> If more than one Local site is running and it's unclear which socket belongs to which, query each candidate directly: `mysql --socket="$SOCK" -uroot -proot -e "SELECT option_value FROM wp_options WHERE option_name='siteurl';" local`.
+
+Two things worth knowing before relying on this for troubleshooting:
+
+- **`ViteLoader::isDevServerRunning()` is safe under WP-CLI** — the actual dev-server probe only runs on `wp_enqueue_scripts`, which doesn't fire for most `wp` commands (`option get`, `post list`, `eval`, etc.), so there's no wasted network probing per command.
+- **`Theme::bootstrapFullSite()` defers textdomain loading and `inc/options.php`'s require to `after_setup_theme`** (fixed in `taw/core` v1.16.67) specifically because WordPress 6.7+ added a `WP_DEBUG`-only notice for translation calls that fire too early — this is exactly the kind of runtime-ordering bug that's invisible to PHPStan (it's about hook firing order, not types) and was only caught by actually running the site through `wp eval` and reading the debug output.
+
+For general WP-CLI operations beyond this framework's scope, see the `wp-wpcli-and-ops` skill in [WordPress/agent-skills](https://github.com/WordPress/agent-skills).
+
 ## CLI Tools
 
 Provided by `taw/core` (namespace `TAW\CLI`). Powered by Symfony Console. Entry point: `bin/taw`.
