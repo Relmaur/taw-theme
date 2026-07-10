@@ -1166,12 +1166,13 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 - **`make-metablock`** — "add a pricing table section" → a fully wired MetaBlock (class, metabox fields, template, styles)
 - **`build-page`** — "build a homepage with hero, features, and a contact form" → an entire page assembled from existing and newly-scaffolded blocks
 - **`figma-to-block`** — "implement this Figma design" → a block whose markup and metabox fields match the design, driven by the Figma MCP tools
+- **`populate-content`** — "fill in the team_members repeater on the About page with this list" → writes real field values via `fields:set`, with mandatory dry-run previews and confirmation before any risky write (see `AGENTS.md` § "Content-writing safety model")
 - **`update-theme`** — "update the theme" → copies a small, precisely-delimited set of framework-owned paths (`functions.php`, `.claude/skills/`, `bin/`, CI config) from the canonical `taw-theme` repo, direct file sync, no merge, no shared git history needed, never touching your `Blocks/`, templates, or content
 - **`studio`** — applies live CSS Studio visual edits back into source
 
 **Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.
 
-**Direct field read/write** — `php bin/taw fields:get`/`fields:set` let an agent read or write any Metabox/OptionsPage field's value directly, sanitized with the exact same rules as a real admin form save — no hand-encoding a repeater's JSON shape, no guessing which sanitizer applies to which field type. This is what turns "build this page from a Figma design" into something that can also populate the content, not just scaffold empty fields.
+**Direct field read/write** — `php bin/taw fields:get`/`fields:set` let an agent read or write any Metabox/OptionsPage field's value directly, sanitized with the exact same rules as a real admin form save — no hand-encoding a repeater's JSON shape, no guessing which sanitizer applies to which field type. This is what turns "build this page from a Figma design" into something that can also populate the content, not just scaffold empty fields. Writing content is inherently higher-stakes than scaffolding it, so every skill that writes via this primitive follows a mandatory dry-run + confirmation model — see `AGENTS.md` § "Content-writing safety model".
 
 **CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug), and PHPStan (level 5, WordPress-aware via `szepeviktor/phpstan-wordpress`) over `Blocks/` and `inc/`.
 

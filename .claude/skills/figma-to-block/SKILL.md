@@ -58,7 +58,19 @@ Additional Figma-specific rules for the template:
 - **Fonts:** if the design specifies a typeface not already self-hosted in `resources/fonts/`, don't block on it — fall back to the closest Tailwind generic stack (`font-serif` / `font-sans` / `font-mono`) and leave a comment noting the exact intended typeface and pointing at `AGENTS.md`'s font-loading convention (`resources/fonts/` + `_fonts.scss` + preload hint) for the user to add it for pixel-exact results. Ask if they want you to source and wire up the webfont now instead.
 - **Don't force-fit an existing shared component** (e.g. a generic `Button` block) whose current styling doesn't match the design — hand-code the markup for this section rather than distorting a shared component's visuals for one caller, unless the user asks you to update the shared component itself.
 
-## Step 6 — Verify
+## Step 6 — Ask about content population
+
+**If `build-page` invoked this skill and already supplied a population answer for the whole page, use that instead of asking again** — don't re-ask per section when the page-level decision already covers it.
+
+Once the block is wired into a page and a target post exists, ask the user which they want:
+
+1. **Populate real values extracted from the Figma design** — the exact text runs pulled in Step 3, via `populate-content`. This is a real content write — `populate-content` applies the full confirmation/dry-run safety model from `AGENTS.md` § "Content-writing safety model"; the fact that the copy came from an approved design doesn't skip that.
+2. **Leave fields empty and rely on template fallbacks** — verify the template actually renders sensibly when empty rather than showing visibly broken markup.
+3. **Fill with Lorem Ipsum placeholder content** — also a real write via `populate-content`, but generic placeholder text/rows shaped like the real fields (matching repeater row counts) rather than the design's actual copy.
+
+If there's no target post yet, say so and defer this question until the block is actually wired into a page with a real post behind it.
+
+## Step 7 — Verify
 
 Standard `make-metablock` verify steps apply (site loads, `php -l`, `composer dump-autoload`), plus, since real data won't exist in the DB yet for a brand-new block:
 
@@ -74,3 +86,4 @@ Standard `make-metablock` verify steps apply (site loads, `php -l`, `composer du
 - Don't silently reuse a same-purpose block whose visuals don't actually match the design.
 - Don't skip `make-metablock`'s `getData(int|false $postId): array` signature check — it's the same site-wide-fatal risk here.
 - Don't leave temporary test wiring (queue/render calls added purely to verify) in a page template — revert it after checking.
+- Don't populate real content from the design without asking the three-way question in Step 6 first, and don't skip `populate-content`'s dry-run/confirmation safety model just because the content came from an approved design.

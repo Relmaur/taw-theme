@@ -3,13 +3,14 @@ name: make-metablock
 description: >
     Scaffolds and fully implements a new TAW MetaBlock (or presentational Block) end-to-end —
     class, metabox fields, template, and optional styles — from a plain-language description
-    of a page section (e.g. "a pricing table with 3 tiers" or "a testimonial carousel").
-argument-hint: "<section description, e.g. 'hero with heading, tagline, background image, two CTAs'>"
+    of a page section (e.g. "a pricing table with 3 tiers" or "a testimonial carousel"), or from
+    a pasted/attached screenshot of a reference design.
+argument-hint: "<section description, e.g. 'hero with heading, tagline, background image, two CTAs'> [+ optional screenshot]"
 ---
 
 ## Overview
 
-This skill turns a short description of a page section into a working TAW block: the PHP class, its metabox field config, the render template, and (if needed) styles — following the exact conventions in `AGENTS.md`. Use it any time the user asks to add a new section/block, not just when they say "metablock" literally.
+This skill turns a short description of a page section — or a pasted/attached screenshot of one — into a working TAW block: the PHP class, its metabox field config, the render template, and (if needed) styles — following the exact conventions in `AGENTS.md`. Use it any time the user asks to add a new section/block, not just when they say "metablock" literally. If the user instead provides a `figma.com` URL, use `figma-to-block` instead — it pulls exact design tokens and asset URLs a screenshot can't provide.
 
 **Source of truth:** `AGENTS.md` in the repo root — specifically the "Common Section Catalog" (canonical field configs for Hero, Features, Testimonials, Pricing Table, CTA, Team, FAQ, Contact, Stats, Logo Bar) and "Creating a New MetaBlock" sections. Read those before generating fields for a new block. When in doubt about a framework API (field type option, `Metabox` config key), check the `mcp__taw-docs__search_documentation` MCP tool first if available (fastest, always current), otherwise fetch the `taw/core` README (https://github.com/Relmaur/taw-core#readme) — either wins over anything cached here.
 
@@ -44,6 +45,8 @@ For anything not in the catalog, design fields from scratch using the same idiom
 - Use `tabs` if the block ends up with more than ~8 top-level fields, grouping by concern (e.g. Content / Media / CTA)
 
 Full field type list and options: `AGENTS.md` § "The Metabox Framework", or the `taw/core` README § Metabox System.
+
+**If a screenshot was provided instead of (or alongside) a text description**, read it the same way `figma-to-block` reads a Figma node: identify distinct text runs (headings, body copy, button labels) as candidate fields, repeated similar elements (cards, list items) as `repeater` candidates, and images as `image`/`files` fields. Note the actual visible copy from the screenshot — you'll need it in Step 8 if the user wants real content populated, not just the field shape. A screenshot has no exact design tokens (colors/spacing) the way a Figma node's reference code does — approximate visually and say so, rather than presenting a guess as exact.
 
 ## Step 4 — Scaffold
 
@@ -91,7 +94,19 @@ Edit `Blocks/SectionName/style.scss` (preferred) or `style.css`. Both are auto-d
 
 If the user also wants this section placed on a page, hand off to the page-assembly workflow: queue it with `BlockRegistry::queue('section_name', ...)` before `get_header()` and render it with `BlockRegistry::render('section_name')` in the right position in the page template. See the `build-page` skill or `AGENTS.md` § "Building a Page — AI Playbook" for full template conventions.
 
-## Step 9 — Verify
+## Step 9 — If sourced from a screenshot, ask about content population
+
+**Skip this step for a plain-text-description request** — it only applies when a screenshot (or other reference image) supplied the field content in Step 3. **If `build-page` invoked this skill and already supplied a population answer for the whole page, use that instead of asking again** — don't re-ask per block when the page-level decision already covers it.
+
+Once the block is wired into a page (Step 8) and a target post exists, ask the user which they want:
+
+1. **Populate real values extracted from the screenshot** — hand off to `populate-content` with the actual copy you read off the image in Step 3. This is a real content write — `populate-content` applies the full confirmation/dry-run safety model from `AGENTS.md` § "Content-writing safety model"; don't skip or shortcut that because the content "obviously" matches the source.
+2. **Leave fields empty and rely on template fallbacks** — verify the template actually has sensible fallback rendering for empty fields (Step 6's guard-clause guidance) rather than rendering visibly broken/empty markup.
+3. **Fill with Lorem Ipsum placeholder content** — also a real write via `populate-content` (so the admin/preview looks populated for a demo), but using generic placeholder text/rows shaped like the real fields (matching repeater row counts, roughly matching text lengths) rather than the screenshot's actual copy.
+
+If there's no target post yet (the block hasn't been wired into a page, or the page doesn't have a post created), say so and defer this question until one exists — don't populate content against a post that doesn't exist yet.
+
+## Step 10 — Verify
 
 - Confirm the folder name, class name, and `$id` all agree.
 - Run `composer dump-autoload` if it wasn't already run by the CLI.
@@ -122,3 +137,4 @@ Don't add this by default — only when asked — to avoid cluttering ordinary b
 - Don't call `wp_enqueue_style`/`wp_enqueue_script` directly for block assets.
 - Don't hand-roll a field type the catalog or `taw/core` README already documents — reuse it (e.g. don't build a custom repeater-of-links when `group` + `repeater` composition already covers it).
 - Don't forget `composer dump-autoload` after adding a new class file manually (the CLI does this for you).
+- Don't populate real content from a screenshot without asking the three-way question in Step 9 first, and don't skip `populate-content`'s dry-run/confirmation safety model even when the source content "obviously" matches — those gates exist specifically to catch what looks obvious but isn't.

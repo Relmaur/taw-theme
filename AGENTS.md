@@ -1113,6 +1113,19 @@ For a group sub-field, use the compound ID exactly as `inspect` reports it (e.g.
 
 This is the "populate the content" half of a design-to-page pipeline: `figma-to-block`/`make-metablock` scaffold the block and its empty fields, `fields:set` fills them in.
 
+### Content-writing safety model
+
+`fields:set` itself has no interactive confirmation — it's a raw primitive, usable from scripts, not just an AI agent, so it always does exactly what it's told. **All risk judgment belongs to whichever skill or agent is calling it**, the same way git-push confirmation is a project policy enforced by the agent, not by `git` itself. Any skill that writes content via `fields:set` (`populate-content`, and the population step in `make-metablock`/`figma-to-block`/`build-page`) follows this model:
+
+1. **Always `--dry-run` first.** Never call `fields:set` for real without having already seen the sanitized preview. This also catches sanitizer surprises (stripped tags, coerced types) before they're written.
+2. **Always confirm before overwriting a non-empty existing value.** Read the current value with `fields:get` first; if it's non-empty, show the user old vs. new side by side and get explicit confirmation before writing — never silently clobber existing content, even placeholder-looking content (it may be real).
+3. **Always confirm before writing to a `publish`-status post**, regardless of whether the field is currently empty — a live, publicly-visible post is inherently higher-stakes than a draft. Check post status first (`wp post list --post__in=<id> --field=post_status`, or `wp eval`).
+4. **Batch operations get one confirmation for the whole plan, not one per field.** Show every post/field/value that will change before writing any of them — don't ask N times for N fields, and don't start writing before the whole batch has been shown and approved.
+5. **Flag raw-HTML-permitting fields specifically** (`wysiwyg`, or any field with `'sanitize' => 'code'`) when the source content comes from outside this conversation (a pasted document, a fetched file) — `wp_kses_post()` is deliberately permissive, so confirm the content is trusted before writing it, even if the field is currently empty.
+6. **Low-risk, still worth a quick confirmation but without heavy ceremony:** a brand-new empty field on a draft/unpublished post, freshly scaffolded earlier in the same session, populated with content that matches the same source (design/document) the user already approved when asking for the block/page to be built.
+7. **Never touches core post data.** `fields:set` only ever writes Metabox/OptionsPage meta — it never touches `post_title`, `post_content`, `post_status`, or anything else on the `wp_posts` row itself. If a request implies changing those too, say so explicitly and treat it as a separate, higher-risk action (e.g. `wp post update`) requiring its own confirmation — don't fold it into a `fields:set` plan silently.
+8. **No wildcard/glob mass-edits.** Every post ID and field a batch operation will touch must be enumerated and shown to the user up front — never "every page matching X" without listing what that actually resolves to first.
+
 ---
 
 ## Image Helper

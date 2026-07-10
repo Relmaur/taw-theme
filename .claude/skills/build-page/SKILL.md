@@ -2,16 +2,17 @@
 name: build-page
 description: >
     Assembles a full WordPress page template out of TAW blocks from either a plain-language
-    brief (e.g. "homepage with hero, features, testimonials, pricing, and a contact form") or
-    a Figma page/frame URL (e.g. "build this page from this Figma design"). Reuses existing
-    blocks where possible, creates missing ones, and wires up the page template with correct
-    queue/render ordering.
-argument-hint: "<page description OR figma.com/design/... URL covering multiple sections>"
+    brief (e.g. "homepage with hero, features, testimonials, pricing, and a contact form"), a
+    Figma page/frame URL (e.g. "build this page from this Figma design"), or a pasted/attached
+    screenshot. Reuses existing blocks where possible, creates missing ones, wires up the page
+    template with correct queue/render ordering, and — for a design-sourced brief — asks once
+    whether to populate real content, leave fallbacks, or use Lorem Ipsum.
+argument-hint: "<page description OR figma.com/design/... URL OR screenshot covering multiple sections>"
 ---
 
 ## Overview
 
-This skill fulfills requests like *"I need a homepage with a hero, features, and a contact section"* — the exact scenario `AGENTS.md` § "Building a Page — AI Playbook" is written for — **and** requests like *"build this page from this Figma design"* where a design file is the source of truth instead of a text description. It orchestrates section-by-section decisions and produces a working page template, delegating individual block creation to `make-metablock` (text-brief sections) or `figma-to-block` (design-sourced sections).
+This skill fulfills requests like *"I need a homepage with a hero, features, and a contact section"* — the exact scenario `AGENTS.md` § "Building a Page — AI Playbook" is written for — **and** requests like *"build this page from this Figma design"* or *"build this page from this screenshot"* where a design is the source of truth instead of a text description. It orchestrates section-by-section decisions and produces a working page template, delegating individual block creation to `make-metablock` (text-brief or screenshot sections) or `figma-to-block` (Figma-sourced sections), and content population to `populate-content`.
 
 **Source of truth:** `AGENTS.md` § "Building a Page — AI Playbook" and § "Common Section Catalog" for the text-brief path. The Figma file itself (via the MCP tools) for the design-sourced path. Read the relevant one before starting — this skill is the procedural wrapper, not a replacement for either. For framework API questions along the way, prefer `mcp__taw-docs__search_documentation` (if available) over fetching docs by hand.
 
@@ -21,6 +22,10 @@ This skill fulfills requests like *"I need a homepage with a hero, features, and
 
 **Figma brief:** If given a `figma.com` URL, extract `fileKey`/`nodeId` and call `get_metadata` on the target node (or omit `nodeId` to list top-level pages first, if the URL points at the whole file rather than one page). Read the child frame names to identify section boundaries — in Figma files built for this kind of work, top-level section frames are typically named descriptively (e.g. `Section - II. Value Proposition`); use those names and their rendering order as your section list. Don't call `get_design_context` on every section yet — that happens per-section inside `figma-to-block` in Step 2. If the file contains multiple alternative page proposals (e.g. several full homepage variants), confirm with the user which one to build before proceeding.
 
+**Screenshot brief:** Same as a Figma brief, but reading section boundaries visually from a pasted/attached image instead of Figma's frame tree — identify distinct visual sections top to bottom and treat each as a section, same as above.
+
+**If this is a Figma or screenshot brief, ask the content-population question once, for the whole page, right here** — don't let each section ask it separately later: populate real extracted content, leave fields as fallbacks, or fill with Lorem Ipsum. Carry the answer through Step 2 so `make-metablock`/`figma-to-block` don't re-ask it per section.
+
 ## Step 2 — Resolve each section against existing blocks
 
 For every section in the list:
@@ -29,7 +34,7 @@ For every section in the list:
 2. If found, reuse it as-is — do not recreate.
 3. If not found:
    - **Text brief** → invoke **`make-metablock`** for that section, passing its description.
-   - **Figma brief** → invoke **`figma-to-block`** for that section, passing the section frame's `fileKey`/`nodeId`.
+   - **Figma/screenshot brief** → invoke **`figma-to-block`** (or `make-metablock` for a screenshot) for that section, passing the section frame's `fileKey`/`nodeId` (or the relevant crop of the screenshot) **and the population answer from Step 1** — tell it not to ask its own per-block population question, since this skill already asked once for the whole page.
    Batch this: identify *all* missing blocks first, then create them, rather than interleaving discovery and creation section-by-section.
 
 Keep a running map of `section name → block id` (the `$id` property, used for `queue()`/`render()`) as you go — you'll need it for the template.
@@ -78,11 +83,22 @@ Rules:
 - The `render()` call order determines both visual order on the page and, if `MetaboxOrder::lockFromTemplate()` is active (see `AGENTS.md` § "The Metabox Framework" → "Locking Metabox Order"), the metabox order in wp-admin — so section order in the template is not cosmetic, it drives the editing UI too.
 - Don't add manual `wp_enqueue_style`/`wp_enqueue_script` calls — blocks self-enqueue via the queue/render pattern.
 
-## Step 5 — No functions.php changes
+## Step 5 — Populate content (Figma/screenshot brief only)
+
+Skip this step entirely for a text brief with no design-sourced content to populate.
+
+If Step 1's population answer was "populate real values" or "Lorem Ipsum", resolve the actual target WP post now:
+
+- If the Page post this template will render for already exists (matching slug/ID per Step 3), use it.
+- If it doesn't exist yet, tell the user a Page post needs to be created before content can be populated (this skill writes the *template*, not page content) and ask whether to create it now (`wp post create` or similar) or defer population until they create it themselves.
+
+Once a target post id exists, invoke `populate-content` **once per section**, passing the population choice from Step 1 and the copy/placeholder content each section's `make-metablock`/`figma-to-block` invocation already gathered — don't re-extract it. `populate-content` owns the actual dry-run/confirmation flow per `AGENTS.md` § "Content-writing safety model"; this skill doesn't shortcut that by batching all sections into one silent write.
+
+## Step 6 — No functions.php changes
 
 `BlockLoader::loadAll()` auto-discovers every block in `Blocks/*/`. Never manually register blocks in `functions.php`. The only thing that might belong in `functions.php` is `MetaboxOrder::lockFromTemplate()` (already present in this project) — don't touch it unless asked.
 
-## Step 6 — Verify
+## Step 7 — Verify
 
 - Confirm every queued block id matches an actual `$id` property in `Blocks/*/*.php`. `php bin/taw inspect` reports the live registered block ids/fields if you want to double-check without reading source.
 - Run `php bin/ci/check-getdata-signature.php` — same check CI runs, catches the `getData(int|false $postId)` signature bug across every block in the project in one shot.
@@ -109,5 +125,6 @@ Don't add this by default — only when asked.
 - Don't create a new block for a section that already exists under a different name without checking first.
 - Don't reorder existing, unrelated sections in a template the user didn't ask you to touch.
 - Don't skip `make-metablock`'s or `figma-to-block`'s own conventions (naming, field catalog, escaping, signature checks) when creating missing blocks — this skill delegates block creation, it doesn't duplicate that logic.
-- Don't fix unrelated fatal errors you discover in `Blocks/*/*.php` while verifying without telling the user first — flag it and get confirmation before touching code outside the scope of the request (see Step 6), even though the bug may be blocking your own verification.
+- Don't fix unrelated fatal errors you discover in `Blocks/*/*.php` while verifying without telling the user first — flag it and get confirmation before touching code outside the scope of the request (see Step 7), even though the bug may be blocking your own verification.
+- Don't skip the page-level population question (Step 1) for a Figma/screenshot brief, and don't let `populate-content`'s per-section confirmation gates get silently batched away — every section's write still needs its own dry-run/confirmation per `AGENTS.md`'s safety model.
 - For a Figma brief, don't skip straight to full `get_design_context` calls for every section up front — get the section list cheaply via `get_metadata` first, confirm scope with the user if the file has multiple page variants, then pull full context per-section only once you're actually building it.
