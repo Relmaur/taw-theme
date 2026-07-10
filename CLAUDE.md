@@ -98,9 +98,11 @@ public static function boot(): void
 Form::display('contact');
 ```
 
-Field types: `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid), `conditions`. Also supports multi-step forms (`steps` key), AND/OR conditional logic, email delivery (`email` key), and structural fields (`heading`, `divider`, `html`). See AGENTS.md or taw/core README for full config.
+Field types: `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid), `conditions`, and validation rules (`min_length`, `max_length`, `pattern`, `min`/`max`). Also supports multi-step forms (`steps` key), AND/OR conditional logic, email delivery (`email` key), and structural fields (`heading`, `divider`, `html`). See AGENTS.md or taw/core README for full config.
 
 `TAW\Core\Form\SubmissionsHandler` — auto-wired by `Theme::boot()`, no manual instantiation needed.
+
+**Security, all built in:** CSRF nonce + honeypot always on. Rate limiting on by default (5/60s per IP+form; `'rate_limit' => [...]` to override, `false` to disable). Cloudflare Turnstile opt-in via `'turnstile' => true` + `TAW_TURNSTILE_SITE_KEY`/`TAW_TURNSTILE_SECRET_KEY` constants in `wp-config.php` — never as an OptionsPage field, that's REST-readable.
 
 ## Mail
 

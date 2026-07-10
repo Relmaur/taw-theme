@@ -812,7 +812,28 @@ Then render in a template:
 Form::display('contact');
 ```
 
-**Form field types:** `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid %, e.g. `50`), `rows` (textarea), `conditions`.
+**Form field types:** `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid %, e.g. `50`), `rows` (textarea), `conditions`, and validation rules (`min_length`, `max_length`, `pattern`, `min`/`max` on `number` fields — see Security below).
+
+### Form security
+
+Every form has CSRF (nonce) protection and honeypot spam filtering by default. Two more layers, both opt-in/configurable:
+
+- **Rate limiting** — on by default (5 attempts/60s per IP+form, transient-backed, no external cache). Override with `'rate_limit' => ['max' => 3, 'window' => 120]`, or disable with `'rate_limit' => false`.
+- **Cloudflare Turnstile** — opt in with `'turnstile' => true`, requires `TAW_TURNSTILE_SITE_KEY`/`TAW_TURNSTILE_SECRET_KEY` constants defined in `wp-config.php` (never as an OptionsPage field — that's REST-readable by anyone with `edit_posts`). Without keys configured, an opted-in form degrades gracefully (no widget, no check) rather than blocking submission, with a `WP_DEBUG`-only notice for developers.
+
+```php
+Form::register([
+    'id'         => 'contact',
+    'rate_limit' => ['max' => 3, 'window' => 120],
+    'turnstile'  => true,
+    'fields' => [
+        ['id' => 'name',  'label' => 'Name',  'type' => 'text', 'required' => true, 'min_length' => 2, 'max_length' => 80],
+        ['id' => 'phone', 'label' => 'Phone', 'type' => 'tel', 'pattern' => '[0-9+ ()-]{7,20}', 'pattern_message' => 'Enter a valid phone number.'],
+    ],
+]);
+```
+
+Validation rules run server-side (the authoritative check) and also render as native HTML `minlength`/`maxlength`/`pattern`/`min`/`max` attributes for client-side UX — the HTML attributes are a convenience, not a security boundary. An empty, non-required field never fails these.
 
 If `email.to_self.template` and `email.to_client.template` are both set, delivery uses `Mailer` + `MailTemplate`. Otherwise falls back to a plain-text `wp_mail()`.
 

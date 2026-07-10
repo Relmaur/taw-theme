@@ -811,7 +811,9 @@ Form::display('contact');
 ['type' => 'html', 'content' => '<p class="text-sm text-gray-500">All fields marked * are required.</p>'],
 ```
 
-All input fields accept: `id`, `label`, `type`, `required`, `placeholder`, `width`, and `conditions`. All fields (including structural) accept `width` for column placement.
+All input fields accept: `id`, `label`, `type`, `required`, `placeholder`, `width`, `conditions`, and validation rules (`min_length`, `max_length`, `pattern` + `pattern_message`, `min`/`max` on `number` fields). All fields (including structural) accept `width` for column placement.
+
+**Security, all built in:** CSRF (nonce) and honeypot spam filtering are always on, no configuration needed. Rate limiting is on by default too — 5 attempts/60 seconds per IP+form, backed by WP transients (no Redis needed) — override with `'rate_limit' => ['max' => 3, 'window' => 120]` or disable with `'rate_limit' => false`. Optional Cloudflare Turnstile bot verification: `'turnstile' => true`, plus `TAW_TURNSTILE_SITE_KEY`/`TAW_TURNSTILE_SECRET_KEY` constants in `wp-config.php` (a secret key belongs in `wp-config.php`, never an OptionsPage field — those are readable via the REST API by anyone with `edit_posts`). An opted-in form without keys configured degrades gracefully — no widget, no check — rather than blocking submission, with a `WP_DEBUG`-only notice for developers.
 
 **Conditional fields — AND / OR logic:** By default all conditions are combined with AND. Add `'relation' => 'any'` to switch to OR:
 
