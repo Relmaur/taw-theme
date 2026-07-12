@@ -1504,7 +1504,7 @@ After adding new block classes, run `composer dump-autoload`.
 
 `php bin/taw sync` (shipped by `taw/core`, see its README for the full command reference) is the scriptable core of the `update-theme` skill — it checks whether the installed `taw/core` version is behind the latest GitHub tag, and whether this project's Tier 1/Tier 2 `taw-theme` scaffold paths (defined once in `taw/core`'s `resources/update-manifest.json`) differ from the canonical repo. It never boots WordPress and never touches `taw/core` itself.
 
-`.github/workflows/framework-sync.yml` runs this unattended on a weekly schedule (`workflow_dispatch` also available for a manual run): bumps `taw/core`, applies Tier 1 changes, runs the exact same verification `ci.yml` runs on every push (`php -l`, the `getData()` signature check, PHPStan), and — only if something actually changed and verification passed — opens a pull request with Tier 2 diffs included in the body for human review. Tier 2 is never written automatically, by either this workflow or `sync --apply`; a human always reviews those diffs before they're applied, same as the interactive `update-theme` skill. Nothing happens (no PR, no noise) when the project is already current.
+`.github/workflows/framework-sync.yml` runs this unattended on a weekly schedule (`workflow_dispatch` also available for a manual run): bumps `taw/core`, applies Tier 1 changes, runs the exact same verification `ci.yml` runs on every push (`php -l`, the `getData()` signature check, PHPStan, and the dynamic smoke test below), and — only if something actually changed and verification passed — opens a pull request with Tier 2 diffs included in the body for human review. Tier 2 is never written automatically, by either this workflow or `sync --apply`; a human always reviews those diffs before they're applied, same as the interactive `update-theme` skill. Nothing happens (no PR, no noise) when the project is already current.
 
 This workflow file is itself Tier 1, so it propagates to every client project automatically via `update-theme` — a project only has to run that skill once to start self-checking forever after. Requires the repo setting **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled (off by default on new repos) for the PR-opening step to succeed — the **`project-init`** skill checks this, enables it with confirmation if it's off, and triggers a real run to verify the whole pipeline actually works rather than assuming it does.
 
@@ -1515,6 +1515,22 @@ This workflow file is itself Tier 1, so it propagates to every client project au
 PHPStan (level 5, config in `phpstan.neon`) analyzes `Blocks/` and `inc/`, loading WordPress core stubs via `szepeviktor/phpstan-wordpress` so core functions/classes (`add_action`, `WP_Query`, etc.) resolve correctly instead of erroring as unknown. Runs in CI on every push/PR alongside the lint and `getData()` signature checks.
 
 Prefer fixing types (accurate `@param`/`@return` PHPDoc for hook callbacks, REST request shapes, query results) over adding `ignoreErrors` entries. When an ignore is unavoidable, scope it narrowly and document why inline. Don't pre-emptively add a `phpstan-baseline.neon` — this repo has none because it's currently clean at level 5; only introduce one if adopting the check on a codebase with pre-existing legacy errors, and treat it as a migration aid to shrink over time, not a permanent suppression file.
+
+---
+
+## Dynamic Smoke Test
+
+The static checks above (lint, the `getData()` signature check, PHPStan) all analyze source text — none of them actually execute a block's render path. `bin/ci/smoke-test.php` does: it boots a real, CI-provisioned WordPress + MySQL install with this theme active, creates one real post, and renders every registered `MetaBlock` and displays every registered `Form` against it, failing loudly on any `Throwable` — the class of bug a static check can't see (an undefined function call, a template referencing a variable `getData()` never returned, WP API misuse).
+
+**Why a real post is required:** `MetaBlock::render(null)` falls back to `get_the_ID()`, which is `false` outside a real post/loop context — it silently no-ops instead of calling `getData()` at all. The smoke test script requires an explicit post ID for exactly this reason; a CI job that "passed" by rendering nothing would be worse than no test at all.
+
+Runs as a separate job in `ci.yml` (and inside `framework-sync.yml`'s verification gate, against the post-sync codebase) — spins up a `mysql:8.0` service container, downloads WordPress core via `wp-cli`, installs it, copies the checked-out repo into `wp-content/themes/`, activates it, creates a test page, then runs:
+
+```bash
+php bin/ci/smoke-test.php /path/to/wp-load.php <post_id>
+```
+
+No `npm run build` is needed for this — `ViteLoader::getManifest()`/`assetUrl()` degrade gracefully when no manifest exists, and `render()` itself never touches asset enqueueing (that's a separate call path via `BlockRegistry::queue()`).
 
 Sourced from the `wp-phpstan` skill in [WordPress/agent-skills](https://github.com/WordPress/agent-skills) — see that skill's `references/wordpress-annotations.md` and `references/third-party-classes.md` for WP-specific typing patterns and how to handle third-party plugin classes if this theme ever needs to integrate with one.
 

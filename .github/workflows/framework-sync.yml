@@ -8,7 +8,8 @@ name: Framework Sync
 #
 # Tier 1 scaffold paths and the taw/core version are applied/bumped
 # automatically and gated behind the same verification CI already runs on
-# every push (php -l, getdata signature check, phpstan). Tier 2 paths
+# every push (php -l, getdata signature check, phpstan, and a real
+# WordPress+MySQL smoke test that renders every block/form). Tier 2 paths
 # (AGENTS.md, README.md, etc.) are never written here — their diffs are
 # only surfaced in the PR body for a human to review and apply by hand.
 #
@@ -27,6 +28,20 @@ jobs:
       contents: write
       pull-requests: write
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_smoke_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=6
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,7 +50,8 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          tools: composer:v2
+          tools: composer:v2, wp-cli
+          extensions: mysqli
           coverage: none
 
       - name: Authenticate composer with GitHub
@@ -81,6 +97,37 @@ jobs:
         if: steps.diff.outputs.changed == 'true'
         run: composer run phpstan
 
+      - name: Install WordPress core (for smoke test)
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          wp core download --path=/tmp/wordpress
+          wp config create --path=/tmp/wordpress \
+            --dbname=wordpress_smoke_test --dbuser=root --dbpass=root --dbhost=127.0.0.1
+          wp core install --path=/tmp/wordpress \
+            --url=http://localhost:8080 --title="CI Smoke Test" \
+            --admin_user=admin --admin_password=admin --admin_email=admin@example.com
+
+      - name: Install and activate this theme (post-sync state)
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          rsync -a --exclude=.git "$GITHUB_WORKSPACE/" /tmp/wordpress/wp-content/themes/ci-theme/
+          wp theme activate ci-theme --path=/tmp/wordpress
+
+      - name: Create a test post
+        if: steps.diff.outputs.changed == 'true'
+        id: smoke_post
+        run: |
+          POST_ID=$(wp post create --path=/tmp/wordpress \
+            --post_type=page --post_title="Smoke Test" --post_status=publish --porcelain)
+          echo "post_id=$POST_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Run block/form smoke test against the post-sync codebase
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          php /tmp/wordpress/wp-content/themes/ci-theme/bin/ci/smoke-test.php \
+            /tmp/wordpress/wp-load.php \
+            ${{ steps.smoke_post.outputs.post_id }}
+
       - name: Build PR body
         if: steps.diff.outputs.changed == 'true'
         id: body
@@ -89,7 +136,7 @@ jobs:
 
           {
             echo "body<<SYNC_PR_BODY_EOF"
-            echo "Automated weekly framework sync — verified against the same checks CI runs on every push (php lint, getData signature check, phpstan) before this PR was opened."
+            echo "Automated weekly framework sync — verified against the same checks CI runs on every push (php lint, getData signature check, phpstan, and a real WordPress smoke test rendering every block/form) before this PR was opened."
             echo ""
             INSTALLED=$(jq -r '.taw_core.installed' "$REPORT")
             LATEST=$(jq -r '.taw_core.latest' "$REPORT")
