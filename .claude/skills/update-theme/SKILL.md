@@ -84,13 +84,23 @@ Writes every changed Tier 1 path directly — no confirmation needed, per the ma
 
 ## Step 3 — Review and apply Tier 2 (confirmation required)
 
-For each `tier2[]` entry with `changed: true` from Step 1's JSON, show the user its `diff` field. Ask whether to apply it — per-file or batched, your judgment, but never apply without the user having seen the diff. For each approved file, fetch the canonical content directly and overwrite:
+For each `tier2[]` entry with `changed: true` from Step 1's JSON, show the user its `diff` field. Ask whether to apply it — per-file or batched, your judgment, but never apply without the user having seen the diff. If declined, skip it and say so explicitly in the final report — don't silently drop it.
+
+**How you apply an approved change depends on the file's shape — two different files need two different treatments:**
+
+**Prose/config files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.windsurfrules`, `README.md`, `vite.config.js`, `phpstan.neon`) — a full-file overwrite is safe once approved, since client-specific additions here are rare and the whole-document diff already showed the user exactly what they're accepting:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Relmaur/taw-theme/main/AGENTS.md -o ./AGENTS.md
 ```
 
-(Swap the path for whichever Tier 2 file was approved.) If declined, skip it and say so explicitly in the final report — don't silently drop it.
+**`composer.json` and `package.json` — never do a full-file overwrite, even if approved.** These are structural manifests where client-specific dependencies (a project's own `mjml`, `swup`, `embla`, `photoswipe`, `alpine-collapse`, etc.) are *additive*, not incidental — a real client project accumulating its own packages over time is the normal, expected case, not drift to be corrected. A whole-file `curl -o` would silently **delete every one of those dependencies**, since they don't exist in the canonical `taw-theme` scaffold's version of the file. Instead:
+
+1. Read the diff line by line and identify only the genuinely framework-relevant changes — e.g. a `taw/core` version constraint bump in `require`, a changed/added `scripts` entry, a PSR-4 `autoload` path change. Ignore every line that's just the client's own dependencies not being present upstream — that's not a real diff to act on, it's structural noise from the two files having different purposes.
+2. If there's nothing framework-relevant in the diff (the common case — it's *only* client-specific deps), tell the user plainly: "this diff is just your own project dependencies not existing in the base scaffold — nothing to apply, this is expected and will keep showing up every run." Don't ask them to re-approve the same non-decision every time `update-theme` runs.
+3. If there genuinely is a framework-relevant line, edit *only that line* into the local file by hand (`Edit` tool, not `curl`/`cp`) — never replace the surrounding file content.
+
+This same principle generalizes: **any Tier 2 file that's a structured manifest (JSON/config with discrete keys) needs a surgical, line-level merge for anything with real additive content — only free-form prose files are safe to treat as all-or-nothing.** `vite.config.js`/`phpstan.neon` are currently simple enough in practice that a full overwrite hasn't caused this problem, but apply the same judgment if a client project ever customizes one of those non-trivially — don't assume the "safe to overwrite" list above is permanently complete just because it's true today.
 
 ## Step 4 — taw/core is a separate decision
 
@@ -109,6 +119,7 @@ If nothing in either tier had upstream changes, say so plainly — "already up t
 - Don't touch, diff, or even read anything outside the two tiers above without asking first.
 - Don't run `git merge`/`git pull` against the whole working tree — this skill deliberately avoids that now.
 - Don't auto-apply Tier 2 changes without showing the diff and getting confirmation.
+- Don't full-file-overwrite `composer.json`/`package.json` (or any other structural manifest) even after approval — surgically edit only the framework-relevant lines; a whole-file replace silently deletes the client's own additive dependencies.
 - Don't hand-roll Tier 1's clone/copy logic — always go through `php bin/taw sync --apply`, so an interactive run and the automated CI workflow never diverge in behavior.
 - Don't run `composer update taw/core` as a silent side effect of this skill — it's a separate, explicitly confirmed action (Step 4).
 - Don't commit the synced changes — leave that decision and action to the user.
