@@ -49,6 +49,7 @@ use TAW\CLI\ImportBlockCommand;
 use TAW\CLI\InspectCommand;
 use TAW\CLI\FieldsGetCommand;
 use TAW\CLI\FieldsSetCommand;
+use TAW\CLI\SyncCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -61,5 +62,6 @@ $app->add(new ImportBlockCommand($themeDir));
 $app->add(new InspectCommand($themeDir));
 $app->add(new FieldsGetCommand($themeDir));
 $app->add(new FieldsSetCommand($themeDir));
+$app->add(new SyncCommand($themeDir));
 
 $app->run();

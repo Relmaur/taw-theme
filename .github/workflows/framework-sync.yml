@@ -1,0 +1,130 @@
+name: Framework Sync
+
+# Weekly drift check against the canonical taw-theme scaffold and the
+# latest taw/core release. This is Tier 1 in the update-theme manifest
+# (resources/update-manifest.json in taw-core) — update-theme propagates
+# this file to every client project automatically, so a project only has
+# to run update-theme once to start self-checking forever after.
+#
+# Tier 1 scaffold paths and the taw/core version are applied/bumped
+# automatically and gated behind the same verification CI already runs on
+# every push (php -l, getdata signature check, phpstan). Tier 2 paths
+# (AGENTS.md, README.md, etc.) are never written here — their diffs are
+# only surfaced in the PR body for a human to review and apply by hand.
+#
+# If nothing has drifted, this workflow does nothing — no PR, no noise.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays, 09:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+          coverage: none
+
+      - name: Authenticate composer with GitHub
+        run: composer config -g github-oauth.github.com "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Bump taw/core to latest
+        run: composer update taw/core --no-interaction --prefer-dist --no-progress
+
+      - name: Run sync check and apply Tier 1
+        id: sync
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORT=$(php bin/taw sync --apply --json)
+          echo "$REPORT" > "$RUNNER_TEMP/sync-report.json"
+          echo "report_path=$RUNNER_TEMP/sync-report.json" >> "$GITHUB_OUTPUT"
+
+      - name: Check for local changes
+        id: diff
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: PHP lint (php -l on every file)
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          find . -name "*.php" \
+            -not -path "./vendor/*" \
+            -not -path "./node_modules/*" \
+            -print0 | xargs -0 -n1 -P4 php -l
+
+      - name: MetaBlock getData() signature check
+        if: steps.diff.outputs.changed == 'true'
+        run: php bin/ci/check-getdata-signature.php
+
+      - name: PHPStan static analysis
+        if: steps.diff.outputs.changed == 'true'
+        run: composer run phpstan
+
+      - name: Build PR body
+        if: steps.diff.outputs.changed == 'true'
+        id: body
+        run: |
+          REPORT="${{ steps.sync.outputs.report_path }}"
+
+          {
+            echo "body<<SYNC_PR_BODY_EOF"
+            echo "Automated weekly framework sync — verified against the same checks CI runs on every push (php lint, getData signature check, phpstan) before this PR was opened."
+            echo ""
+            INSTALLED=$(jq -r '.taw_core.installed' "$REPORT")
+            LATEST=$(jq -r '.taw_core.latest' "$REPORT")
+            BEHIND=$(jq -r '.taw_core.behind' "$REPORT")
+            if [ "$BEHIND" = "true" ]; then
+              echo "### taw/core"
+              echo "Bumped \`$INSTALLED\` → \`$LATEST\`."
+              echo ""
+            fi
+
+            APPLIED=$(jq -r '.applied[]?' "$REPORT")
+            if [ -n "$APPLIED" ]; then
+              echo "### Tier 1 (applied automatically)"
+              echo "$APPLIED" | sed 's/^/- /'
+              echo ""
+            fi
+
+            TIER2_CHANGED=$(jq -r '[.tier2[] | select(.changed == true)] | length' "$REPORT")
+            if [ "$TIER2_CHANGED" -gt 0 ]; then
+              echo "### Tier 2 — review before applying (NOT written by this workflow)"
+              echo "These files differ from the canonical taw-theme repo but were deliberately left untouched — review each diff and apply by hand if appropriate."
+              echo ""
+              jq -r '.tier2[] | select(.changed == true) | "<details><summary>" + .path + "</summary>\n\n```diff\n" + (.diff // "") + "\n```\n\n</details>\n"' "$REPORT"
+            fi
+
+            echo "SYNC_PR_BODY_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: automated framework sync (taw/core + Tier 1 scaffold)"
+          branch: framework-sync/auto
+          delete-branch: true
+          title: "Framework sync: taw/core + scaffold updates available"
+          body: ${{ steps.body.outputs.body }}
