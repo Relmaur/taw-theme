@@ -1174,6 +1174,7 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 - **`figma-to-block`** — "implement this Figma design" → a block whose markup and metabox fields match the design, driven by the Figma MCP tools
 - **`populate-content`** — "fill in the team_members repeater on the About page with this list" → writes real field values via `fields:set`, with mandatory dry-run previews and confirmation before any risky write (see `AGENTS.md` § "Content-writing safety model")
 - **`update-theme`** — "update the theme" → copies a small, precisely-delimited set of framework-owned paths (`functions.php`, `.claude/skills/`, `bin/`, CI config) from the canonical `taw-theme` repo, direct file sync, no merge, no shared git history needed, never touching your `Blocks/`, templates, or content
+- **`project-init`** — "onboard this new client project" → verifies `gh` CLI auth, enables and smoke-tests the `framework-sync.yml` GitHub Actions PR permission, and walks through optional integrations (Turnstile, email, CSS Studio, Visual Editor) via explicit yes/no questions — picks up right after `composer create-project` + first push
 - **`studio`** — applies live CSS Studio visual edits back into source
 
 **Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.

@@ -57,9 +57,9 @@ npm run dev
 
 Activate the theme in WP admin. The `.claude/skills/` are already in the repo — an agent can start scaffolding blocks/pages immediately.
 
-**Framework-drift detection is already wired up, from the first commit.** `.github/workflows/framework-sync.yml` ships as part of the canonical `taw-theme` repo itself (it's Tier 1), so `composer create-project` gives you a project that self-checks for `taw/core` and scaffold updates on a weekly schedule from day one — there's no separate setup step for this on a brand-new project. The one thing you still have to do by hand, once, on the new repo: enable **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** (off by default on every new GitHub repo) — without it, the workflow runs but its PR-opening step silently fails. See § "Automated framework-drift detection" below for what it actually does.
+**Framework-drift detection is already wired up, from the first commit.** `.github/workflows/framework-sync.yml` ships as part of the canonical `taw-theme` repo itself (it's Tier 1), so `composer create-project` gives you a project that self-checks for `taw/core` and scaffold updates on a weekly schedule from day one — there's no separate setup step for this on a brand-new project. It still needs one manual GitHub repo setting enabled, plus a handful of genuine per-project decisions (Turnstile, email, CSS Studio, Visual Editor) that don't have safe defaults — run the **`project-init`** skill right after the first push to work through all of it as an explicit checklist rather than discovering gaps later. See § "Automated framework-drift detection" below for what the workflow itself does.
 
-(A project created *before* this shipped won't have `framework-sync.yml` yet — run the `update-theme` skill once to pick it up, same as any other Tier 1 scaffold update.)
+(A project created *before* this shipped won't have `framework-sync.yml` yet — run the `update-theme` skill once to pick it up, same as any other Tier 1 scaffold update, then `project-init`.)
 
 ---
 
@@ -1506,7 +1506,7 @@ After adding new block classes, run `composer dump-autoload`.
 
 `.github/workflows/framework-sync.yml` runs this unattended on a weekly schedule (`workflow_dispatch` also available for a manual run): bumps `taw/core`, applies Tier 1 changes, runs the exact same verification `ci.yml` runs on every push (`php -l`, the `getData()` signature check, PHPStan), and — only if something actually changed and verification passed — opens a pull request with Tier 2 diffs included in the body for human review. Tier 2 is never written automatically, by either this workflow or `sync --apply`; a human always reviews those diffs before they're applied, same as the interactive `update-theme` skill. Nothing happens (no PR, no noise) when the project is already current.
 
-This workflow file is itself Tier 1, so it propagates to every client project automatically via `update-theme` — a project only has to run that skill once to start self-checking forever after. Requires the repo setting **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled (off by default on new repos) for the PR-opening step to succeed.
+This workflow file is itself Tier 1, so it propagates to every client project automatically via `update-theme` — a project only has to run that skill once to start self-checking forever after. Requires the repo setting **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled (off by default on new repos) for the PR-opening step to succeed — the **`project-init`** skill checks this, enables it with confirmation if it's off, and triggers a real run to verify the whole pipeline actually works rather than assuming it does.
 
 ---
 
