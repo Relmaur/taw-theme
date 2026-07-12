@@ -1180,6 +1180,8 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 
 **CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug), and PHPStan (level 5, WordPress-aware via `szepeviktor/phpstan-wordpress`) over `Blocks/` and `inc/`.
 
+**Framework drift never goes unnoticed** — `php bin/taw sync` (the scriptable core of the `update-theme` skill) checks whether the installed `taw/core` version is behind the latest release and whether this project's Tier 1/Tier 2 scaffold paths differ from the canonical `taw-theme` repo, without booting WordPress. `.github/workflows/framework-sync.yml` runs it unattended on a weekly schedule: Tier 1 changes are applied and verified through the same checks CI runs on every push, then a pull request is opened with Tier 2 diffs included for human review — or nothing happens at all if the project is already current. A client project only has to run `update-theme` once to start self-checking forever after, since this workflow file is itself Tier 1.
+
 **Live documentation lookup** — the `mcp__taw-docs__search_documentation` MCP tool, when available, searches the current framework docs directly rather than requiring a URL guess.
 
 Two separate, independently-versioned sources of truth back all of this — don't conflate them:

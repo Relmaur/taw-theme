@@ -26,6 +26,8 @@ php bin/taw import:block path/to/Block.zip                   # Import block from
 php bin/taw inspect --json                                   # Live registry dump: blocks, fields, forms, taw/core version — prefer this over grepping Blocks/ by hand
 php bin/taw fields:get <post_id> <field_id> --json            # Read a field's current value, decoded per its type (repeaters/post_select come back as arrays)
 php bin/taw fields:set <post_id> <field_id> <value>           # Write a field's value, sanitized exactly like the real admin form save
+php bin/taw sync --json                                       # Check for drift: taw/core version + taw-theme Tier 1/Tier 2 scaffold paths
+php bin/taw sync --apply                                      # Also write Tier 1 scaffold changes (Tier 2 is always report-only)
 composer run phpstan                                          # Static analysis (Blocks/, inc/) — also runs in CI
 ```
 

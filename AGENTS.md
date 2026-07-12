@@ -1490,7 +1490,19 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw make:block Name` | Scaffold a new block |
 | `php bin/taw export:block Name` | Export a block as a ZIP |
 | `php bin/taw import:block path.zip` | Import a block from a ZIP |
+| `php bin/taw sync --json` | Check for drift: `taw/core` version + `taw-theme` Tier 1/Tier 2 scaffold paths |
+| `php bin/taw sync --apply` | Also write Tier 1 scaffold changes (Tier 2 is always report-only) |
 | `composer run phpstan` | Static analysis (`Blocks/`, `inc/`) — also runs in CI |
+
+---
+
+## Automated framework-drift detection
+
+`php bin/taw sync` (shipped by `taw/core`, see its README for the full command reference) is the scriptable core of the `update-theme` skill — it checks whether the installed `taw/core` version is behind the latest GitHub tag, and whether this project's Tier 1/Tier 2 `taw-theme` scaffold paths (defined once in `taw/core`'s `resources/update-manifest.json`) differ from the canonical repo. It never boots WordPress and never touches `taw/core` itself.
+
+`.github/workflows/framework-sync.yml` runs this unattended on a weekly schedule (`workflow_dispatch` also available for a manual run): bumps `taw/core`, applies Tier 1 changes, runs the exact same verification `ci.yml` runs on every push (`php -l`, the `getData()` signature check, PHPStan), and — only if something actually changed and verification passed — opens a pull request with Tier 2 diffs included in the body for human review. Tier 2 is never written automatically, by either this workflow or `sync --apply`; a human always reviews those diffs before they're applied, same as the interactive `update-theme` skill. Nothing happens (no PR, no noise) when the project is already current.
+
+This workflow file is itself Tier 1, so it propagates to every client project automatically via `update-theme` — a project only has to run that skill once to start self-checking forever after. Requires the repo setting **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** enabled (off by default on new repos) for the PR-opening step to succeed.
 
 ---
 
