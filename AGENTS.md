@@ -837,6 +837,20 @@ Validation rules run server-side (the authoritative check) and also render as na
 
 **Custom error messages per rule:** every rule (`required`, the built-in `email` format check, `min_length`, `max_length`, `pattern`, `min`, `max`) accepts a `{rule}_message` override — e.g. `'required_message' => 'Please tell us your name.'`, `'min_message' => 'You must be 18 or older.'` — falling back to a generic default (with the field's `label` interpolated) when not set.
 
+**Form-level default messages:** to set validation copy once for an entire form (e.g. translating every rule for a non-English site) instead of repeating a `{rule}_message` on every field, pass a top-level `'messages' => ['required' => '...', 'email' => '...', 'min_length' => '...', ...]`. Precedence: field-level `{rule}_message` > form-level `messages.{rule}` > built-in English default. Templates take the same `sprintf()` placeholders as the built-in defaults (field label as `%s`/`%1$s`, the rule's bound as `%2$d`/`%2$s`); `email` takes no placeholders.
+
+```php
+Form::register([
+    'id' => 'contact',
+    'messages' => [
+        'required'   => '%s es obligatorio.',
+        'email'      => 'Correo electrónico no válido.',
+        'min_length' => '%1$s debe tener al menos %2$d caracteres.',
+    ],
+    'fields' => [...],
+]);
+```
+
 If `email.to_self.template` and `email.to_client.template` are both set, delivery uses `Mailer` + `MailTemplate`. Otherwise falls back to a plain-text `wp_mail()`.
 
 **Multi-column layout:** Use `width` on fields (as a percentage) to control the 12-column grid span. All fields collapse to full width on mobile.
