@@ -64,6 +64,8 @@ npm run dev            # Vite dev server with HMR
 
 Start with a clean, single-commit history — no `--keep-vcs`, no shared ancestry with `taw-theme` required. The `update-theme` AI skill syncs future scaffold updates via a direct file copy of a small, precisely-delimited set of framework-owned paths (`functions.php`, `.claude/skills/`, `bin/`, CI config — see `AGENTS.md` § "The `functions.php` Bootstrap"), not a git merge, so it works regardless of this project's own history.
 
+**One manual step on the new repo:** enable **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** (off by default on every new GitHub repo). This project ships with `.github/workflows/framework-sync.yml` from the very first commit — a weekly check that bumps `taw/core`, syncs framework-owned scaffold files, and opens a PR if anything changed — but its PR-opening step silently fails without that setting. See `AGENTS.md` § "Automated framework-drift detection".
+
 Activate the theme in WordPress admin. You're building.
 
 ---

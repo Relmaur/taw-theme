@@ -57,6 +57,10 @@ npm run dev
 
 Activate the theme in WP admin. The `.claude/skills/` are already in the repo — an agent can start scaffolding blocks/pages immediately.
 
+**Framework-drift detection is already wired up, from the first commit.** `.github/workflows/framework-sync.yml` ships as part of the canonical `taw-theme` repo itself (it's Tier 1), so `composer create-project` gives you a project that self-checks for `taw/core` and scaffold updates on a weekly schedule from day one — there's no separate setup step for this on a brand-new project. The one thing you still have to do by hand, once, on the new repo: enable **Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"** (off by default on every new GitHub repo) — without it, the workflow runs but its PR-opening step silently fails. See § "Automated framework-drift detection" below for what it actually does.
+
+(A project created *before* this shipped won't have `framework-sync.yml` yet — run the `update-theme` skill once to pick it up, same as any other Tier 1 scaffold update.)
+
 ---
 
 ## The `functions.php` Bootstrap
@@ -97,7 +101,7 @@ Any code that used to go directly in `functions.php` — theme supports, nav men
 | `vendor/taw/core/src/Core/Mail/` | Email system (`Mailer`, `MailTemplate`, `MailTester`) |
 | `vendor/taw/core/src/Core/Editor/` | Visual Editor engine — inline frontend editing for authenticated users |
 | `vendor/taw/core/src/Helpers/` | Utility helpers (`Framework`, `Image`, `Svg`, `Dump`, `Editor`) |
-| `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`, `inspect`) |
+| `vendor/taw/core/src/CLI/` | Symfony Console commands (`make:block`, `export:block`, `import:block`, `inspect`, `fields:get`/`fields:set`, `sync`) |
 | `vendor/taw/core/src/Support/` | `ViteLoader.php` — OOP Vite asset pipeline; `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
 | `Blocks/Menu/` | Boilerplate navigation block — two-row header with Alpine.js live-search overlay |
