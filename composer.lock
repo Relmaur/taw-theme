@@ -788,16 +788,16 @@
         },
         {
             "name": "taw/core",
-            "version": "v1.16.72",
+            "version": "v1.16.73",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Relmaur/taw-core.git",
-                "reference": "30642e6dbc6de005677be10013e2def55b5b0c82"
+                "reference": "32c0b128aa1e8ecdd671a11459b0e697a7b92548"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/30642e6dbc6de005677be10013e2def55b5b0c82",
-                "reference": "30642e6dbc6de005677be10013e2def55b5b0c82",
+                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/32c0b128aa1e8ecdd671a11459b0e697a7b92548",
+                "reference": "32c0b128aa1e8ecdd671a11459b0e697a7b92548",
                 "shasum": ""
             },
             "require": {
@@ -806,7 +806,9 @@
                 "symfony/console": "^7.4"
             },
             "require-dev": {
+                "brain/monkey": "^2.6",
                 "phpstan/phpstan": "^2.2",
+                "phpunit/phpunit": "^11",
                 "spatie/mjml-php": "^1.0",
                 "szepeviktor/phpstan-wordpress": "^2.0"
             },
@@ -823,9 +825,17 @@
                     "src/Support/utilities.php"
                 ]
             },
+            "autoload-dev": {
+                "psr-4": {
+                    "TAW\\Tests\\": "tests/"
+                }
+            },
             "scripts": {
                 "phpstan": [
                     "phpstan analyse --memory-limit=-1"
+                ],
+                "test": [
+                    "phpunit"
                 ]
             },
             "license": [
@@ -839,10 +849,10 @@
             ],
             "description": "TAW Theme Framework — block system, metabox engine, Vite asset pipeline for WordPress",
             "support": {
-                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.72",
+                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.73",
                 "issues": "https://github.com/Relmaur/taw-core/issues"
             },
-            "time": "2026-07-12T20:17:35+00:00"
+            "time": "2026-07-13T14:05:19+00:00"
         }
     ],
     "packages-dev": [
