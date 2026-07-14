@@ -33,6 +33,8 @@ functions.php
 bin/
 .github/workflows/ci.yml
 .github/workflows/framework-sync.yml
+tests/bootstrap.php
+tests/TestCase.php
 ```
 
 **Tier 2 — diff, apply only after explicit confirmation.** Nominally framework docs/config, but can legitimately accumulate client-specific additions over a project's life (a new catalog entry in `AGENTS.md`, an added dependency in `package.json`). Never overwrite silently.
@@ -47,6 +49,7 @@ composer.json
 package.json
 vite.config.js
 phpstan.neon
+phpunit.xml
 ```
 
 **Never touched — not read, not diffed, entirely out of scope:**
@@ -60,7 +63,10 @@ page*.php, front-page.php, index.php
 resources/scss/_fonts.scss
 resources/fonts/
 release-notes.md
+tests/Unit/
 ```
+
+**`tests/Unit/` is deliberately never-touched, not Tier 1, and can never become a `dir` entry** — it holds each client project's own block tests (`tests/Unit/Blocks/{Name}Test.php`), which is content, not scaffold. A `dir` entry syncs via `rsync -a --delete`; pointed at `tests/`, that would silently delete every client-authored test not present in the canonical repo. Only the harness itself (`tests/bootstrap.php`, `tests/TestCase.php`, `phpunit.xml`) is framework-owned.
 
 Anything not listed under Tier 1 or Tier 2 is implicitly never-touched. Don't expand either tier on your own initiative mid-run — this list was deliberately reviewed; if something seems like it should move tiers, ask first (and if you do add a path, update `resources/update-manifest.json` in `taw-core`, not just this doc — they must stay in sync, since the CLI command reads the JSON, not this file).
 
@@ -96,7 +102,7 @@ curl -fsSL https://raw.githubusercontent.com/Relmaur/taw-theme/main/AGENTS.md -o
 
 **`composer.json` and `package.json` — never do a full-file overwrite, even if approved.** These are structural manifests where client-specific dependencies (a project's own `mjml`, `swup`, `embla`, `photoswipe`, `alpine-collapse`, etc.) are *additive*, not incidental — a real client project accumulating its own packages over time is the normal, expected case, not drift to be corrected. A whole-file `curl -o` would silently **delete every one of those dependencies**, since they don't exist in the canonical `taw-theme` scaffold's version of the file. Instead:
 
-1. Read the diff line by line and identify only the genuinely framework-relevant changes — e.g. a `taw/core` version constraint bump in `require`, a changed/added `scripts` entry, a PSR-4 `autoload` path change. Ignore every line that's just the client's own dependencies not being present upstream — that's not a real diff to act on, it's structural noise from the two files having different purposes.
+1. Read the diff line by line and identify only the genuinely framework-relevant changes — e.g. a `taw/core` version constraint bump in `require`, a changed/added `scripts` entry, a PSR-4 `autoload` path change. Ignore every line that's just the client's own dependencies not being present upstream — that's not a real diff to act on, it's structural noise from the two files having different purposes. One specific case worth naming: if `phpunit.xml`/`tests/bootstrap.php`/`tests/TestCase.php` are landing on this project for the first time (see Tier 1/Tier 2 above), the matching `composer.json` lines — `require-dev` entries for `phpunit/phpunit` and `brain/monkey`, the `"test": "phpunit"` script, and the `autoload-dev` PSR-4 mapping `"TAW\\Theme\\Tests\\": "tests/"` — are framework-relevant additions to apply, not noise, even though they look like "new dependencies." Without them the harness files exist on disk but `composer run test` fails outright.
 2. If there's nothing framework-relevant in the diff (the common case — it's *only* client-specific deps), tell the user plainly: "this diff is just your own project dependencies not existing in the base scaffold — nothing to apply, this is expected and will keep showing up every run." Don't ask them to re-approve the same non-decision every time `update-theme` runs.
 3. If there genuinely is a framework-relevant line, edit *only that line* into the local file by hand (`Edit` tool, not `curl`/`cp`) — never replace the surrounding file content.
 
@@ -124,3 +130,4 @@ If nothing in either tier had upstream changes, say so plainly — "already up t
 - Don't run `composer update taw/core` as a silent side effect of this skill — it's a separate, explicitly confirmed action (Step 4).
 - Don't commit the synced changes — leave that decision and action to the user.
 - Don't assume a project without a git relationship to `taw-theme` is broken or needs special handling — that's not a precondition this skill has.
+- Don't let a Tier 2 doc (`AGENTS.md`/`CLAUDE.md`/`README.md`) start describing a file or capability as "already set up" without that file itself being added to `update-manifest.json` in the same change — this shipped once for real (the block-testing harness: `AGENTS.md` documented `phpunit.xml`/`tests/bootstrap.php`/`tests/TestCase.php` as pre-existing while they were entirely outside the manifest's scope, so `update-theme` synced the prose but never the substance). Whenever new framework infrastructure is documented as pre-existing, treat adding it to the manifest as part of the same commit, not optional follow-up.
