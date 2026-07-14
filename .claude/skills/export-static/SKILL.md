@@ -45,9 +45,11 @@ Pass through any flags the user gave:
 ## Step 3 — Verify the export directory was populated
 
 ```bash
-ls -la <dir>            # expect per-page directories + index.html at the root + dist/
+ls -la <dir>            # expect per-page directories + index.html at the root + the Vite build output
 find <dir> -name index.html | wc -l   # should roughly match the published page/post count
 ```
+
+The Vite build output lands at `<dir>/wp-content/themes/<theme>/dist/` or `.../public/build/` (matching whichever `vite.config.js` actually configures) — not flattened to the export root.
 
 If the command reported failed pages or a missing `dist/` warning, surface that to the user
 plainly — don't declare the export complete if pages failed or assets are missing.
@@ -61,7 +63,17 @@ them. Explicitly remind the user:
 
 - Form `action` attributes and any search `fetch()` calls in the exported HTML must point
   **absolutely** at the WordPress origin's `/wp-admin/admin-ajax.php` and `/wp-json/taw/v1/...`
-  — never relative paths, since those would resolve against the static host instead.
+  — never relative paths, since those would resolve against the static host instead. This is
+  baked in by the exporter unconditionally, regardless of whether `TAW_HEADLESS_ORIGINS` is set.
+- **`TAW_HEADLESS_ORIGINS` doesn't change where those requests go — it changes whether the
+  browser is allowed to let them complete.** The URLs always point at the WordPress domain,
+  with or without the constant. Without it, from a different origin, the request still fires at
+  WordPress but the browser's CORS preflight/response check blocks it client-side before any
+  response is used. With it set for the bundle's actual deployed origin, that block goes away.
+  If asked to debug "the exported form/search doesn't work," check the browser console for a
+  CORS error (missing/misconfigured `TAW_HEADLESS_ORIGINS`) versus a 404/network error
+  (wrong WordPress domain baked into the export, or WordPress itself unreachable) — different
+  causes, different fixes.
 - If the bundle will be served from a different domain than this WordPress install, ask
   whether `TAW_HEADLESS_ORIGINS` is already set in `wp-config.php`. If not, that's a required
   follow-up before forms/search will work cross-origin (CORS blocks them otherwise) — offer to
