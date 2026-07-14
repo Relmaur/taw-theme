@@ -94,7 +94,7 @@ For each `tier2[]` entry with `changed: true` from Step 1's JSON, show the user 
 
 **How you apply an approved change depends on the file's shape — two different files need two different treatments:**
 
-**Prose/config files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.windsurfrules`, `README.md`, `vite.config.js`, `phpstan.neon`) — a full-file overwrite is safe once approved, since client-specific additions here are rare and the whole-document diff already showed the user exactly what they're accepting:
+**Prose/config files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, `.windsurfrules`, `README.md`, `vite.config.js`, `phpstan.neon`, `phpunit.xml`) — a full-file overwrite is safe once approved, since client-specific additions here are rare and the whole-document diff already showed the user exactly what they're accepting:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Relmaur/taw-theme/main/AGENTS.md -o ./AGENTS.md
