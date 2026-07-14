@@ -1168,16 +1168,21 @@ Search for posts across post types. Powers the `post_selector` metabox field typ
 
 `bin/taw` (below) is for framework-specific scaffolding — blocks, live registry introspection. It knows nothing about actual site *content*. For that, use WordPress's own official CLI, **WP-CLI** (the `wp` command) — it's not bundled by this theme (it's a host-level tool, present on virtually every real WordPress host and every local dev environment: Local, Herd, DDEV), but it's the single highest-leverage tool an agent has for reading or mutating live site data directly: posts, options, users, terms, transients, arbitrary PHP via `wp eval`/`wp eval-file`, even an interactive `wp shell`.
 
+**Prefer `php bin/taw wp <args>` over a bare `wp` command** — it's a thin passthrough to the real `wp` binary (every argument forwarded exactly as given) that automatically resolves `--path` and, under Local by Flywheel, the per-site MySQL socket (see the Warning below) — no manual configuration needed:
+
 ```bash
-wp post list --post_type=page --fields=ID,post_title,post_status
-wp option get siteurl
-wp option get _taw_company_phone   # OptionsPage-backed option, prefix per Metabox field convention
-wp user list --fields=ID,user_login,roles
-wp eval 'echo home_url();'
-wp db query "SELECT COUNT(*) FROM wp_posts WHERE post_status='publish'"
+php bin/taw wp post list --post_type=page --fields=ID,post_title,post_status
+php bin/taw wp option get siteurl
+php bin/taw wp option get _taw_company_phone   # OptionsPage-backed option, prefix per Metabox field convention
+php bin/taw wp user list --fields=ID,user_login,roles
+php bin/taw wp eval 'echo home_url();'
+php bin/taw wp db query "SELECT COUNT(*) FROM wp_posts WHERE post_status='publish'"
+php bin/taw wp shell   # interactive — TTY passthrough works too
 ```
 
-> **Warning — Local by Flywheel connection quirk:** `wp-config.php`'s `DB_HOST` is `localhost`, but Local runs a per-site MySQL instance on its own Unix socket, not the system default. A bare `wp` command fails with `Error establishing a database connection` even though the site works fine in the browser. Fix by pointing PHP's own socket setting at Local's actual socket, not `wp-config.php`:
+A bare `wp` command (without the `bin/taw wp` wrapper) still works the same as always, and is still exactly what `wp-wpcli-and-ops` and other external WP-CLI documentation assumes — just without the automatic socket/path resolution below.
+
+> **Warning — Local by Flywheel connection quirk:** `wp-config.php`'s `DB_HOST` is `localhost`, but Local runs a per-site MySQL instance on its own Unix socket, not the system default. A bare `wp` command fails with `Error establishing a database connection` even though the site works fine in the browser — `php bin/taw wp` (above) resolves this automatically and is the reason it's preferred over a bare `wp` command in this project. If you need to run the real `wp` binary directly anyway (a tool that shells out to it itself, for instance), the manual fix is the same thing `bin/taw wp` does internally:
 >
 > ```bash
 > # Find the running mysqld's socket path for this site — Local names run

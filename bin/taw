@@ -53,6 +53,7 @@ use TAW\CLI\SyncCommand;
 use TAW\CLI\ExportStaticCommand;
 use TAW\CLI\SeoExtractCommand;
 use TAW\CLI\SeoInjectCommand;
+use TAW\CLI\WpCliCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -69,5 +70,6 @@ $app->add(new SyncCommand($themeDir));
 $app->add(new ExportStaticCommand($themeDir));
 $app->add(new SeoExtractCommand($themeDir));
 $app->add(new SeoInjectCommand($themeDir));
+$app->add(new WpCliCommand($themeDir));
 
 $app->run();

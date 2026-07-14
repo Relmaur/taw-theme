@@ -21,7 +21,7 @@ This skill turns a source document (pasted text, an attached file, a list, or a 
 
 Resolve unambiguously before doing anything else:
 
-- **Post:** if the user names a page/post by title or slug, confirm the ID with `wp post list --s="<title>" --fields=ID,post_title,post_status` (see AGENTS.md's WP-CLI section for the Local by Flywheel socket quirk if this fails with a DB connection error). If more than one result plausibly matches, list them and ask which one — never guess.
+- **Post:** if the user names a page/post by title or slug, confirm the ID with `php bin/taw wp post list --s="<title>" --fields=ID,post_title,post_status` (the `bin/taw wp` wrapper resolves the Local by Flywheel socket quirk automatically — see AGENTS.md's WP-CLI section). If more than one result plausibly matches, list them and ask which one — never guess.
 - **Field(s):** run `php bin/taw inspect --json` and match the user's description (field id, label, or block name) against the registered field list. If the description is ambiguous (e.g. two blocks on the same post both have a `heading` field), ask which one. If the field genuinely doesn't exist yet, stop and say so — offer to hand off to `make-metablock` rather than guessing at a field id that isn't registered.
 
 For a group sub-field, use the compound id exactly as `inspect` reports it (e.g. `hero_cta_text`), same as `fields:set` itself expects.

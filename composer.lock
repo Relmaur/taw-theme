@@ -609,6 +609,71 @@
             "time": "2026-05-27T06:59:30+00:00"
         },
         {
+            "name": "symfony/process",
+            "version": "v7.4.13",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/process.git",
+                "reference": "f5804be144caceb570f6747519999636b664f24c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/process/zipball/f5804be144caceb570f6747519999636b664f24c",
+                "reference": "f5804be144caceb570f6747519999636b664f24c",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Component\\Process\\": ""
+                },
+                "exclude-from-classmap": [
+                    "/Tests/"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Executes commands in sub-processes",
+            "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/process/tree/v7.4.13"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-05-23T16:05:06+00:00"
+        },
+        {
             "name": "symfony/service-contracts",
             "version": "v3.7.1",
             "source": {
@@ -788,22 +853,23 @@
         },
         {
             "name": "taw/core",
-            "version": "v1.16.79",
+            "version": "v1.16.81",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Relmaur/taw-core.git",
-                "reference": "d5a5e60e7f88e032b47ecd7c0a3316de7e6cfa87"
+                "reference": "26cbc45b2a869ad80efbebc1b4f098058716a2ea"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/d5a5e60e7f88e032b47ecd7c0a3316de7e6cfa87",
-                "reference": "d5a5e60e7f88e032b47ecd7c0a3316de7e6cfa87",
+                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/26cbc45b2a869ad80efbebc1b4f098058716a2ea",
+                "reference": "26cbc45b2a869ad80efbebc1b4f098058716a2ea",
                 "shasum": ""
             },
             "require": {
                 "enshrined/svg-sanitize": "^0.22.0",
                 "php": ">=8.2",
-                "symfony/console": "^7.4"
+                "symfony/console": "^7.4",
+                "symfony/process": "^7.4"
             },
             "require-dev": {
                 "brain/monkey": "^2.6",
@@ -849,10 +915,10 @@
             ],
             "description": "TAW Theme Framework — block system, metabox engine, Vite asset pipeline for WordPress",
             "support": {
-                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.79",
+                "source": "https://github.com/Relmaur/taw-core/tree/v1.16.81",
                 "issues": "https://github.com/Relmaur/taw-core/issues"
             },
-            "time": "2026-07-14T18:38:16+00:00"
+            "time": "2026-07-14T19:17:09+00:00"
         }
     ],
     "packages-dev": [

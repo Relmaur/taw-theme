@@ -85,7 +85,7 @@ Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')`
 
 ## WP-CLI — live site data access
 
-`bin/taw` is for the *framework* (blocks/fields/forms); WordPress's own `wp` CLI is for live *content*. **Local by Flywheel:** a bare `wp` command fails on DB connection — needs the `mysqli.default_socket`/`pdo_mysql.default_socket` flags. Full walkthrough: AGENTS.md § "WP-CLI — live site data access".
+`bin/taw` is for the *framework* (blocks/fields/forms); WordPress's own `wp` CLI is for live *content* — but prefer `php bin/taw wp <args>` over a bare `wp` command, since it auto-resolves `--path` and (under Local by Flywheel) the per-site MySQL socket that otherwise fails a bare `wp` command with a DB connection error. Full walkthrough: AGENTS.md § "WP-CLI — live site data access".
 
 ## CSS Studio (Development)
 
