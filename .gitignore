@@ -1,6 +1,8 @@
 /node_modules
 /vendor
 /public
+/static-export
+/.taw
 .env
 .DS_Store
 .phpunit.result.cache
