@@ -3,6 +3,7 @@
 /public
 .env
 .DS_Store
+.phpunit.result.cache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

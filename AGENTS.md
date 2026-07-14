@@ -5,6 +5,67 @@
 
 ---
 
+## Codex — Dense Reference (read this first; expand to the sections below only if it doesn't answer the question)
+
+### Directory map
+
+| Path | Owns | Editable? |
+|---|---|---|
+| `Blocks/{Name}/{Name}.php` | Block class, `TAW\Blocks\{Name}\{Name}` | Yes — primary work surface |
+| `Blocks/{Name}/index.php` | Template, receives `extract()`-ed `getData()` array | Yes |
+| `Blocks/{Name}/style.{css,scss}`, `script.js` | Auto-enqueued block assets | Yes, optional |
+| `inc/options.php` | `OptionsPage` fields | Yes — never touched by `update-theme` |
+| `inc/performance.php` | `Theme::performance()` config array | Yes — never touched |
+| `inc/customizations.php` | theme supports, nav menus, `VisualEditor::enable()`, `MetaboxOrder::lock()`, `Svg::register()`, `MailTester` | Yes — never touched |
+| `functions.php` | 2-line bootstrap only | **Never hand-edit** — blindly overwritten by `update-theme` |
+| `vendor/taw/core/src/` | All `TAW\Core\*`, `TAW\Helpers\*`, `TAW\CLI\*` | **No** — edit in the `taw-core` repo, then `composer update taw/core` |
+| `resources/js/app.js` | Vite JS entry, imports CSS/SCSS | Yes |
+| `resources/css/app.css` | Tailwind v4 directives — imported by `app.js`, not its own Vite entry | Yes |
+| `resources/scss/critical.scss` | Inlined `<head>` CSS, keep <14 KB, no `@font-face` | Yes |
+| `resources/fonts/` | Self-hosted WOFF2 | Yes |
+| `bin/taw` | Symfony CLI: `make:block`, `export/import:block`, `inspect`, `fields:get/set`, `sync` | read-only tool, not a source dir |
+| `tests/Unit/Blocks/{Name}Test.php` | Unit test for `{Name}::getData()` — required for every block, see § "Testing Blocks" | Yes — written alongside every new block |
+
+Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" below.
+
+### Core helpers (one-liners)
+
+| Call | Does |
+|---|---|
+| `Metabox::get($postId,$field)` / `get_bool` / `get_image_url` / `get_color` / `get_posts` / `get_repeater` | Typed field read, meta key `_taw_{field}` |
+| `OptionsPage::get($field)` / `get_image_url($field,$size)` | `wp_options` read, same `_taw_` prefix |
+| `Menu::get($location)` → `->items()` returns `MenuItem[]` | Typed nav tree — never `wp_nav_menu()` |
+| `Image::render($id,$size,['above_fold'=>bool,'class'=>...])` | Perf-optimised `<img>` |
+| `Svg::render($id,$alt)` / `::inline($id)` / `::register()` | SVG upload + render |
+| `Form::register([...])` inside `boot()` wrapped in `add_action('init',...)`; `Form::display($id)` in template | Frontend form |
+| `(new Mailer())->to()->subject()->template()->setVariables()->send()` | Email |
+| `ViteLoader::assetUrl($path)` / `::isDevServerRunning()` | Asset URL / dev-server probe |
+| `dump($val)` / `dd($val)` | Debug panel, `WP_DEBUG` only |
+| `BlockRegistry::queue(...ids)` before `get_header()`; `::render($id)` in body | Asset + render pattern |
+
+Full API + option tables: §§ "The Metabox Framework", "Form System", "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Debug Helper", "Vite Integration" below.
+
+### Lifecycle / hooks
+
+| When | What fires |
+|---|---|
+| `after_setup_theme` | `BlockLoader::loadAll()` discovers `Blocks/*/`, calls each block's `static boot()` |
+| inside `boot()` | wrap `Form::register()` and any `__()`/translation calls in `add_action('init', ...)` |
+| `wp_enqueue_scripts` (via `get_header()`) | `BlockRegistry::enqueueQueuedAssets()` — only queued blocks' CSS/JS |
+| template body | `BlockRegistry::render($id)` outputs HTML only, no enqueue |
+| `POST admin-ajax.php` | Form submission handler — only exists if `Form::register()` ran in `boot()`, **never** in a template |
+
+### Field types
+
+- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker`
+- **Form:** `text email tel url textarea select checkbox date`
+
+### Fatal mistakes (full list in § "Do NOT" below)
+
+`getData(int|false $postId): array` signature typo → whole-site fatal · folder≠class name → silent auto-discovery skip · `queue()` called after `get_header()` → assets missing from `<head>` · Form registered in a template instead of `boot()` → AJAX handler 404s · hand-edited `functions.php` → silently overwritten by the next `update-theme` run · block created without a matching `tests/Unit/Blocks/{Name}Test.php` → `getData()` hydration regressions ship silently (see § "Testing Blocks").
+
+---
+
 ## Source of Truth
 
 **Canonical repos:**
@@ -105,6 +166,7 @@ Any code that used to go directly in `functions.php` — theme supports, nav men
 | `vendor/taw/core/src/Support/` | `ViteLoader.php` — OOP Vite asset pipeline; `utilities.php`, `performance.php` — autoloaded by composer |
 | `Blocks/` | Dev block collection — one folder per block, auto-discovered |
 | `Blocks/Menu/` | Boilerplate navigation block — two-row header with Alpine.js live-search overlay |
+| `tests/Unit/Blocks/` | `getData()` hydration tests, one per block — see § "Testing Blocks" |
 | `inc/options.php` | OptionsPage field configuration — theme-owned, never touched by updates |
 | `inc/performance.php` | Returns the config array passed to `Theme::performance()` — theme-owned, never touched by updates |
 | `inc/customizations.php` | Theme supports, nav menu registration, textdomain, any other site-specific hooks — theme-owned, never touched by updates |
@@ -667,7 +729,11 @@ if (empty($heading)) return;
 
 The block auto-discovers and enqueues these when rendered. SCSS is prioritized over CSS if both exist.
 
-### Step 4: That's it
+### Step 4: Write the test
+
+Every block gets a matching `tests/Unit/Blocks/{Name}Test.php` testing `getData()`'s hydration logic — see § "Testing Blocks" for the pattern and rationale. Not optional.
+
+### Step 5: That's it
 
 `BlockLoader::loadAll()` auto-discovers the block. No changes to `functions.php` needed. Just `queue()` and `render()` it in a template.
 
@@ -712,6 +778,62 @@ Usage in any template:
     'description' => 'Card content here',
 ]); ?>
 ```
+
+---
+
+## Testing Blocks
+
+Every block's `getData(int|false $postId): array` gets a matching PHPUnit test at `tests/Unit/Blocks/{Name}Test.php` — required for every block created by `make-metablock` or `figma-to-block`, no exceptions. `getData()` is exactly the kind of logic that breaks silently in a future refactor (a renamed field id, a swapped `getMeta()`/`getRepeater()` call) without anything catching it until a page renders wrong in production.
+
+**Harness (already set up, nothing to scaffold):** `phpunit.xml` (bootstrap: `tests/bootstrap.php`), `tests/TestCase.php` (namespace `TAW\Theme\Tests`, PSR-4-mapped from `tests/` via `composer.json`'s `autoload-dev`), `composer run test` runs the suite. Mirrors `taw/core`'s own test suite (`vendor/taw/core/tests/`) — same stack (PHPUnit 11 + Brain Monkey), same reason: fast, isolated tests that stub individual WP functions instead of needing a real WordPress install.
+
+**Scope — `getData()` hydration only, not rendering.** Does `getData()` ask for the right field IDs and assemble them into the right array? That's it. Full end-to-end rendering (a block's `index.php` actually producing correct HTML against a real WordPress + MySQL install) is a separate, already-existing concern owned by `bin/ci/smoke-test.php` — don't try to duplicate that here, and don't skip a `getData()` test because "the smoke test already covers it" (the smoke test only proves a page didn't fatal, it doesn't assert field-level correctness).
+
+**Why mock `getMeta()`/`getImageUrl()`/`getRepeater()` instead of exercising them for real:** they're thin wrappers around `TAW\Core\Metabox\Metabox`'s own static methods, which are `taw/core`'s concern and already covered by its own test suite. Mocking them keeps a block's test scoped to what's actually that block's own logic. `TAW\Core\Block\BaseBlock`'s constructor calls `get_template_directory()`/`get_template_directory_uri()` unconditionally, and `MetaBlock`'s constructor also calls `add_action('init', ...)` — `TestCase::stubBlockConstructor()` stubs all three via Brain Monkey; call it in every block test's `setUp()` before instantiating the block under test.
+
+**Pattern** (full worked example already in the repo: `tests/Unit/Blocks/FaqTest.php`):
+
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace TAW\Theme\Tests\Unit\Blocks;
+
+use TAW\Blocks\SectionName\SectionName;
+use TAW\Theme\Tests\TestCase;
+
+final class SectionNameTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->stubBlockConstructor();
+    }
+
+    public function test_getData_reads_the_expected_field_ids(): void
+    {
+        $block = $this->getMockBuilder(SectionName::class)
+            ->onlyMethods(['getMeta']) // + 'getImageUrl'/'getRepeater' if getData() calls them
+            ->getMock();
+
+        $block->expects($this->once())
+            ->method('getMeta')
+            ->with(42, 'section_name_heading')   // exact field id from registerMetaboxes()
+            ->willReturn('Example Heading');
+
+        $data = $this->callMethod($block, 'getData', 42);
+
+        $this->assertSame('Example Heading', $data['heading']);  // exact key getData() returns
+    }
+}
+```
+
+**Rules:**
+- Mock only the getter methods this block's `getData()` actually calls — don't mock ones it doesn't use.
+- Assert the exact field-id string passed to each mocked getter with `->with($postId, 'exact_field_id')`, not a bare `->willReturn(...)` with no argument check — an unchecked mock can't catch a mismatch between `registerMetaboxes()`'s field ids and `getData()`'s lookups, which is the whole point of the test.
+- For a repeater field, add a second test asserting an empty array passes through untouched (see `FaqTest::test_getData_passes_through_an_empty_repeater_untouched`).
+- Run `composer run test` before calling any block "done" — a test that exists but doesn't actually run (typo'd namespace, wrong mocked method name) provides false confidence, not coverage.
 
 ---
 
@@ -1497,6 +1619,7 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw sync --json` | Check for drift: `taw/core` version + `taw-theme` Tier 1/Tier 2 scaffold paths |
 | `php bin/taw sync --apply` | Also write Tier 1 scaffold changes (Tier 2 is always report-only) |
 | `composer run phpstan` | Static analysis (`Blocks/`, `inc/`) — also runs in CI |
+| `composer run test` | Run the block unit test suite (`tests/Unit/`) — see § "Testing Blocks" |
 
 ---
 
@@ -1660,6 +1783,7 @@ echo Image::render($card_image_id, 'large');
 - Manually register blocks in `functions.php` — `BlockLoader::loadAll()` handles it
 - Call `wp_enqueue_style/script` directly for blocks — the base class handles it
 - Create blocks with mismatched folder/class names — auto-discovery will skip them
+- Ship a new block without a matching `tests/Unit/Blocks/{Name}Test.php` — see § "Testing Blocks"
 - Forget to `queue()` blocks before `get_header()` — assets will fall back to inline (suboptimal)
 - Add `@font-face` / `@use 'fonts'` to `critical.scss` — inlined `<style>` tags resolve `url()` against the page origin, not the stylesheet, causing font 404s on any non-root install
 - Add `resources/css/app.css` back as a standalone Vite entry — it is imported by `app.js` and must not be a separate entry or it will compile twice

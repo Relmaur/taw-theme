@@ -52,7 +52,8 @@ After creating the files, remind me to run:
 ```
 
 **Field type reference:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`,
-`image`, `group`, `checkbox`, `color`, `repeater`, `post_select`
+`image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`
+(full options table: AGENTS.md § "The Metabox Framework")
 
 ---
 

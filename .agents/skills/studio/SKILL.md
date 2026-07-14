@@ -214,3 +214,53 @@ If the `css-studio` tool is not found, tell the user:
 > ```
 > npx cssstudio install
 > ```
+
+---
+
+## TAW Theme (WordPress) — Project-specific rules
+
+This project is a WordPress theme built on the **TAW framework** with Vite, Tailwind v4, and Alpine.js. Apply these rules on top of the base workflow above.
+
+### Content changes (`text` / `attr` type)
+
+When a change modifies text content or attributes on a rendered element:
+
+1. **Locate the template first.** Each block lives at `Blocks/{Name}/index.php`. This file receives variables via `extract($this->getData())`.
+2. **Check whether the value is already dynamic.** If the element already outputs a PHP variable (e.g. `<?= $title ?>`), update the corresponding metabox field default or the `getData()` method in `Blocks/{Name}/{Name}.php` — do **not** hardcode a new value.
+3. **If the value is currently hardcoded**, ask the user via `css-studio({ action: "ask", ... })`:
+   > "This text is hardcoded in the template. Should I:
+   > A) Keep it hardcoded (edit `index.php` directly)
+   > B) Make it editable from WordPress admin (add a metabox field and wire it up)"
+
+   - **Option A:** Edit `index.php` directly.
+   - **Option B:** Add the field to the block's `fields()` array in `{Name}.php`, fetch it in `getData()`, and output it in `index.php` with a PHP conditional:
+     ```php
+     <?php if ($field_value) : ?>
+         <element><?= esc_html($field_value) ?></element>
+     <?php endif; ?>
+     ```
+     Then run `composer dump-autoload` if a new class was added.
+
+### Style changes (`style` / `token` type)
+
+When a change modifies CSS properties, **always ask** the user before writing code:
+
+```
+css-studio({ action: "ask", question: "Where should this style change go?", options: [
+    "Tailwind — add/modify utility classes in index.php",
+    "Block SCSS — write to Blocks/{Name}/style.scss",
+    "Global SCSS — write to resources/scss/app.scss"
+] })
+```
+
+Apply the change according to the user's answer:
+
+- **Tailwind:** Add, remove, or swap Tailwind utility classes on the element in `index.php`. Do not add a `style` attribute.
+- **Block SCSS:** Write to `Blocks/{Name}/style.scss` (create it if it doesn't exist — Vite auto-discovers `style.scss` alongside `script.js`).
+- **Global SCSS:** Write to `resources/scss/app.scss`.
+
+Never mix approaches for the same property on the same element.
+
+### Enabling / disabling CSS Studio
+
+CSS Studio is controlled by a toggle in **WordPress admin → TAW Settings → Developer Tools → Enable CSS Studio**. It is only active when the Vite dev server is running (`npm run dev`). Remind the user of this if the GUI does not appear.

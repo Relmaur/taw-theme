@@ -1,60 +1,65 @@
 You are working on TAW Theme — a classic WordPress theme with a custom block architecture.
 
-Full architecture docs: see AGENTS.md in the repo root.
+Full architecture docs: see AGENTS.md in the repo root (start with its "Codex — Dense Reference" section).
 
 # Core Concepts
 
-- Blocks live in Blocks/{Name}/{Name}.php — folder name MUST match class name.
-- Two types: MetaBlock (owns metaboxes, fetches post_meta) and Block (presentational, receives props).
-- BlockLoader::loadAll() auto-discovers blocks. Never manually register in functions.php.
-- BlockRegistry::queue() before get_header(), then BlockRegistry::render() in template body.
-- PSR-4 autoloading: TAW\ maps to inc/
+| Fact | Detail |
+|---|---|
+| Blocks | `Blocks/{Name}/{Name}.php` — folder name MUST match class name |
+| Two types | `MetaBlock` (owns metaboxes, fetches post_meta) / `Block` (presentational, receives props) |
+| Discovery | `BlockLoader::loadAll()` auto-discovers — never manually register in `functions.php` |
+| Rendering | `BlockRegistry::queue()` before `get_header()`, then `BlockRegistry::render()` in template body |
+| PSR-4 (theme) | `TAW\Blocks\` → `Blocks/` only — that's the *only* mapping in this theme's `composer.json` |
+| Everything else | `TAW\Core\*`, `TAW\Helpers\*`, `TAW\CLI\*` come from the `taw/core` composer package, PSR-4-mapped to `vendor/taw/core/src/` — never `inc/` |
+
+`inc/` holds only theme-owned config (`options.php`, `performance.php`, `customizations.php`) and Metabox view templates — not framework classes.
 
 # Stack
 
-- WordPress 6.0+, PHP 7.4+
-- Tailwind CSS v4 (via @tailwindcss/vite plugin, entry: resources/css/app.css)
-- Alpine.js v3 (imported in resources/js/app.js)
-- Vite v7 (dev server on localhost:5173, builds to public/build/)
-- SCSS via sass package (global: resources/scss/app.scss, per-block: style.scss)
-- Bespoke metabox framework at inc/Metabox/Metabox.php
+WordPress 6.0+, PHP 8.1+, Tailwind CSS v4 (`@tailwindcss/vite`, entry `resources/css/app.css`), Alpine.js v3, Vite v7 (dev server `localhost:5173`, builds to `public/build/`), SCSS via `sass` (`resources/scss/app.scss` global, `style.scss` per-block).
+
+Bespoke metabox framework lives at `vendor/taw/core/src/Core/Metabox/Metabox.php` (not `inc/`).
 
 # Creating a MetaBlock
 
-1. Create Blocks/{Name}/{Name}.php extending TAW\Blocks\MetaBlock
-2. Set protected string $id = '{name}';
-3. Implement registerMetaboxes() — use new Metabox([...])
-4. Implement getData(int $postId): array — return template variables
-5. Create Blocks/{Name}/index.php — template receives extracted vars
-6. Optionally add style.css (or style.scss) and script.js — auto-enqueued
+1. `Blocks/{Name}/{Name}.php` extending `TAW\Blocks\MetaBlock`, `protected string $id = '{name}'`
+2. Implement `registerMetaboxes()` — `new Metabox([...])`
+3. Implement `getData(int|false $postId): array` — **exact signature required, missing `|false` is a whole-site fatal**
+4. `Blocks/{Name}/index.php` — template receives extracted vars
+5. Optional `style.css`/`style.scss` + `script.js` — auto-enqueued
+6. **Required:** `tests/Unit/Blocks/{Name}Test.php` testing `getData()`'s hydration logic — AGENTS.md § "Testing Blocks"
 
 # Creating a UI Block
 
-1. Create Blocks/{Name}/{Name}.php extending TAW\Blocks\Block
-2. Set protected string $id = '{name}';
-3. Implement defaults(): array — return default prop values
-4. Create Blocks/{Name}/index.php — template receives merged props
-5. Use directly: (new Button())->render(['text' => 'Click'])
+1. `Blocks/{Name}/{Name}.php` extending `TAW\Blocks\Block`, `protected string $id = '{name}'`
+2. Implement `defaults(): array`
+3. `Blocks/{Name}/index.php` — receives merged props
+4. Use directly: `(new Button())->render(['text' => 'Click'])`
 
 # Metabox Framework
 
-Field types: text, textarea, wysiwyg, url, number, select, image, group
-Meta key pattern: _taw_{field_id}
-Helpers: Metabox::get($postId, $fieldId), Metabox::get_image_url($postId, $fieldId)
-Features: tabs, show_on callbacks, width property, sanitize => 'code'
+Field types: `text, textarea, wysiwyg, url, number, range, select, image, files, group, checkbox, color, repeater, post_select, datepicker`
+
+Meta key pattern: `_taw_{field_id}`. Helpers: `Metabox::get($postId, $fieldId)`, `Metabox::get_image_url($postId, $fieldId)`. Features: tabs, `show_on` callbacks, `width` property, `sanitize => 'code'`.
+
+Full field options / conditional logic / repeater nesting: AGENTS.md § "The Metabox Framework".
 
 # Asset Pipeline
 
-- Vite auto-discovers block assets in vite.config.js via readdirSync
-- Dev: served from localhost:5173, prod: manifest.json → hashed files
-- Block styles/scripts get type="module" via script_loader_tag filter
-- Tailwind scans all PHP files via @source directive in resources/css/app.css
+- Vite auto-discovers block assets in `vite.config.js` via `readdirSync`
+- Dev: served from `localhost:5173`; prod: `manifest.json` → hashed files
+- Block styles/scripts get `type="module"` via `script_loader_tag` filter
+- Tailwind scans all PHP files via `@source` directive in `resources/css/app.css`
 
 # Rules
 
-- Never put block logic in functions.php
-- Never call wp_enqueue_style/script directly for block assets
+- Never put block logic in `functions.php`
+- Never call `wp_enqueue_style/script` directly for block assets
 - Never mismatch folder name and class name
-- Always queue() blocks before get_header() in templates
-- Always escape output in templates (esc_html, esc_url, esc_attr)
-- After creating new PHP classes, run composer dump-autoload if needed
+- Always `queue()` blocks before `get_header()` in templates
+- Always escape output (`esc_html`, `esc_url`, `esc_attr`)
+- After creating new PHP classes, run `composer dump-autoload`
+- Never ship a new block without its unit test — run `composer run test` to confirm it actually passes
+
+Full "Do NOT" list: AGENTS.md § "Do NOT".

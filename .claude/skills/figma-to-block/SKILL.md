@@ -50,7 +50,7 @@ Walk the reference code's text/image nodes and classify each into a field, same 
 
 ## Step 5 — Scaffold and implement
 
-Follow `make-metablock` Steps 4–7 exactly (CLI scaffold, PascalCase naming, `registerMetaboxes()`, `getData(int|false $postId): array` — **the signature bug is just as fatal here**, delete the empty `style.scss` stub if everything ends up Tailwind-only, etc).
+Follow `make-metablock` Steps 4–8 exactly (CLI scaffold, PascalCase naming, `registerMetaboxes()`, `getData(int|false $postId): array` — **the signature bug is just as fatal here**, delete the empty `style.scss` stub if everything ends up Tailwind-only, **and Step 8's unit test — required here too, no exception for Figma-sourced blocks**).
 
 Additional Figma-specific rules for the template:
 
@@ -72,7 +72,7 @@ If there's no target post yet, say so and defer this question until the block is
 
 ## Step 7 — Verify
 
-Standard `make-metablock` verify steps apply (site loads, `php -l`, `composer dump-autoload`), plus, since real data won't exist in the DB yet for a brand-new block:
+Standard `make-metablock` verify steps apply (site loads, `php -l`, `composer dump-autoload`, **`composer run test` passing for the Step 8 unit test**), plus, since real data won't exist in the DB yet for a brand-new block:
 
 - **Render the template standalone** to check markup/escaping/data-flow without needing WordPress or a browser: write a throwaway PHP script that stubs the handful of WP functions the template calls (`esc_html`, `esc_url`, `esc_attr`, `esc_html_e`, `esc_attr_e`, `wp_kses_post` — pass-through stubs are fine for this purpose), sets variables matching the design's actual copy, and `require`s the template file directly. This catches PHP errors, missing-variable warnings, and escaping bugs immediately, in the scratchpad directory, without touching any real template.
 - **Cross-check Tailwind values by hand** against the Figma spec if you can't compile the actual stylesheet (this project's Tailwind v4 only builds through Vite, no standalone CLI) — Tailwind's default spacing scale is `n × 0.25rem`, so e.g. Figma's `px-[80px]` ⇔ project's `px-20` (20 × 4px = 80px). Do this arithmetic rather than asserting a match you haven't checked.

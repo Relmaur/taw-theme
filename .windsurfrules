@@ -4,27 +4,15 @@ Full architecture docs: see AGENTS.md in the repo root.
 
 ## Core Package
 
-Framework internals live in the `taw/core` composer package (https://github.com/Relmaur/taw-core) at `vendor/taw/core/src/` — NOT in `inc/`. Update via `composer update taw/core`.
+Framework internals live in the `taw/core` composer package (https://github.com/Relmaur/taw-core) at `vendor/taw/core/src/` — NOT in `inc/`. Update via `composer update taw/core`. Full per-namespace path map: AGENTS.md § "Codex — Dense Reference" (Directory map) or § "PSR-4 Autoloading".
 
 This theme itself is a scaffold synced from a separate canonical repo, https://github.com/Relmaur/taw-theme, via the `update-theme` skill — don't conflate the two update paths.
 
 For authoritative/current API detail, prefer the `mcp__taw-docs__search_documentation` MCP tool (if available) over guessing.
-- `TAW\Core\Block\*` → `vendor/taw/core/src/Core/Block/` (BaseBlock, Block, MetaBlock, BlockLoader, BlockRegistry)
-- `TAW\Core\Metabox\*` → `vendor/taw/core/src/Core/Metabox/`
-- `TAW\Core\OptionsPage\*` → `vendor/taw/core/src/Core/OptionsPage/`
-- `TAW\Core\Theme\*` → `vendor/taw/core/src/Core/Theme/` (Theme, ThemeUpdater)
-- `TAW\Core\Menu\*` → `vendor/taw/core/src/Core/Menu/`
-- `TAW\Core\Rest\*` → `vendor/taw/core/src/Core/Rest/`
-- `TAW\Core\Form\*` → `vendor/taw/core/src/Core/Form/` (Form, SubmissionsHandler)
-- `TAW\Core\Mail\*` → `vendor/taw/core/src/Core/Mail/` (Mailer, MailTemplate, MailTester)
-- `TAW\Helpers\*` → `vendor/taw/core/src/Helpers/` (Framework, Image, Svg, Dump, Editor)
-- `TAW\CLI\*` → `vendor/taw/core/src/CLI/`
-- `utilities.php` and `performance.php` → `vendor/taw/core/src/Support/` (autoloaded by composer)
-- The theme's `inc/` holds only theme-owned config (`options.php`, `performance.php`, `customizations.php`) and Metabox view templates
 
 Do NOT edit anything inside `vendor/taw/core/`. To update the framework: `composer update taw/core`.
 
-`functions.php` is 100% framework-owned — two lines, require autoload + `Theme::bootstrapFullSite(get_template_directory())`. Never hand-edit it; site-specific hooks go in `inc/customizations.php`.
+`functions.php` is 100% framework-owned — two lines, require autoload + `Theme::bootstrapFullSite(get_template_directory())`. Never hand-edit it; site-specific hooks go in `inc/customizations.php`. Full rationale: AGENTS.md § "The `functions.php` Bootstrap".
 
 Key rules:
 - Blocks live in Blocks/{Name}/{Name}.php — folder MUST match class name
@@ -39,6 +27,7 @@ Key rules:
 New blocks:
 - Scaffold with: php bin/taw make:block Name --type=meta --with-style && composer dump-autoload
 - Or manually create Blocks/{Name}/{Name}.php + index.php (no functions.php changes)
+- Required: matching tests/Unit/Blocks/NameTest.php testing getData()'s hydration logic, run `composer run test` to confirm — pattern + rationale: AGENTS.md § "Testing Blocks"
 
 Options page:
 - OptionsPage (from taw/core) stores site settings in wp_options, same field config as Metabox
@@ -66,10 +55,8 @@ Forms:
 - Register with Form::register([...]) in MetaBlock::boot() wrapped in add_action('init', ...) — NEVER in templates
 - Display with Form::display('id') in the template
 - TAW\Core\Form\SubmissionsHandler — CPT submission storage + webhook forwarding; auto-wired by Theme::boot(), do not instantiate manually
-- Input field types: text, email, tel, url, number, textarea, select, radio, checkbox, checkbox_group, date
-- Structural fields (no data): heading, divider, html
-- Supports multi-step forms (steps key) and AND/OR conditional logic (conditions)
 - Never use new Form([...]) + $form->render() — that API is removed
+- Full field-type list, security details (rate limiting, Turnstile), multi-step/conditional config: AGENTS.md § "Form System" and § "Form security"
 
 Mail:
 - TAW\Core\Mail\Mailer — fluent wp_mail() wrapper: ->to()->subject()->template()->setVariables()->send()
@@ -101,3 +88,4 @@ Direct field access:
 - Same sanitization as a real admin save (via Metabox::sanitizeValue()/sanitizeRepeaterRows())
 - Use --file=path.json for repeater/array values, --dry-run to preview
 - Don't hand-craft repeater JSON via raw wp post meta update — this command already knows each field's shape
+- Full risk/confirmation model for content writes: AGENTS.md § "Content-writing safety model"
