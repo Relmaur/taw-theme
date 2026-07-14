@@ -2,8 +2,9 @@
 name: audit-seo
 description: >
     Audits a page's copy for SEO and conversion quality using `php bin/taw seo:extract`/
-    `seo:inject`, then proposes and (with approval) applies rewrites. Triggers on "audit SEO
-    for page [ID]" / "review copy on post [ID]" / "audit-seo".
+    `seo:inject`, then asks whether to apply approved rewrites directly to the database or
+    produce a polished, shareable client-approval report (Artifact) instead. Triggers on
+    "audit SEO for page [ID]" / "review copy on post [ID]" / "audit-seo".
 argument-hint: "<post_id>"
 ---
 
@@ -87,7 +88,25 @@ Every proposed rewrite must map to a real `field_id` from the dump — never pro
 for a field that doesn't exist, and never propose rewriting a field this skill didn't extract
 (image/URL/layout fields are out of scope here — that's `fields:set`'s job, not this skill's).
 
-## Action 5 — Apply (only after explicit approval)
+## Action 5 — Choose how this gets approved
+
+Never assume which mode fits — the same audit serves two genuinely different situations (a
+developer reviewing their own work vs. a client who needs to sign off on copy changes before
+they go live), and picking wrong either slows down routine internal work or writes unapproved
+copy to a client's live site. Ask, via AskUserQuestion, right after presenting the Action 4
+report:
+
+- **"Apply directly to the database"** — for internal/developer review: go straight into the
+  dry-run → confirm → write flow below (Action 6a). Appropriate when whoever is running this
+  skill is themselves authorized to approve the copy.
+- **"Generate a client-approval report"** — for anything that needs sign-off from someone who
+  isn't in this conversation: produces a polished, shareable deliverable (Action 6b) and writes
+  nothing to the database this run.
+- **"Both — generate the report now, and apply after you confirm"** — for a paper trail even on
+  internal-only work, or when the approval is expected imminently in the same session: produces
+  the report, then still runs the full Action 6a approval flow afterward.
+
+## Action 6a — Apply directly (only after explicit approval)
 
 This follows the same mandatory content-writing safety model every field-writing skill in this
 project follows (`populate-content`, `fields:set`) — not a lighter version of it:
@@ -114,6 +133,31 @@ project follows (`populate-content`, `fields:set`) — not a lighter version of 
    data changed since Action 1's extract (someone edited the post in the admin meanwhile).
    Re-run `seo:extract`, re-apply the approved rewrites to the fresh dump, and re-attempt.
 
+## Action 6b — Generate a client-approval report
+
+Load the `artifact-design` skill first, then publish an HTML Artifact — not a markdown dump —
+since this deliverable's whole purpose is to be shared with someone non-technical who needs to
+approve copy changes, not read a diff. Build it from the Action 3 analysis, but written for that
+audience:
+
+- Lead with a short plain-language summary (what was reviewed, how many issues found, at a
+  glance) before any detail — a client opens this wanting the headline, not the methodology.
+- Present Red Flags and Polish Opportunities as visually distinct sections (color/iconography,
+  per the `artifact-design` skill's guidance) — never raw JSON, `field_id`s, or block names in
+  the client-facing copy; use the field's plain-language `label` and a description of where it
+  appears on the page instead ("the main heading at the top of the page", not `hero_heading`).
+- Show every proposed rewrite as a clear before/after comparison (not a diff syntax) with a
+  one-line rationale for each — a client approves *because* they understand *why*, not just
+  *what* changed.
+- End with an explicit call to action telling the client what approving means ("once approved,
+  these changes will be published to the live site") and how to give that approval back to
+  whoever commissioned the audit.
+
+This publishes as a private Artifact by default — tell the user the link, and that it's theirs
+to share with the client when ready; don't imply it's already been sent anywhere. **Nothing is
+written to the database in this action** — that only ever happens via Action 6a, whether that's
+this same session (the "Both" choice) or a later one once approval comes back.
+
 ## Don't
 
 - Don't skip Action 1 and hand-write a JSON payload from memory — always extract fresh, so the
@@ -121,9 +165,14 @@ project follows (`populate-content`, `fields:set`) — not a lighter version of 
 - Don't propose or apply a rewrite for a field `seo:extract` didn't return — image, URL, and
   layout fields are out of scope for this skill by design (token efficiency, and because
   `seo:inject` will refuse them anyway).
-- Don't apply any rewrite without the Action 5 approval step, even for a single field, even for
+- Don't apply any rewrite without the Action 6a approval step, even for a single field, even for
   an obviously-bad placeholder like "Lorem Ipsum" — approval is required regardless of how
   confident the proposed rewrite is.
+- Don't skip Action 5's AskUserQuestion and assume which mode fits — a solo developer's routine
+  cleanup and a client's live-site copy are not the same risk profile, and guessing wrong either
+  slows down harmless work or writes unapproved copy to a live site.
+- Don't put raw `field_id`s, block names, or JSON into the Action 6b client deliverable — it's
+  for a non-technical audience approving copy, not reviewing a diff.
 - Don't touch `post_title`/`post_content`/`post_status` — `seo:inject` only ever writes Metabox
   fields (same hard boundary as `fields:set`), and this skill doesn't work around that.
 - Don't retry `seo:inject` with `--force` or by hand-editing around a validation failure — every
