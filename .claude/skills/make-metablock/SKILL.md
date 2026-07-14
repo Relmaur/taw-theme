@@ -116,6 +116,7 @@ If there's no target post yet (the block hasn't been wired into a page, or the p
 - Optionally, `php bin/taw inspect` reports the live registered blocks/fields — a fast way to confirm the new block is actually discovered and its fields match what you intended, without opening wp-admin.
 - If a dev server is running (`npm run dev`), load a page containing the block and check both the front end render and the WP Admin metabox UI (fields appear, save correctly, repeaters add/remove rows).
 - Don't report the task done without at least a visual check when a browser is available — see the project's `verify` skill for the general pattern.
+- **If this block was sourced from a screenshot**, offer (don't auto-run) the `visual-check` skill once it's wired into a page — it drives a real browser via the Playwright MCP tools to screenshot the rendered section and compares it against the original reference screenshot. Only run it on an explicit yes.
 
 ## Marking generated files (when explicitly requested)
 
