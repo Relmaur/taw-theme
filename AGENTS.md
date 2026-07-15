@@ -504,6 +504,8 @@ This separation means:
 - To pull a framework update: `composer update taw/core`.
 - To change framework behaviour, work in the `taw-core` repo, tag a release, then update the constraint here.
 
+**Gotcha — a `taw-core` change on its `main` branch does not exist here until tagged AND pulled.** `composer.lock` pins an exact tag; a commit sitting on `taw-core`'s `main` (even pushed) changes nothing in this repo until (1) `taw-core` cuts a new version tag and (2) `composer update taw/core` runs *here* and the updated `composer.lock` is committed. If a block here is written against a `taw-core` class/method that only exists on `main` and not yet in a tagged release, `composer run phpstan`/`composer run test` will fail with `class.notFound` — that's not a false positive, it means the dependency genuinely isn't resolvable yet. **Never "fix" this by hand-copying files into `vendor/taw/core/` to make a local check pass** — that bypasses Composer's real version resolution, so a check that passes that way will still fail in CI (which always does a real `composer install` against the committed lock file). The only real fix is the tag-then-update sequence above.
+
 **Package structure:**
 ```
 vendor/taw/core/
