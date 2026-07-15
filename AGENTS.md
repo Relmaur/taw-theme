@@ -400,6 +400,8 @@ A lookup table of the most common sections. Use these as the default starting po
 **Type:** MetaBlock
 **Purpose:** Accordion-style FAQ section with a heading and repeatable question/answer pairs.
 
+**Already implemented** (unlike the other entries in this catalog, which are copy-paste starting points) — `Blocks/FAQ/` ships with this theme, and its `index.php` also pushes a `FAQPage` JSON-LD node onto `taw/core`'s `TAW\Core\Seo\Schema` graph (`Schema::push(Schema::faqPage($items))`) from the same `$items` the accordion renders from, so the visible markup and the structured data can never drift out of sync. Use this as the reference example when pairing a new block's markup with its own schema.org node.
+
 ```php
 'fields' => [
     ['id' => 'faq_heading', 'label' => 'Heading', 'type' => 'text', 'width' => '50'],
