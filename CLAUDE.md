@@ -97,6 +97,7 @@ Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')`
 
 Full list: AGENTS.md § "Do NOT". Additional Claude-Code-session-specific reminders not in that list:
 
+- **Don't trigger a Playwright browser check without asking first — for any reason, not just `visual-check`'s pixel comparison.** This includes the basic "load the page and confirm it renders / the admin metabox UI works" step in `make-metablock`/`build-page`'s own Verify checklists, and any ad-hoc use of the `playwright` MCP server (`.mcp.json`) elsewhere, including the general `/verify` skill once it's bootstrapped for this repo. Ask a plain question first ("want me to check this in a browser, or are you already looking at it?") — on small changes the developer often has the dev site open and can tell at a glance; don't spend the time/tab-churn of driving a browser automatically. Checks that don't open a real browser (`curl` status checks, `php bin/taw inspect`, `composer run test`) aren't gated by this — only actual Playwright-driven browser automation is.
 - Don't call `vite_is_dev()` or `vite_asset_url()` — use `ViteLoader::isDevServerRunning()` and `ViteLoader::assetUrl()`
 - Don't use `new Form([...]) + $form->render()` — use `Form::register()` in `boot()` and `Form::display('id')` in templates
 - Don't manually instantiate `SubmissionsHandler` in `functions.php` — it's auto-wired by `Theme::boot()`
