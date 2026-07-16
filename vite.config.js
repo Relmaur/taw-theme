@@ -18,6 +18,12 @@ const componentAssets = readdirSync('Blocks', { recursive: true })
  * production even though `npm run build` succeeded. This also means dev mode
  * keeps working correctly if Vite has to pick a different port because 5173
  * is already taken.
+ *
+ * Also sets `server.config.server.origin` here, once the real port is known —
+ * see the comment on `server.origin` below for why this can't just be a
+ * static config value. `listening` fires the instant the HTTP server starts
+ * accepting connections, before any request can possibly arrive, so there's
+ * no window where a stale/unset origin could be read by a real asset request.
  */
 function hotFilePlugin(hotPath = 'public/build/hot') {
     const cleanup = () => { try { unlinkSync(hotPath); } catch {} };
@@ -27,7 +33,9 @@ function hotFilePlugin(hotPath = 'public/build/hot') {
             server.httpServer?.once('listening', () => {
                 mkdirSync(dirname(hotPath), { recursive: true });
                 const { port } = server.httpServer.address();
-                writeFileSync(hotPath, `http://localhost:${port}`);
+                const origin = `http://localhost:${port}`;
+                writeFileSync(hotPath, origin);
+                server.config.server.origin = origin;
             });
             process.on('exit', cleanup);
             for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
@@ -63,21 +71,21 @@ export default defineConfig(({ command }) => ({
     server: {
         host: 'localhost',
         port: 5173,
-        // Deliberately NOT auto-picking a free port on conflict. `origin` below
-        // is hardcoded to port 5173 (required for correct absolute font URLs —
-        // see the comment on `origin`); if Vite silently moved to a different
-        // port, that value would go stale with no error, and only fonts/some
-        // absolute-URL assets would quietly 404. Failing loudly here is safer:
-        // if this fails to start, something else has port 5173 — find it with
-        // `lsof -i :5173` and stop it (or reconfigure that other project),
-        // rather than just letting two dev servers collide.
-        strictPort: true,
+        // Auto-increments to the next free port (5174, 5175, ...) if 5173 is
+        // already taken by another TAW project's dev server — this is what
+        // makes running `npm run dev` in multiple projects simultaneously
+        // work, instead of the second one refusing to start. Safe now that
+        // `origin` (below) is set dynamically rather than hardcoded, so it
+        // can never go stale no matter which port Vite actually lands on.
+        strictPort: false,
         cors: true,
         // Tell Vite to embed full absolute URLs for assets in injected CSS.
         // Without this, Vite writes `/resources/fonts/...` (absolute path)
         // which the browser resolves against the page origin (taw.local),
-        // not the Vite server (localhost:5173) — causing font 404s.
-        origin: 'http://localhost:5173',
+        // not the Vite server — causing font 404s. Deliberately not set as a
+        // static value here: hotFilePlugin() above sets it the moment the
+        // real listening port is known, so it always matches whichever port
+        // Vite actually started on.
         watch: {
             usePolling: true,
         },
