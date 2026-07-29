@@ -9,6 +9,15 @@
  * if this site needs none of the defaults below.
  */
 
+// Media Folders is opt-in at the taw/core level, but ships active by
+// default on every taw-theme site — remove this line if this site doesn't
+// need nestable Media Library folders. Must run before Theme::boot().
+TAW\Core\Media\MediaFolders::enable();
+
+// Lucide icon picker (adds the 'icon' Metabox/OptionsPage field type) is
+// opt-in per-site — uncomment to enable it for this site:
+// TAW\Core\Icons\Lucide::enable();
+
 add_action('admin_init', function () {
     remove_post_type_support('page', 'editor');
 });

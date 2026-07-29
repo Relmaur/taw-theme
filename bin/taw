@@ -54,6 +54,7 @@ use TAW\CLI\ExportStaticCommand;
 use TAW\CLI\SeoExtractCommand;
 use TAW\CLI\SeoInjectCommand;
 use TAW\CLI\WpCliCommand;
+use TAW\CLI\IconsSyncCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -71,5 +72,6 @@ $app->add(new ExportStaticCommand($themeDir));
 $app->add(new SeoExtractCommand($themeDir));
 $app->add(new SeoInjectCommand($themeDir));
 $app->add(new WpCliCommand($themeDir));
+$app->add(new IconsSyncCommand());
 
 $app->run();

@@ -16,7 +16,7 @@
 | `Blocks/{Name}/style.{css,scss}`, `script.js` | Auto-enqueued block assets | Yes, optional |
 | `inc/options.php` | `OptionsPage` fields | Yes — never touched by `update-theme` |
 | `inc/performance.php` | `Theme::performance()` config array | Yes — never touched |
-| `inc/customizations.php` | theme supports, nav menus, `VisualEditor::enable()`, `MetaboxOrder::lock()`, `Svg::register()`, `MailTester` | Yes — never touched |
+| `inc/customizations.php` | theme supports, nav menus, `VisualEditor::enable()`, `MediaFolders::enable()` (on by default), `Lucide::enable()` (commented out), `MetaboxOrder::lock()`, `Svg::register()`, `MailTester` | Yes — never touched |
 | `functions.php` | 2-line bootstrap only | **Never hand-edit** — blindly overwritten by `update-theme` |
 | `vendor/taw/core/src/` | All `TAW\Core\*`, `TAW\Helpers\*`, `TAW\CLI\*` | **No** — edit in the `taw-core` repo, then `composer update taw/core` |
 | `resources/js/app.js` | Vite JS entry, imports CSS/SCSS | Yes |
@@ -37,13 +37,14 @@ Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" belo
 | `Menu::get($location)` → `->items()` returns `MenuItem[]` | Typed nav tree — never `wp_nav_menu()` |
 | `Image::render($id,$size,['above_fold'=>bool,'class'=>...])` | Perf-optimised `<img>` |
 | `Svg::render($id,$alt)` / `::inline($id)` / `::register()` | SVG upload + render |
+| `Lucide::render($name,['class'=>...])` | Inline Lucide SVG (opt-in field type; render itself needs no `enable()`) |
 | `Form::register([...])` inside `boot()` wrapped in `add_action('init',...)`; `Form::display($id)` in template | Frontend form |
 | `(new Mailer())->to()->subject()->template()->setVariables()->send()` | Email |
 | `ViteLoader::assetUrl($path)` / `::isDevServerRunning()` | Asset URL / dev-server probe |
 | `dump($val)` / `dd($val)` | Debug panel, `WP_DEBUG` only |
 | `BlockRegistry::queue(...ids)` before `get_header()`; `::render($id)` in body | Asset + render pattern |
 
-Full API + option tables: §§ "The Metabox Framework", "Form System", "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Debug Helper", "Vite Integration" below.
+Full API + option tables: §§ "The Metabox Framework", "Form System", "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Icon System", "Media Folders", "Debug Helper", "Vite Integration" below.
 
 ### Lifecycle / hooks
 
@@ -57,7 +58,7 @@ Full API + option tables: §§ "The Metabox Framework", "Form System", "Options 
 
 ### Field types
 
-- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker`
+- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker icon` (`icon` is opt-in — requires `Lucide::enable()`)
 - **Form:** `text email tel url textarea select checkbox date`
 
 ### Fatal mistakes (full list in § "Do NOT" below)
@@ -529,7 +530,8 @@ vendor/taw/core/
 │   │   │   └── MenuItem.php         # Typed menu item with active-state helpers
 │   │   ├── Rest/
 │   │   │   ├── SearchEndpoints.php      # GET taw/v1/search-posts
-│   │   │   └── VisualEditorEndpoint.php # Visual Builder REST endpoint
+│   │   │   ├── VisualEditorEndpoint.php # Visual Builder REST endpoint
+│   │   │   └── IconsEndpoint.php        # GET taw/v1/icons — Lucide search (opt-in, see Icons/)
 │   │   ├── Form/
 │   │   │   ├── Form.php             # Config-driven frontend form (CSRF, honeypot, PRG, email)
 │   │   │   └── SubmissionsHandler.php # CPT submission storage + webhook forwarding
@@ -537,8 +539,15 @@ vendor/taw/core/
 │   │   │   ├── Mailer.php           # Fluent wp_mail() wrapper with template support
 │   │   │   ├── MailTemplate.php     # MJML/HTML template compiler ({{variable}} syntax)
 │   │   │   └── MailTester.php       # Admin page: Tools → Test Emails
-│   │   └── Editor/
-│   │       └── VisualEditor.php     # Visual Builder engine — inline frontend editor
+│   │   ├── Editor/
+│   │   │   └── VisualEditor.php     # Visual Builder engine — inline frontend editor
+│   │   ├── Icons/
+│   │   │   ├── Lucide.php           # Opt-in 'icon' field type + template render() helper
+│   │   │   ├── picker.js/.css       # wp-admin icon picker modal
+│   │   │   └── (resources/icons/lucide/*.svg + lucide-index.json — vendored icon set)
+│   │   └── Media/
+│   │       ├── MediaFolders.php     # Opt-in nestable Media Library folders (taxonomy-based)
+│   │       └── folders.js/.css      # Media -> Folders screen + List-view integration
 │   ├── CLI/                         # Symfony Console commands
 │   │   ├── MakeBlockCommand.php
 │   │   ├── ExportBlockCommand.php
@@ -1361,6 +1370,41 @@ echo Svg::inline($attachment_id, ['class' => 'icon w-5 h-5', 'title' => 'Menu'])
 // Get URL only:
 $url = Svg::url($attachment_id);
 ```
+
+---
+
+## Icon System
+
+Provided by `taw/core` (namespace `TAW\Core\Icons\Lucide`). Full API/architecture: `taw/core` README § "Icon System".
+
+Lucide's full icon set is vendored inside `taw/core` itself (no network call at runtime). **Opt-in** — the `icon` Metabox/OptionsPage field type and its wp-admin picker only work once enabled in `inc/customizations.php`, before `Theme::boot()` (this repo's scaffold does **not** call it by default — uncomment the line already present in `inc/customizations.php` to turn it on for a given site):
+
+```php
+TAW\Core\Icons\Lucide::enable();
+```
+
+```php
+// Field config, same as any other Metabox/OptionsPage field:
+['id' => 'feature_icon', 'label' => 'Icon', 'type' => 'icon']
+
+// Template output needs no enable() call — same relationship as
+// Svg::register() vs Svg::render()/Svg::inline() above:
+echo TAW\Core\Icons\Lucide::render(Metabox::get($post_id, 'feature_icon'), ['class' => 'w-5 h-5']);
+```
+
+---
+
+## Media Folders
+
+Provided by `taw/core` (namespace `TAW\Core\Media\MediaFolders`). Full API/architecture: `taw/core` README § "Media Folders".
+
+Nestable Media Library folders (a hierarchical `taw_media_folder` taxonomy on attachments) — a dedicated **Media → Folders** admin screen with drag-and-drop, plus a filter/column/bulk-action on the classic Media Library list view. **Opt-in at the `taw/core` level, but this repo's `inc/customizations.php` scaffold calls it by default**, so every new taw-theme site has it active out of the box:
+
+```php
+TAW\Core\Media\MediaFolders::enable();
+```
+
+Remove that line from a site's `inc/customizations.php` if it doesn't need folder organization.
 
 ---
 

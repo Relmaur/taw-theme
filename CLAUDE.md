@@ -40,6 +40,10 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 **Visual Editor:** Opt-in — call `TAW\Core\Editor\VisualEditor::enable()` in `inc/customizations.php` before `Theme::boot()`. Once enabled: **Edit Visually** button in admin bar; `?taw_visual_edit=1` activates the editing shell.
 
+**Icon System:** Opt-in — call `TAW\Core\Icons\Lucide::enable()` in `inc/customizations.php` (commented out by default) to turn on the `icon` field type and its wp-admin picker. `Lucide::render($name, [...])` for template output needs no `enable()` call.
+
+**Media Folders:** Opt-in at the `taw/core` level, but **on by default** in this scaffold's `inc/customizations.php` (`TAW\Core\Media\MediaFolders::enable();`). Adds a **Media → Folders** admin screen (nestable folders, drag-and-drop) plus a filter/column/bulk-action on the classic Media Library list view.
+
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline
 
 Full API for these: AGENTS.md §§ "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Debug Helper", "Mail System", "REST API", "Vite Integration". Quick reference:
@@ -68,7 +72,7 @@ Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')`
 
 ## Metabox Field Types
 
-`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker` — full options/conditional logic: AGENTS.md § "The Metabox Framework" (or taw/core README).
+`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`, `icon` (opt-in, see "Icon System" above) — full options/conditional logic: AGENTS.md § "The Metabox Framework" (or taw/core README).
 
 ## Metabox Order
 
