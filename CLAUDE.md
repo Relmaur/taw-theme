@@ -42,7 +42,7 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 **Icon System:** Opt-in — call `TAW\Core\Icons\Lucide::enable()` in `inc/customizations.php` (commented out by default) to turn on the `icon` field type and its wp-admin picker. `Lucide::render($name, [...])` for template output needs no `enable()` call.
 
-**Media Folders:** Opt-in at the `taw/core` level, but **on by default** in this scaffold's `inc/customizations.php` (`TAW\Core\Media\MediaFolders::enable();`). Adds a **Media → Folders** admin screen (nestable folders, drag-and-drop) plus a filter/column/bulk-action on the classic Media Library list view.
+**Media Folders:** Opt-in at the `taw/core` level, but **on by default** in this scaffold's `inc/customizations.php` (`TAW\Core\Media\MediaFolders::enable();`). Adds a **Media → Folders** admin screen (nestable folders, drag-and-drop), a filter/column/bulk-action on the classic Media Library list view, and a FileBird-style sidebar on the default Grid view of `upload.php` (live click-to-filter, full folder CRUD).
 
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline
 
