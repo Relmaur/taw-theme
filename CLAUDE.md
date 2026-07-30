@@ -44,6 +44,8 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 **TAW Media:** Opt-in at the `taw/core` level, but **on by default** in this scaffold's `inc/customizations.php` (`TAW\Core\Media\MediaFolders::enable();`). Adds a **Media → TAW Media** admin screen (a full Alpine.js app: nestable folders, breadcrumb, folder cards, drag-and-drop upload, multi-select bulk move/delete), a filter/column/bulk-action on the classic Media Library list view, and a FileBird-style sidebar on the default Grid view of `upload.php` (live click-to-filter, full folder CRUD, sort controls for both the folder tree and the file grid — name, date, and file size).
 
+**Emailit transport:** Opt-in, per-site, paid add-on — commented out by default in `inc/customizations.php`. Routes *all* `wp_mail()` calls (including `Mailer`'s, below) through Emailit's API instead of the host's default mail transport, with automatic fallback to plain `wp_mail()` if unconfigured or the API call fails. Gated on a `defined('EMAILIT_API_KEY')` check, so leaving the block uncommented is a no-op for sites without the constant — only sites whose `wp-config.php` defines `EMAILIT_API_KEY` (a site-specific secret, never committed) activate it. Requires `composer require emailit/emailit-php` on that site. Full detail: `taw/core` README § "Email".
+
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline
 
 Full API for these: AGENTS.md §§ "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Debug Helper", "Mail System", "REST API", "Vite Integration". Quick reference:

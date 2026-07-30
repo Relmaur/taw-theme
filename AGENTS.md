@@ -1046,6 +1046,23 @@ Use `{{variable_name}}` placeholders in templates. `all_fields` is auto-populate
 
 WP Admin page (Tools → Test Emails) for sending test emails against compiled templates.
 
+### Emailit transport (opt-in, per-client add-on)
+
+`TAW\Support\EmailConfig::useEmailit()` operates one level below `Mailer` — it changes the underlying transport that **every** `wp_mail()` call goes through (including `Mailer`'s own calls), rather than composing the email itself. Not enabled by default; wire it up in `inc/customizations.php`, gated on a `wp-config.php` constant so it's a no-op everywhere except sites that pay for it:
+
+```php
+// In inc/customizations.php, before Theme::boot():
+if (defined('EMAILIT_API_KEY')) {
+    TAW\Support\EmailConfig::useEmailit(
+        EMAILIT_API_KEY,
+        defined('EMAILIT_FROM_EMAIL') ? EMAILIT_FROM_EMAIL : get_bloginfo('admin_email'),
+        defined('EMAILIT_FROM_NAME') ? EMAILIT_FROM_NAME : ''
+    );
+}
+```
+
+Requires `composer require emailit/emailit-php` on that site (not a default dependency). `EMAILIT_API_KEY` / `EMAILIT_FROM_EMAIL` / `EMAILIT_FROM_NAME` are site-specific secrets — set them in that site's `wp-config.php`, never in this repo. Falls back to plain `wp_mail()` transparently if the SDK is missing, the key is empty, or the API call throws. Full detail: `taw/core` README § "Email".
+
 ```php
 // In inc/customizations.php — never functions.php, which is framework-owned
 (new \TAW\Core\Mail\MailTester())->register();

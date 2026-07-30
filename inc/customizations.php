@@ -18,6 +18,23 @@ TAW\Core\Media\MediaFolders::enable();
 // opt-in per-site — uncomment to enable it for this site:
 // TAW\Core\Icons\Lucide::enable();
 
+// Emailit transactional email — routes all wp_mail() calls through
+// Emailit's API (form submissions, password resets, WooCommerce, etc.),
+// with automatic fallback to plain wp_mail() if unconfigured or the API
+// call fails. A paid per-client add-on: requires `composer require
+// emailit/emailit-php` here, plus EMAILIT_API_KEY (and optionally
+// EMAILIT_FROM_EMAIL / EMAILIT_FROM_NAME) defined in this site's
+// wp-config.php — site-specific secrets, never commit them here. The
+// defined() guard below keeps this a no-op on every site that doesn't
+// define the constant, so it's safe to leave uncommented across all sites.
+// if (defined('EMAILIT_API_KEY')) {
+//     TAW\Support\EmailConfig::useEmailit(
+//         EMAILIT_API_KEY,
+//         defined('EMAILIT_FROM_EMAIL') ? EMAILIT_FROM_EMAIL : get_bloginfo('admin_email'),
+//         defined('EMAILIT_FROM_NAME') ? EMAILIT_FROM_NAME : ''
+//     );
+// }
+
 add_action('admin_init', function () {
     remove_post_type_support('page', 'editor');
 });
