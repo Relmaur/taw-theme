@@ -42,7 +42,7 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 **Icon System:** Opt-in — call `TAW\Core\Icons\Lucide::enable()` in `inc/customizations.php` (commented out by default) to turn on the `icon` field type and its wp-admin picker. `Lucide::render($name, [...])` for template output needs no `enable()` call.
 
-**TAW Media:** Opt-in at the `taw/core` level, but **on by default** in this scaffold's `inc/customizations.php` (`TAW\Core\Media\MediaFolders::enable();`). Adds a **Media → TAW Media** admin screen (a full Alpine.js app: nestable folders, breadcrumb, folder cards, drag-and-drop upload, multi-select bulk move/delete), a filter/column/bulk-action on the classic Media Library list view, and a FileBird-style sidebar on the default Grid view of `upload.php` (live click-to-filter, full folder CRUD).
+**TAW Media:** Opt-in at the `taw/core` level, but **on by default** in this scaffold's `inc/customizations.php` (`TAW\Core\Media\MediaFolders::enable();`). Adds a **Media → TAW Media** admin screen (a full Alpine.js app: nestable folders, breadcrumb, folder cards, drag-and-drop upload, multi-select bulk move/delete), a filter/column/bulk-action on the classic Media Library list view, and a FileBird-style sidebar on the default Grid view of `upload.php` (live click-to-filter, full folder CRUD, sort controls for both the folder tree and the file grid — name, date, and file size).
 
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline
 
