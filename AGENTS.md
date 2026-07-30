@@ -1004,6 +1004,8 @@ Registers a `taw_submission` CPT for viewing submissions in WP Admin. Also provi
 
 **Auto-wired by `Theme::boot()`** — no manual instantiation needed. Submissions are saved automatically after a successful send.
 
+**Per-form webhooks:** each form can target its own webhook instead of one shared site-wide URL — resolved in precedence order: (1) an admin-configured override in the settings page's **Per-Form Webhooks** table (one row per form), (2) a code-level default via the form's own `'webhook' => ['url' => ..., 'secret' => ...]` config key, (3) the page's **Default Webhook** as the site-wide fallback. A form with none of the three simply fires nothing (still saved to the CPT). Full detail: `taw/core` README § "Forms" → "Submission Persistence".
+
 ---
 
 ## Mail System
