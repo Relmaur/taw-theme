@@ -1394,11 +1394,11 @@ echo TAW\Core\Icons\Lucide::render(Metabox::get($post_id, 'feature_icon'), ['cla
 
 ---
 
-## Media Folders
+## TAW Media
 
-Provided by `taw/core` (namespace `TAW\Core\Media\MediaFolders`). Full API/architecture: `taw/core` README § "Media Folders".
+Provided by `taw/core` (namespace `TAW\Core\Media\MediaFolders`). Full API/architecture: `taw/core` README § "TAW Media".
 
-Nestable Media Library folders (a hierarchical `taw_media_folder` taxonomy on attachments) — a dedicated **Media → Folders** admin screen with drag-and-drop, a filter/column/bulk-action on the classic Media Library list view, and a FileBird-style sidebar (Alpine.js) bolted onto the default Grid view of `upload.php` with live click-to-filter and the same folder CRUD. **Opt-in at the `taw/core` level, but this repo's `inc/customizations.php` scaffold calls it by default**, so every new taw-theme site has it active out of the box:
+Nestable Media Library folders (a hierarchical `taw_media_folder` taxonomy on attachments) — a dedicated **Media → TAW Media** admin screen (a full Alpine.js app: folder tree with drag-and-drop, breadcrumb, folder cards for subfolder navigation, direct drag-and-drop file upload, multi-select with bulk move/delete), a filter/column/bulk-action on the classic Media Library list view, and a FileBird-style sidebar (Alpine.js) bolted onto the default Grid view of `upload.php` with live click-to-filter and the same folder CRUD. **Opt-in at the `taw/core` level, but this repo's `inc/customizations.php` scaffold calls it by default**, so every new taw-theme site has it active out of the box:
 
 ```php
 TAW\Core\Media\MediaFolders::enable();
