@@ -1006,6 +1006,8 @@ Registers a `taw_submission` CPT for viewing submissions in WP Admin. Also provi
 
 **Per-form webhooks:** each form can target its own webhook instead of one shared site-wide URL — resolved in precedence order: (1) an admin-configured override in the settings page's **Per-Form Webhooks** table (one row per form), (2) a code-level default via the form's own `'webhook' => ['url' => ..., 'secret' => ...]` config key, (3) the page's **Default Webhook** as the site-wide fallback. A form with none of the three simply fires nothing (still saved to the CPT). Full detail: `taw/core` README § "Forms" → "Submission Persistence".
 
+**Webhook payload:** always includes `page_url` — the full URL of the page the form was submitted from, captured server-side at render time — so a form embedded on several different pages (e.g. the same "Financiera" contact form on multiple pages) can still be routed differently downstream. A `taw_form_webhook_payload` filter (`add_filter('taw_form_webhook_payload', fn($payload, $formId, $postId, $data) => ..., 10, 4)` in `inc/customizations.php`) lets this specific site add or override anything else in the payload before it's sent — e.g. computing a `destination` key from `page_url` for an n8n workflow to route on.
+
 ---
 
 ## Mail System
