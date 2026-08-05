@@ -1527,6 +1527,19 @@ server: { origin: 'http://localhost:5173' }
 ```
 Forces Vite to embed the full dev server URL in injected CSS (e.g. `url('http://localhost:5173/resources/fonts/...')`). Without this, Vite writes `/resources/fonts/...` which the browser resolves against the WordPress page origin, causing font 404s.
 
+### Production incident: a host's JS-optimization plugin CDN-rehosting the entry bundle breaks it silently
+
+**Confirmed on a real client site.** The host's JS optimization plugin (WPMUdev Hummingbird) rehosted the compiled Vite entry chunk (`public/build/assets/app-*.js`, loaded with `type="module"`) onto its own CDN. That CDN sends no `Access-Control-Allow-Origin` header. Module scripts (`type="module"`) always require CORS to execute, regardless of same-origin heuristics elsewhere in the page — so the browser hard-blocked the fetch (`net::ERR_FAILED` in the console), the entire bundle never executed, and with it Alpine.js and all core init logic (including the `--header-height` custom property some layout CSS depends on) silently never ran. **The rendered page showed no visible error at all** — no broken layout signal, no thrown exception surfaced to the user, just inert JS.
+
+**This is not a `taw-core`/`ViteLoader`/`BaseBlock` bug.** Nothing in the framework's asset pipeline is wrong, and there's no code-level fix possible from this side — a framework can't force a third-party CDN to add response headers. This is purely a hosting-configuration gap, and the fix lives on the host, not in this codebase:
+
+- Any host-level "combine/delay/serve JS from CDN" feature (Hummingbird, WP Rocket, Autoptimize, LiteSpeed Cache, etc.) **must exclude the theme's own build output** (`wp-content/themes/<theme>/public/build/assets/`) from that specific feature. Delaying *execution* of non-critical third-party scripts (analytics, chat widgets) is fine and expected; CDN-*offloading* the theme's own `type="module"` entry script is not — ESM module scripts can't survive being rehosted cross-origin without the new origin serving proper CORS headers.
+
+**Fast diagnostic** — if a page looks visually broken with layout/interaction issues but zero application-level errors:
+1. In the browser console, check `window.Alpine === undefined` after page load — if true, the entry bundle never executed.
+2. Check `getComputedStyle(document.documentElement).getPropertyValue('--header-height')` — an empty string means the same thing (this custom property is set by app init logic, not CSS).
+3. **Before assuming it's an application bug**, check the Network tab / console for a cross-origin CORS block on the module script request (`net::ERR_FAILED`, or a CORS error naming a CDN domain that isn't this site's own domain) — that points straight at a JS-optimization plugin having rehosted the entry chunk, not a code defect.
+
 ### Self-hosted fonts
 
 - Place WOFF2 files in `resources/fonts/`
