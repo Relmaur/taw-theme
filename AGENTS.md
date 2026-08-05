@@ -864,6 +864,7 @@ Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-dri
 - `tabs` for grouped field organization
 - `width` property for side-by-side fields (e.g., `'width' => '50'`)
 - `sanitize` => `'code'` for raw code snippet fields
+- `readonly` => `true` on any field — renders as non-interactive text instead of an editable control, and its POSTed value is never written on save (enforced server-side, not just visually hidden). Use for fields an external process (e.g. a `.md`-file sync pipeline) authoritatively owns, so wp-admin stops implying they're editable there. Composes with `group` (propagates to every sub-field) and `repeater` (disables Add/Remove/reorder for the whole row list, not just the sub-field values) — see taw/core README § "Readonly Fields" for the full breakdown, including the not-yet-covered gap: `VisualEditorEndpoint` and `fields:set`/`seo:inject` don't consult this flag yet.
 - `group` type for nested field groups (e.g., CTA with text + URL)
 - `repeater` type for dynamic repeatable row groups (nested repeaters supported)
 - `files` type — multi-file picker, drag-to-reorder, stores JSON array of attachment IDs

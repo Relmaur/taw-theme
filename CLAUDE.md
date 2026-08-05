@@ -76,6 +76,8 @@ Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')`
 
 `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`, `icon` (opt-in, see "Icon System" above) — full options/conditional logic: AGENTS.md § "The Metabox Framework" (or taw/core README).
 
+Any field also accepts `'readonly' => true` — renders as non-interactive text, never saved from POST. Use for values an external process owns (e.g. a sync pipeline).
+
 ## Metabox Order
 
 `MetaboxOrder::lockFromTemplate()` runs automatically. See AGENTS.md § "Locking Metabox Order" for the explicit-order override and template-resolution details.
