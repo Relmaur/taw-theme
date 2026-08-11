@@ -25,14 +25,106 @@
 // Fonts are declared in app.scss (linked CSS) and preloaded via
 // performance.php so they start downloading before the CSS is even parsed.
 
-// === Base Reset ===
-// *,
-// *::before,
-// *::after {
-//     box-sizing: border-box;
-//     margin: 0;
-//     padding: 0;
-// }
+// === Above-the-fold layout (header + Hero + Button) ===
+// header.php and the Hero/Button blocks are styled with Tailwind utility
+// classes in markup, not hand-authored BEM rules. Giving critical.scss its
+// own `@import "tailwindcss"` + `@source` scoped to just these files was
+// tried first (auto-derived, can't drift out of sync) but doesn't actually
+// work in this project's build: (1) `@source` is only honored on entries
+// reachable from a real HTML/JS entry in the module graph — a bare
+// secondary CSS Rollup input like this file never gets content-scanned, so
+// nothing was ever generated from those directives; (2) even where it does
+// work, `@import "tailwindcss"` unconditionally emits Tailwind's ENTIRE
+// default theme (every stock color family, ~18KB) into every independent
+// root regardless of `@source`'s scope, since theme tokens aren't
+// tree-shaken the way generated utility classes are.
+//
+// So: hand-authored, LAYOUT-ONLY translations of the actual Tailwind values
+// used in header.php / Blocks/Hero / Blocks/Button — just enough geometry
+// (flex direction, gap, padding, min sizing) to prevent layout shift when
+// app.css's real utility classes take over moments later. Colors/typography
+// are approximated, not pixel-exact — that's an acceptable, standard
+// critical-CSS tradeoff (a brief color/font flash is far less disruptive
+// than the page visibly jumping). If the Tailwind classes on these three
+// files change, these rules need a manual pass — there's no way around
+// that without the build-tooling change described above (making critical
+// CSS reachable from a real Vite HTML entry, or invoking Tailwind
+// separately with explicit content globs), which is out of scope here.
+.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.25rem; // py-3 px-5
+    border-bottom: 1px solid #e5e7eb; // border-b border-gray-200
+}
+
+.nav-and-phone {
+    display: flex;
+    align-items: center;
+    gap: 1rem; // gap-4
+}
+
+.hero__container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.5rem; // gap-10
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 90rem; // max-w-360 (360 * --spacing: .25rem)
+    width: 90%;
+    padding: 4rem 0; // py-16
+
+    @media (min-width: 48rem) { // md:
+        flex-direction: row;
+    }
+}
+
+.hero__content {
+    flex: 1 1 0%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.hero__tagline {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    color: #6b7280; // gray-500
+}
+
+.hero__heading {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+
+    @media (min-width: 48rem) { // md:
+        font-size: 3rem;
+    }
+}
+
+.hero__cta {
+    margin-top: 1.5rem;
+}
+
+.hero__image {
+    width: 100%;
+    flex: 1 1 0%;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    background-color: #2563eb; // blue-600
+    color: #fff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    width: fit-content;
+}
 
 // === Body Defaults ===
 body {
@@ -41,20 +133,6 @@ body {
     color: #1a1a1a;
     // Prevent horizontal scroll (common CLS cause)
     overflow-x: hidden;
-}
-
-// === Header Shell ===
-// Just the layout structure — enough to reserve the right amount
-// of vertical space so content below doesn't shift.
-.site-header {
-    // Add your header layout here: height, padding, flexbox, etc.
-}
-
-// === Hero Section Shell ===
-// Reserve the hero's vertical space to prevent CLS.
-// Actual decorative styles (gradients, shadows) go in app.scss.
-.hero {
-    // Add your hero layout: min-height, padding, grid/flex structure
 }
 
 // === Utility: Screen Reader Text ===

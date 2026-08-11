@@ -1515,6 +1515,40 @@ The async `media="print"` trick makes stylesheets non-render-blocking — the br
 | `resources/scss/critical.scss` | Standalone Vite entry. Inlined into `<head>` by `vite_inline_critical_css()`. Must stay under ~14 KB. No `@font-face` here — inlined CSS resolves `url()` against the page origin, not a stylesheet location, causing 404s. |
 | `Blocks/*/style.css` | Per-block styles. Auto-discovered by `vite.config.js`, separate Rollup entries. |
 
+### `critical.scss` must contain real content — this is not optional decoration
+
+Since `app.css`'s CSS loading pipeline (above) is genuinely async (`media="print"` + `onload` swap,
+not just documented as such — see the incident below), `critical.scss` is the **only** CSS
+covering the page from first paint until `app.css` finishes loading. An empty/placeholder
+`critical.scss` now means a real flash of totally unstyled HTML on every page load, not just a
+slightly slower paint. At minimum, hand-author real layout rules (flex direction, gap, padding,
+min-height — geometry that prevents CLS) for whatever markup renders above the fold: the header
+and hero/first-section, typically. Full color/typography fidelity isn't required — a brief color
+flash is an acceptable, standard critical-CSS tradeoff; a layout *jump* is not.
+
+<details>
+<summary>Why not just give critical.scss its own scoped Tailwind <code>@source</code> instead of hand-authoring?</summary>
+
+Tried first, genuinely doesn't work in this build, for two independent reasons:
+
+1. **`@source` is only honored on entries reachable from a real HTML/JS entry in Vite's module
+   graph.** `critical.scss` is a bare secondary CSS Rollup input (see `vite.config.js`'s
+   `rollupOptions.input`), never associated with an HTML page — Tailwind's content scanner never
+   sees it as a root to scan, so nothing gets generated from `@source` directives placed there.
+   They pass through as inert, unprocessed text.
+2. **Even where `@source` does work, `@import "tailwindcss"` unconditionally emits Tailwind's
+   entire default theme** (every stock color family, spacing scale, shadows, etc. — ~18 KB) into
+   every independent Tailwind root it's imported into, regardless of how narrowly `@source` is
+   scoped. Theme tokens aren't tree-shaken the way generated utility classes are — a
+   critical-CSS file scoped to just the header/hero blew the 14 KB budget by 50%+ from the theme
+   dump alone, before a single real utility class was counted.
+
+Fixing this properly (e.g. making `critical.scss` reachable from a real Vite HTML entry, or
+invoking Tailwind separately with explicit content globs outside `@tailwindcss/vite`) is a
+build-tooling change, not a template-authoring one — out of scope for day-to-day block work.
+Hand-authored, layout-only critical CSS is the practical answer until/unless that changes.
+</details>
+
 ### Key Vite config decisions
 
 ```js
@@ -1542,6 +1576,11 @@ Forces Vite to embed the full dev server URL in injected CSS (e.g. `url('http://
 1. In the browser console, check `window.Alpine === undefined` after page load — if true, the entry bundle never executed.
 2. Check `getComputedStyle(document.documentElement).getPropertyValue('--header-height')` — an empty string means the same thing (this custom property is set by app init logic, not CSS).
 3. **Before assuming it's an application bug**, check the Network tab / console for a cross-origin CORS block on the module script request (`net::ERR_FAILED`, or a CORS error naming a CDN domain that isn't this site's own domain) — that points straight at a JS-optimization plugin having rehosted the entry chunk, not a code defect.
+4. Watch for the **200-but-blocked variant**: the Network tab can show a `200 OK` on the module script request yet still flag it red/CORS-blocked — the CDN served the file fine, it just omitted `Access-Control-Allow-Origin`, so the browser blocks execution anyway. Don't let the 200 status rule out CORS as the cause.
+
+**Second confirmed occurrence (2026-08):** same root cause, triggered by Hummingbird's **"Enable WPMU DEV CDN"** toggle (file-hosting/CDN feature) rather than the optimizer feature from the first incident. Confirms this isn't optimizer-specific — any Hummingbird feature that rehosts files cross-origin hits the same module-script CORS wall.
+
+**The actual fix, this time:** Hummingbird's CDN settings has an "Exclude files from using CDN" picker that lists each enqueued script/style **by its WordPress handle**, not just by raw file path — including every `taw-block-*` handle `BaseBlock` registers per block (see `taw-core/src/Core/Block/BaseBlock.php`) alongside the main `theme-app` handle. Excluding `theme-app` from the CDN there fixed the entry bundle; **any block module handle actually used on a live page needs the same exclusion**, and this list does not auto-update when new blocks are scaffolded — revisit it after adding a block if the site uses Hummingbird's CDN. This is a real, working per-handle exclusion UI (not a dead end like the optimizer's raw-buffer rewrite) — so for Hummingbird's CDN feature specifically, the fix is "exclude every module-script handle from the CDN picker," not "there's no admin-side fix."
 
 ### Self-hosted fonts
 
