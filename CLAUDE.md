@@ -48,7 +48,7 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline
 
-Full API for these: AGENTS.md §§ "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Debug Helper", "Mail System", "REST API", "Vite Integration". Quick reference:
+Full API for these: AGENTS.md §§ "Options Page", "Navigation Menu System", "Image Helper", "Performance Compliance", "SVG Helper", "Debug Helper", "Mail System", "REST API", "Vite Integration". Quick reference:
 
 ```php
 OptionsPage::get('company_phone');

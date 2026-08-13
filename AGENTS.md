@@ -1371,6 +1371,18 @@ echo Image::preloadTag($image_id, 'full');
 
 ---
 
+## Performance Compliance
+
+Every block build — via `make-metablock`, `figma-to-block`, or hand-authored — must comply with the framework's current performance mechanisms below before it's considered done, on the same footing as the § "Testing Blocks" unit-test requirement.
+
+- **Images:** always render through `Image::render()` (§ "Image Helper" above), never a raw `<img>` tag, so `loading`, `fetchpriority`, `decoding`, and `srcset` are set correctly for the image's fold position. Set `above_fold => true` only for genuinely above-the-fold images (hero/banner); everything else defaults to lazy.
+- **Reserve layout space for every image, regardless of loading strategy.** `width`/`height` attributes alone don't prevent a layout shift if CSS overrides the intrinsic box (e.g. `height: auto` on a flex/marquee track) — the browser still reflows once the real image loads, and because non-`above_fold` images load lazily/low-priority, that reflow lands at an unpredictable time relative to paint. This produces a Cumulative Layout Shift (CLS) that's *flaky* rather than consistently reproducible — same page, same code, a different CLS score on every run. Confirmed live: a partner-logo marquee band shipped with correct `width`/`height` attributes but no matching CSS `aspect-ratio`, and CLS on that page ranged from 0.05 to 0.87 across identical repeat PageSpeed Insights runs, purely from image-load timing. Give any image-bearing element (marquee tracks, card grids, repeaters of `image`/`files` fields) an explicit `aspect-ratio` or fixed-height container in its `style.scss` matching the image's real rendered ratio — don't rely on attribute-only sizing for anything that isn't going through `Image::render()`'s own sizing output.
+- **Above-the-fold markup needs real critical CSS**, not the empty scaffold stub — see § "Vite Integration" → "`critical.scss` must contain real content" below. A new hero/banner-type block should get hand-authored layout rules (flex/grid direction, gap, min-height) added to `critical.scss` if it can appear above the fold on any page.
+- **Queue block assets before `get_header()`** (`BlockRegistry::queue(...)`) — already listed in § "Do NOT"; repeated here because forgetting it falls back to inline assets, which is also a performance regression, not just a code-style miss.
+- **Verify, don't assume a single good run proves it.** After building or editing a block that renders images, check PageSpeed Insights (or GTMetrix) against the page it's wired into at least twice — a single good CLS score doesn't rule out the load-timing flakiness described above.
+
+---
+
 ## SVG Helper
 
 Provided by `taw/core` (namespace `TAW\Helpers\Svg`).
