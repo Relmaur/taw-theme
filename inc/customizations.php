@@ -18,6 +18,12 @@ TAW\Core\Media\MediaFolders::enable();
 // opt-in per-site — uncomment to enable it for this site:
 // TAW\Core\Icons\Lucide::enable();
 
+// Client post-submission portal (page-client-submit.php, PagePassword-gated)
+// — a per-client feature, not something every taw-theme site should get
+// automatically. Requires TAW_CLIENT_PORTAL_PASSWORD defined in this site's
+// wp-config.php. Uncomment to enable:
+require_once __DIR__ . '/client-post-submission.php';
+
 // Emailit transactional email — routes all wp_mail() calls through
 // Emailit's API (form submissions, password resets, WooCommerce, etc.),
 // with automatic fallback to plain wp_mail() if unconfigured or the API
