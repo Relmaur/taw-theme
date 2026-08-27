@@ -1,5 +1,6 @@
 ---
 name: export-static
+owner: taw
 description: >
     Exports the site as a static HTML/CSS/JS bundle for edge hosting (Cloudflare Pages,
     Vercel, etc.) via `php bin/taw export:static`. Triggers on "export the site as static" /

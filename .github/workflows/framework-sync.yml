@@ -9,7 +9,10 @@ name: Framework Sync
 # Tier 1 scaffold paths and the taw/core version are applied/bumped
 # automatically and gated behind the same verification CI already runs on
 # every push (php -l, getdata signature check, phpstan, and a real
-# WordPress+MySQL smoke test that renders every block/form). Tier 2 paths
+# WordPress+MySQL smoke test that renders every block/form). The two skills
+# directories (.claude/skills/, .agents/skills/) are Tier 1 but reconciled
+# per-skill: framework skills are refreshed/removed, but a site-authored
+# skill marked `owner: site` in its SKILL.md is preserved untouched. Tier 2 paths
 # (AGENTS.md, README.md, etc.) are never written here — their diffs are
 # only surfaced in the PR body for a human to review and apply by hand.
 #
@@ -151,6 +154,21 @@ jobs:
             if [ -n "$APPLIED" ]; then
               echo "### Tier 1 (applied automatically)"
               echo "$APPLIED" | sed 's/^/- /'
+              echo ""
+            fi
+
+            PRESERVED=$(jq -r '[.tier1[].reconcile.preserve // [] | .[]] | unique | .[]?' "$REPORT")
+            if [ -n "$PRESERVED" ]; then
+              echo "### Site-authored skills (preserved, not touched)"
+              echo "$PRESERVED" | sed 's/^/- /'
+              echo ""
+            fi
+
+            WARNED=$(jq -r '[.tier1[].reconcile.warn // [] | .[]] | unique | .[]?' "$REPORT")
+            if [ -n "$WARNED" ]; then
+              echo "### Skills needing a human decision"
+              echo "Not in the canonical scaffold and missing an \`owner:\` marker — left untouched. Add \`owner: site\` to keep one, or delete the folder if it's a retired framework skill."
+              echo "$WARNED" | sed 's/^/- /'
               echo ""
             fi
 

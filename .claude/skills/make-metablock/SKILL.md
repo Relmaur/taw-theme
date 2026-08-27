@@ -1,5 +1,6 @@
 ---
 name: make-metablock
+owner: taw
 description: >
     Scaffolds and fully implements a new TAW MetaBlock (or presentational Block) end-to-end —
     class, metabox fields, template, and optional styles — from a plain-language description

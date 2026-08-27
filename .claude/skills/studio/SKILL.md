@@ -1,5 +1,6 @@
 ---
 name: studio
+owner: taw
 description: >
     Receives CSS and HTML changes made in CSS Studio via MCP and applies them to source code.
 argument-hint: "[wait for edits from CSS Studio]"

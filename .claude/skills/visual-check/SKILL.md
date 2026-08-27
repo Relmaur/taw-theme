@@ -1,5 +1,6 @@
 ---
 name: visual-check
+owner: taw
 description: >
     Opt-in pixel-accuracy check that screenshots a section or full page as actually rendered
     in the local dev site (via the Playwright MCP browser) and compares it against the design

@@ -1,5 +1,6 @@
 ---
 name: sync-remote
+owner: taw
 description: >
     Standard pull → compare → resolve → push git workflow for this repo, triggered explicitly
     by the user (e.g. "sync with remote, please" / "sync this repo" / "pull and push"). Handles

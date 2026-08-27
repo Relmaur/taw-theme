@@ -1,11 +1,14 @@
 ---
 name: update-theme
+owner: taw
 description: >
     Pulls the latest base-theme scaffold from the canonical taw-theme repository into this
     site instance via a direct manifest-based file sync — no git merge, no shared git history
-    required. A small set of paths (functions.php, .claude/skills/, .agents/skills/, bin/,
-    CI config) is unambiguously framework-owned and always safe to overwrite outright; a
-    second set (docs/build config) is diffed and applied only after confirmation; everything
+    required. A small set of paths (functions.php, bin/, CI config) is unambiguously
+    framework-owned and always safe to overwrite outright; the skills directories
+    (.claude/skills/, .agents/skills/) are reconciled per-skill so site-authored skills
+    survive; a second set (docs/build config) is diffed and applied only after confirmation;
+    everything
     else (Blocks/, inc/options.php, inc/performance.php, inc/customizations.php, page
     templates, content) is never read or touched. Triggers on "update the theme" / "sync the
     theme" / "pull theme updates".
@@ -16,7 +19,7 @@ argument-hint: "[optional: --dry-run to preview without applying]"
 
 Every real client site is a divergent instance of the same `taw-theme` scaffold. This skill syncs the shared, framework-owned parts of that scaffold from the canonical repo — **by directly copying specific files/directories from a fresh checkout, not by running `git merge`.**
 
-**Why not `git merge` (the previous design):** a merge needs a common ancestor commit, which meant every client project had to be created via a full clone/`--keep-vcs` and could never have a truly fresh, single-commit history. That constraint is gone now. As of `taw/core` v1.16.63, `functions.php` is 100% framework-owned by construction — it's two lines (`require autoload` + `Theme::bootstrapFullSite(...)`), and every genuinely site-specific thing that used to live inside it (theme supports, nav menus, performance tuning) now lives in three files (`inc/options.php`, `inc/performance.php`, `inc/customizations.php`) that this skill never touches. Combined with the other framework-only paths (`.claude/skills/`, `bin/`, CI config), there's now a small, precisely delimited set of paths where "is this safe to overwrite" is a fact about the *path*, not something that requires diffing against a shared history to determine. No merge, no conflicts, no `MERGE_HEAD`, no `git merge-base` precondition — this works identically whether the client project was cloned, `git init`'d fresh, or anything else.
+**Why not `git merge` (the previous design):** a merge needs a common ancestor commit, which meant every client project had to be created via a full clone/`--keep-vcs` and could never have a truly fresh, single-commit history. That constraint is gone now. As of `taw/core` v1.16.63, `functions.php` is 100% framework-owned by construction — it's two lines (`require autoload` + `Theme::bootstrapFullSite(...)`), and every genuinely site-specific thing that used to live inside it (theme supports, nav menus, performance tuning) now lives in three files (`inc/options.php`, `inc/performance.php`, `inc/customizations.php`) that this skill never touches. Combined with the other framework-only paths (`bin/`, CI config, and the skills directories — the last reconciled per-skill so a client's own `owner: site` skills survive), there's now a small, precisely delimited set of paths where "is this safe to overwrite" is a fact about the *path* (and, for skills, a one-line `owner:` marker), not something that requires diffing against a shared history to determine. No merge, no conflicts, no `MERGE_HEAD`, no `git merge-base` precondition — this works identically whether the client project was cloned, `git init`'d fresh, or anything else.
 
 **This skill is the interactive half of a two-part system.** The actual detection/apply logic lives in `TAW\CLI\SyncCommand` (`php bin/taw sync`, shipped by `taw/core`) — this skill wraps that command for a human-in-the-loop session. The other half is `.github/workflows/framework-sync.yml` (itself Tier 1, so it propagates to every client project automatically once this skill has run there once), which runs the same command unattended on a weekly schedule and opens a PR when it finds drift. Both paths call the identical underlying logic — behavior never diverges between "an agent ran this interactively" and "CI ran this on autopilot."
 
@@ -27,15 +30,28 @@ Every real client site is a divergent instance of the same `taw-theme` scaffold.
 **Tier 1 — always overwrite, no confirmation needed.** Nothing client-specific has ever lived in these paths since the `functions.php`/`inc/` split; overwriting them is always correct.
 
 ```
-functions.php
-.claude/skills/
-.agents/skills/
-bin/
-.github/workflows/ci.yml
-.github/workflows/framework-sync.yml
-tests/bootstrap.php
-tests/TestCase.php
+functions.php                         (type: file)
+bin/                                  (type: dir  — rsync -a --delete)
+.github/workflows/ci.yml              (type: file)
+.github/workflows/framework-sync.yml  (type: file)
+tests/bootstrap.php                   (type: file)
+tests/TestCase.php                    (type: file)
+.claude/skills/                       (type: skills-dir — per-skill reconcile, see below)
+.agents/skills/                       (type: skills-dir — per-skill reconcile, see below)
 ```
+
+**Tier 1 skills directories are `skills-dir`, not `dir` — they are NOT a blind `rsync --delete`.** Claude Code and the agents runtime only auto-discover skills directly under `.claude/skills/` and `.agents/skills/`, so a client site's *own* skills (site-specific editorial/publishing workflows, etc.) have to live in the same folder as the framework's. `sync` reconciles that folder one skill subdirectory at a time:
+
+| Skill subdir | What sync does |
+|---|---|
+| present in canonical `taw-theme` | **overwritten** in place — fresh canonical copy every run (`rsync -a --delete` *within* that one skill folder) |
+| only in the client, `SKILL.md` frontmatter has `owner: site` | **preserved** untouched, and named in the sync report |
+| only in the client, `SKILL.md` frontmatter has `owner: taw` | **deleted** — it's a framework skill that was retired upstream |
+| only in the client, **no `owner:` key** | **preserved**, but the report emits a warning — a human decides (add `owner: site` to keep it, or delete the folder if it's a stale framework skill) |
+
+Every canonical framework skill carries `owner: taw` in its frontmatter — that's also how you tell framework skills from site skills at a glance: `grep -rl 'owner: taw' .claude/skills` vs `grep -rl 'owner: site' .claude/skills`. The `owner:` key + `skills-dir` type are defined in `update-manifest.json` under `skillsReconcile`; the reconcile logic is in `TAW\CLI\SyncCommand`.
+
+**A site-authored skill MUST declare `owner: site` in its `SKILL.md` frontmatter** to be safe across syncs — see § "Migrating an existing site-authored skill" at the end.
 
 **Tier 2 — diff, apply only after explicit confirmation.** Nominally framework docs/config, but can legitimately accumulate client-specific additions over a project's life (a new catalog entry in `AGENTS.md`, an added dependency in `package.json`). Never overwrite silently.
 
@@ -78,6 +94,8 @@ php bin/taw sync --json
 
 This clones a throwaway shallow copy of the canonical `taw-theme` repo (cleaned up automatically, even on failure), diffs every Tier 1/Tier 2 path against it, and separately checks whether the installed `taw/core` version is behind the latest GitHub tag. Nothing is written to disk by this step alone. Parse the JSON: `taw_core.installed`/`.latest`/`.behind`, `tier1[].path`/`.changed`, `tier2[].path`/`.changed`/`.diff`.
 
+For the two `skills-dir` entries, each also carries a `reconcile` object — `{ overwrite: [...], delete: [...], preserve: [...], warn: [...] }`. Surface it in the final report: name every site-authored skill under `preserve` ("left untouched"), every retired framework skill under `delete`, and — importantly — anything under `warn` (a skill folder that's neither in canonical nor marked `owner: site`), telling the user to add `owner: site` to keep it or remove it if it's stale. `preserve` alone does not make the run "not clean".
+
 If `errors` is non-empty (couldn't clone, couldn't reach GitHub), report that plainly rather than treating it as "up to date" — a failed check is not a clean result.
 
 ## Step 2 — Apply Tier 1 automatically
@@ -86,7 +104,7 @@ If `errors` is non-empty (couldn't clone, couldn't reach GitHub), report that pl
 php bin/taw sync --apply
 ```
 
-Writes every changed Tier 1 path directly — no confirmation needed, per the manifest above — and never touches Tier 2. **Don't hand-roll a copy/rsync for Tier 1 yourself** — always go through this command, so behavior here stays identical to what the CI workflow does unattended. (Re-run `sync --json` afterward if you want a clean report for the final summary — Tier 1 entries will now show `changed: false`.)
+Writes every changed Tier 1 path directly — no confirmation needed, per the manifest above — and never touches Tier 2. For the `skills-dir` entries this means: refresh every framework skill, delete any `owner: taw` skill that's gone from canonical, and leave every `owner: site` skill (and every unmarked one) exactly where it is. **Don't hand-roll a copy/rsync for Tier 1 yourself** — always go through this command, so behavior here stays identical to what the CI workflow does unattended. (Re-run `sync --json` afterward if you want a clean report for the final summary — Tier 1 entries will now show `changed: false`.)
 
 ## Step 3 — Review and apply Tier 2 (confirmation required)
 
@@ -123,6 +141,7 @@ If nothing in either tier had upstream changes, say so plainly — "already up t
 ## Don't
 
 - Don't touch, diff, or even read anything outside the two tiers above without asking first.
+- Don't delete or overwrite a skill folder that has `owner: site` in its `SKILL.md` — and don't "fix" a `warn`-listed unmarked skill by deleting it; surface it and let the user decide.
 - Don't run `git merge`/`git pull` against the whole working tree — this skill deliberately avoids that now.
 - Don't auto-apply Tier 2 changes without showing the diff and getting confirmation.
 - Don't full-file-overwrite `composer.json`/`package.json` (or any other structural manifest) even after approval — surgically edit only the framework-relevant lines; a whole-file replace silently deletes the client's own additive dependencies.
@@ -131,3 +150,25 @@ If nothing in either tier had upstream changes, say so plainly — "already up t
 - Don't commit the synced changes — leave that decision and action to the user.
 - Don't assume a project without a git relationship to `taw-theme` is broken or needs special handling — that's not a precondition this skill has.
 - Don't let a Tier 2 doc (`AGENTS.md`/`CLAUDE.md`/`README.md`) start describing a file or capability as "already set up" without that file itself being added to `update-manifest.json` in the same change — this shipped once for real (the block-testing harness: `AGENTS.md` documented `phpunit.xml`/`tests/bootstrap.php`/`tests/TestCase.php` as pre-existing while they were entirely outside the manifest's scope, so `update-theme` synced the prose but never the substance). Whenever new framework infrastructure is documented as pre-existing, treat adding it to the manifest as part of the same commit, not optional follow-up.
+
+## Migrating an existing site-authored skill
+
+If a client site already has its own skill in `.claude/skills/` (or `.agents/skills/`) that predates the `skills-dir` mechanism — e.g. the FSSPX parish site's `.claude/skills/publish-news/` — it will show up under the sync report's `warn` list until it's marked. One-time fix:
+
+1. Open the skill's `SKILL.md`.
+2. Add `owner: site` to the YAML frontmatter (anywhere in the block; convention is right after `name:`):
+   ```yaml
+   ---
+   name: publish-news
+   owner: site
+   description: >
+       ...
+   ---
+   ```
+3. Commit it to the client repo.
+
+From then on `sync` reports it under `preserve` and never touches it. No manifest change, no per-site config file — the marker lives with the skill. (Framework skills are marked `owner: taw` in the canonical repo, so they're on the other side of the same check.)
+
+A skill named identically to a framework skill (e.g. a site `build-page`) is **not** protected by `owner: site` — canonical wins and it gets overwritten. Give site skills their own distinct names.
+
+**First run after this mechanism ships:** every framework skill will show up under `overwrite` once (the canonical copies gained the `owner: taw` marker; the client's copies haven't got it yet) — that's expected, not drift you caused. And a framework skill that was *retired from canonical before* this shipped will land under `warn` rather than `delete`, because the client's stale copy has no `owner:` marker — check each `warn` entry once by hand and delete any that are genuinely obsolete framework skills. After that first reconcile, retirements delete cleanly on their own.

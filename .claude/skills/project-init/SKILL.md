@@ -1,5 +1,6 @@
 ---
 name: project-init
+owner: taw
 description: >
     Post-scaffold onboarding checklist for a brand-new TAW client project — verifies gh CLI
     auth, enables and smoke-tests the framework-sync.yml GitHub Actions PR permission, and walks

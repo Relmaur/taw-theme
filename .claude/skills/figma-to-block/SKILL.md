@@ -1,5 +1,6 @@
 ---
 name: figma-to-block
+owner: taw
 description: >
     Implements a single TAW block from a Figma design node — pulls design context via the
     Figma MCP tools and converts the reference React+Tailwind output into a PHP MetaBlock

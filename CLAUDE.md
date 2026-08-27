@@ -113,3 +113,4 @@ Full list: AGENTS.md § "Do NOT". Additional Claude-Code-session-specific remind
 - Don't manually instantiate `SubmissionsHandler` in `functions.php` — it's auto-wired by `Theme::boot()`
 - Don't register Forms inside templates — the AJAX handler won't exist when `admin-ajax.php` processes the submission
 - Don't wire up `ThemeUpdater` on a client site with customizations — it does full theme-zip replacement, which would wipe `Blocks/` and every `inc/` file. Use the `update-theme` skill instead
+- If a client site authors its own skill in `.claude/skills/` or `.agents/skills/`, give its `SKILL.md` frontmatter `owner: site` — that's what makes `update-theme` preserve it instead of deleting it as non-canonical scaffold (framework skills carry `owner: taw`). See AGENTS.md § "Automated framework-drift detection"

@@ -1,5 +1,6 @@
 ---
 name: audit-seo
+owner: taw
 description: >
     Audits a page's (or the whole site's) copy AND SEO meta — title tag, meta description,
     social/OG image — for SEO and conversion quality, using `php bin/taw seo:extract`/
