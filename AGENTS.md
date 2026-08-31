@@ -56,6 +56,7 @@ Full API + option tables: §§ "The Metabox Framework", "Form System", "Options 
 | `wp_enqueue_scripts` (via `get_header()`) | `BlockRegistry::enqueueQueuedAssets()` — only queued blocks' CSS/JS |
 | template body | `BlockRegistry::render($id)` outputs HTML only, no enqueue |
 | `POST admin-ajax.php` | Form submission handler — only exists if `Form::register()` ran in `boot()`, **never** in a template |
+| end of `boot()` | subsystem #12 `HubIntegration::init()` — no-op unless `TAW_HUB_ENABLED` (see § "Management Hub Integration") |
 
 ### Field types
 
@@ -1440,6 +1441,24 @@ TAW\Core\Media\MediaFolders::enable();
 ```
 
 Remove that line from a site's `inc/customizations.php` if it doesn't need folder organization.
+
+---
+
+## Management Hub Integration
+
+Provided by `taw/core` (namespace `TAW\Hub`). Full API/routes/security model: `taw/core` README § "Management Hub Integration".
+
+An authenticated `wp-json/taw-hub/v1/` receiver that lets a central management Hub run telemetry, deploy Vite build assets, sync block config, and flush caches against a site. HMAC-SHA256 or Ed25519 request signatures over a frozen canonical string, ±60s drift, single-use nonces; remote actions are a **fixed allow-list** (`report-telemetry flush-caches sync-blocks deploy-assets rollback-assets`), never an open command channel.
+
+**Not theme code** — there is no `enable()` call and nothing to add to `inc/customizations.php`. It's switched on purely in `wp-config.php`, because it's a security boundary:
+
+```php
+define('TAW_HUB_ENABLED', true);
+define('TAW_HUB_ENROLMENT_TOKEN', '…one-time token…');   // single-use pairing
+define('TAW_HUB_SECRET', '…32+ random bytes…');          // else falls back to SECURE_AUTH_KEY
+```
+
+With `TAW_HUB_ENABLED` unset (the default on every scaffold and every existing site) it's completely inert — `Theme::boot()`'s subsystem #12 early-returns, no routes, no hooks, no `taw_hub_*` options or table. `wp taw hub {actions,run,status}` is available when enabled.
 
 ---
 
