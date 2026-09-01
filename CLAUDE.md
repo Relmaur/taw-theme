@@ -48,9 +48,11 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 **TAW Hub fleet management:** Opt-in per site, **not** bundled. `php bin/taw hub:install` (or the **`hub-connect`** skill) installs the standalone `taw-hub-companion` plugin — a signed `wp-json/taw-hub/v1/` receiver a central [TAW Hub](https://github.com/Relmaur/taw-hub) uses for telemetry / framework sync / allow-listed `bin/taw` runs. Inert until `TAW_HUB_PUBLIC_KEY` is set in `wp-config.php`. Full detail: AGENTS.md § "Connecting to a TAW Hub fleet".
 
+**Logging:** `TAW\Core\Log\Logger` (always on, from `taw/core`) — structured replacement for `error_log('[TAW …]')`. `Logger::error('subsystem.event', 'human message', ['ctx' => ...])` (+ `debug`/`info`/`notice`/`warning`/`critical`). Writes to `error_log()` **and** `wp-content/taw-logs/taw.log.jsonl`; read back with `php bin/taw log:tail`. Use it in blocks/`inc/`/`on_submit` callbacks instead of `error_log`. Full detail: AGENTS.md § "Logging".
+
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline
 
-Full API for these: AGENTS.md §§ "Options Page", "Navigation Menu System", "Image Helper", "Performance Compliance", "SVG Helper", "Debug Helper", "Mail System", "REST API", "Vite Integration". Quick reference:
+Full API for these: AGENTS.md §§ "Options Page", "Navigation Menu System", "Image Helper", "Performance Compliance", "SVG Helper", "Debug Helper", "Logging", "Mail System", "REST API", "Vite Integration". Quick reference:
 
 ```php
 OptionsPage::get('company_phone');

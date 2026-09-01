@@ -43,9 +43,10 @@ Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" belo
 | `(new Mailer())->to()->subject()->template()->setVariables()->send()` | Email |
 | `ViteLoader::assetUrl($path)` / `::isDevServerRunning()` | Asset URL / dev-server probe |
 | `dump($val)` / `dd($val)` | Debug panel, `WP_DEBUG` only |
+| `Logger::error($code,$msg,$context)` (`TAW\Core\Log`; also `debug`/`info`/`notice`/`warning`/`critical`) | Structured log → `error_log()` + `wp-content/taw-logs/*.jsonl` |
 | `BlockRegistry::queue(...ids)` before `get_header()`; `::render($id)` in body | Asset + render pattern |
 
-Full API + option tables: §§ "The Metabox Framework", "Form System", "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Icon System", "Media Folders", "Debug Helper", "Vite Integration" below.
+Full API + option tables: §§ "The Metabox Framework", "Form System", "Options Page", "Navigation Menu System", "Image Helper", "SVG Helper", "Icon System", "Media Folders", "Debug Helper", "Logging", "Vite Integration" below.
 
 ### Lifecycle / hooks
 
@@ -1454,6 +1455,25 @@ dump($someArray, 'My label');   // queues value for display in footer panel
 dd($someValue);                 // dump + die
 ```
 
+`dump()`/`dd()` are a dev-time inspection panel, **not** a log — for anything that should be recorded (a swallowed exception, a fallback that fired, a misconfiguration), use `Logger` (§ "Logging").
+
+---
+
+## Logging
+
+Provided by `taw/core` (namespace `TAW\Core\Log`). Always on — no `enable()`. This is the structured replacement for hand-written `error_log('[TAW …] …')` — theme code (blocks, `inc/`, custom `on_submit` callbacks) should use it too.
+
+```php
+use TAW\Core\Log\Logger;
+
+Logger::warning('hero.missing_background', 'Hero has no background image — falling back to the flat colour.', [
+    'post_id' => $postId,
+]);
+// debug() info() notice() warning() error() critical()  — PSR-3 minus alert/emergency
+```
+
+Each entry has a human `message` **and** a machine-stable `code` (`subsystem.event`) plus a `context` array. Two sinks by default: PHP `error_log()` (one readable line) and `wp-content/taw-logs/taw.log.jsonl` (size-rotated JSON Lines). Read it back with `php bin/taw log:tail [--level=] [--code=] [--since=] [--json]`, or — on a fleet site — the `taw-hub-companion` `/logs` route. Full API (sinks, the `taw_core_log_sinks` / `taw_core_log_entry` filters, `LogReader`): `taw/core` README § "Logging".
+
 ---
 
 ## Theme Updater
@@ -1763,6 +1783,7 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw sync --json` | Check for drift: `taw/core` version + `taw-theme` Tier 1/Tier 2 scaffold paths |
 | `php bin/taw sync --apply` | Also write Tier 1 scaffold changes (Tier 2 is always report-only) |
 | `php bin/taw hub:install --activate` | Install the `taw-hub-companion` fleet plugin (see § "Connecting to a TAW Hub fleet") |
+| `php bin/taw log:tail --level=error` | Read back the structured log (`wp-content/taw-logs/`) — see § "Logging" |
 | `composer run phpstan` | Static analysis (`Blocks/`, `inc/`) — also runs in CI |
 | `composer run test` | Run the block unit test suite (`tests/Unit/`) — see § "Testing Blocks" |
 
