@@ -1762,8 +1762,21 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw import:block path.zip` | Import a block from a ZIP |
 | `php bin/taw sync --json` | Check for drift: `taw/core` version + `taw-theme` Tier 1/Tier 2 scaffold paths |
 | `php bin/taw sync --apply` | Also write Tier 1 scaffold changes (Tier 2 is always report-only) |
+| `php bin/taw hub:install --activate` | Install the `taw-hub-companion` fleet plugin (see § "Connecting to a TAW Hub fleet") |
 | `composer run phpstan` | Static analysis (`Blocks/`, `inc/`) — also runs in CI |
 | `composer run test` | Run the block unit test suite (`tests/Unit/`) — see § "Testing Blocks" |
+
+---
+
+## Connecting to a TAW Hub fleet
+
+The [TAW Hub](https://github.com/Relmaur/taw-hub) is a separate control app that manages a fleet of TAW sites (telemetry, framework syncs, allow-listed `bin/taw` runs). A site opts in by installing **`taw-hub-companion`** — a standalone plugin (`Relmaur/taw-hub-companion`, public) that exposes a signed `wp-json/taw-hub/v1/` receiver, verifying every request against the Hub's Ed25519 key ([wire protocol: taw-hub ADR-0003](https://github.com/Relmaur/taw-hub/blob/main/docs/ADR/0003-wire-protocol-and-signatures.md)).
+
+**Not bundled with the theme, by design** — only fleet sites need it, and it's a security boundary with its own release cadence. Nothing about a normal TAW site changes unless you install it. It replaces the short-lived `TAW\Hub` subsystem that briefly shipped in `taw/core` v1.20.0 (reverted in v1.20.1).
+
+- `php bin/taw hub:install [--activate] [--update]` (`taw/core` ≥ v1.20.2) git-clones the plugin into `wp-content/plugins/` and optionally activates it. It only fetches code — configuring `TAW_HUB_PUBLIC_KEY` in `wp-config.php` and registering the site's key with the Hub stay deliberate.
+- The **`hub-connect`** skill orchestrates the whole thing interactively — install, gather the Hub's key via `AskUserQuestion`, write `wp-config.php` (confirmed), verify `/health` returns `401` not `501`, and surface this site's `taw_hub_companion_public_key` / `_key_id` to register with the Hub.
+- Until `TAW_HUB_PUBLIC_KEY` is defined the plugin is inert (routes return `501`). To disconnect: deactivate the plugin and remove the `TAW_HUB_*` constants.
 
 ---
 
