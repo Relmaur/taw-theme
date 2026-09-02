@@ -903,13 +903,13 @@ use TAW\Core\Metabox\MetaboxOrder;
 MetaboxOrder::lock('page', ['hero_settings', 'video_settings', 'faq_settings']);
 ```
 
-Template resolution mirrors WordPress's own hierarchy, not just the raw Page Attributes selection:
+Template resolution mirrors WordPress's own hierarchy, not just the raw Page Attributes selection. Candidates are tried highest-priority first:
 
-- If the post has an explicit page template selected (`get_page_template_slug()`), that file is used.
-- Otherwise, if the post is the site's static front page (Settings → Reading), `front-page.php` is used automatically — no `Template Name:` header or Page Attributes selection required.
-- Posts matching neither are left unordered.
-
-The posts page (`page_for_posts` / `home.php`) isn't handled by the same filename-convention resolution yet.
+- An explicitly-selected page template (`_wp_page_template`, the Page Attributes dropdown).
+- `front-page.php` for the site's static front page (Settings → Reading) — no `Template Name:` header or Page Attributes selection required.
+- `home.php` for the posts page (Settings → Reading → "Posts page") — same filename convention, no meta written.
+- `page-{slug}.php` for a page whose slug is `{slug}` — applied automatically by the template hierarchy, no meta written.
+- Pages matching none of these are left unordered.
 
 ---
 
