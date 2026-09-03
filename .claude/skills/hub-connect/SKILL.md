@@ -122,26 +122,56 @@ curl -s -o /dev/null -w '%{http_code}\n' "$SITE/wp-json/taw-hub/v1/health"
 - `501` → the constant didn't take; recheck Step 5.
 - `404` → the plugin isn't active; recheck Step 3.
 
-## Step 7 — Register this site with the Hub
+## Step 7 — Enrol this site with the Hub
 
-The Hub needs this site's public key to verify its signed responses. Print both values:
+The Hub needs this site's public key to verify its signed responses. If `taw/core` is
+`v1.23.0`+ this is one command; otherwise it's a manual copy.
+
+### 7a — Automated (`taw/core` ≥ v1.23.0)
+
+```bash
+php bin/taw hub:enroll --help   # command exists?
+```
+
+If it does: have the user mint a **one-time enrolment token** on the Hub (`php artisan
+fleet:enrol-token`, or the Fleet UI's "Enrol a site" control — the plaintext `enrol_…` is
+shown once). Then, via **AskUserQuestion**, collect:
+
+1. **The enrolment token** — required, `enrol_` + 48 chars.
+2. **`--base-url`** — the URL the *Hub* reaches this site at. Default is `home_url()`; that's
+   wrong behind a reverse proxy, in a container, or under Herd's :80 conflict. Ask "is the
+   Hub able to reach this site at `<home_url>`?" — if not, get the real one.
+
+The Hub URL comes from `TAW_HUB_URL` (write it to `wp-config.php` alongside the key in Step 5
+if it isn't there). Then:
+
+```bash
+php bin/taw hub:enroll --token='enrol_…' [--base-url='https://…']
+# add --insecure only for a local self-signed Hub
+```
+
+The command POSTs to `{TAW_HUB_URL}/api/fleet/enroll`, **verifies the Hub's signed reply**
+against `TAW_HUB_PUBLIC_KEY`, and reports the assigned `site_id` / `status: pending`. A
+signed `409` ("already enrolled") is treated as success. A signature-verification failure is
+a hard stop — do **not** tell the user they're enrolled.
+
+### 7b — Manual (older `taw/core`)
+
+Print both values and have the user add the site on the Hub by hand (its `RegisterSite`
+flow — base URL + `key_id` + `companion_public_key`):
 
 ```bash
 php bin/taw wp option get taw_hub_companion_public_key
 php bin/taw wp option get taw_hub_companion_key_id
 ```
 
-Tell the user to add the site to their Hub with those two values (the Hub's "register site"
-/ `RegisterSite` flow — base URL + `key_id` + `companion_public_key`).
-
-> When the Hub gains an enrolment endpoint (its Part 8), a `bin/taw hub:enroll` command will
-> automate this step. Until then it's a manual copy into the Hub.
+> Upgrade `taw/core` (the `update-theme` skill) to get `hub:enroll` and skip the copy.
 
 ## Step 8 — Report
 
 Final checklist: plugin installed/active, constants written (list which), `/health` returns
-401, and the site key + key id the user must register on the Hub. Note anything left as
-⚠️ manual.
+401, and either the assigned `site_id` (7a) or the site key + key id the user must register
+on the Hub (7b). Note anything left as ⚠️ manual.
 
 ## Disconnecting
 
