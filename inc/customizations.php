@@ -9,6 +9,10 @@
  * if this site needs none of the defaults below.
  */
 
+// Security hardening (user-enumeration lockdown: REST /wp/v2/users +
+// ?author=N). Site-owned — edit inc/security.php to tune it per site.
+require_once __DIR__ . '/security.php';
+
 // TAW Media (nestable Media Library folders) is opt-in at the taw/core
 // level, but ships active by default on every taw-theme site — remove
 // this line if this site doesn't need it. Must run before Theme::boot().

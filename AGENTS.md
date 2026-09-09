@@ -16,7 +16,8 @@
 | `Blocks/{Name}/style.{css,scss}`, `script.js` | Auto-enqueued block assets | Yes, optional |
 | `inc/options.php` | `OptionsPage` fields | Yes — never touched by `update-theme` |
 | `inc/performance.php` | `Theme::performance()` config array | Yes — never touched |
-| `inc/customizations.php` | theme supports, nav menus, `VisualEditor::enable()`, `MediaFolders::enable()` (on by default), `Lucide::enable()` (commented out), `MetaboxOrder::lock()`, `Svg::register()`, `MailTester` | Yes — never touched |
+| `inc/customizations.php` | theme supports, nav menus, `VisualEditor::enable()`, `MediaFolders::enable()` (on by default), `Lucide::enable()` (commented out), `MetaboxOrder::lock()`, `Svg::register()`, `MailTester`, `require inc/security.php` | Yes — never touched |
+| `inc/security.php` | User-enumeration hardening — `Hardening::hideUsersEndpoint()` + logged-out `?author=N` redirect | Yes — never touched |
 | `functions.php` | 2-line bootstrap only | **Never hand-edit** — blindly overwritten by `update-theme` |
 | `.claude/skills/{name}/`, `.agents/skills/{name}/` | Agent skills — framework skills (`owner: taw`) refreshed by `update-theme`; site-authored skills survive **only if** their `SKILL.md` frontmatter has `owner: site` | Site skills: yes. Framework skills: edit in `taw-theme` |
 | `vendor/taw/core/src/` | All `TAW\Core\*`, `TAW\Helpers\*`, `TAW\CLI\*` | **No** — edit in the `taw-core` repo, then `composer update taw/core` |
@@ -145,7 +146,8 @@ That's the whole file. Never hand-edit it — `update-theme` overwrites it uncon
 |---|---|
 | `inc/options.php` | `OptionsPage` field configuration (pre-existing convention) |
 | `inc/performance.php` | Returns the config array passed to `Theme::performance()` |
-| `inc/customizations.php` | Theme supports, `register_nav_menus()`, textdomain loading, `VisualEditor::enable()`, `MetaboxOrder::lock()` for an explicit order, `Svg::register()`, `MailTester`, or any other site-specific hook |
+| `inc/customizations.php` | Theme supports, `register_nav_menus()`, textdomain loading, `VisualEditor::enable()`, `MetaboxOrder::lock()` for an explicit order, `Svg::register()`, `MailTester`, `require inc/security.php`, or any other site-specific hook |
+| `inc/security.php` | User-enumeration hardening — calls `TAW\Core\Security\Hardening::hideUsersEndpoint()` and redirects logged-out `?author=N` probes; trim per site |
 
 Any code that used to go directly in `functions.php` — theme supports, nav menu locations, `Svg::register()`, an explicit `MetaboxOrder::lock()` call, anything wrapped in `add_action(...)` — goes in `inc/customizations.php` instead. This is what makes `update-theme` a plain file copy instead of a merge: the boundary between "framework" and "this client's site" is a fact about which file something is in, not something that has to be computed from a diff.
 
@@ -173,6 +175,7 @@ Any code that used to go directly in `functions.php` — theme supports, nav men
 | `inc/options.php` | OptionsPage field configuration — theme-owned, never touched by updates |
 | `inc/performance.php` | Returns the config array passed to `Theme::performance()` — theme-owned, never touched by updates |
 | `inc/customizations.php` | Theme supports, nav menu registration, textdomain, any other site-specific hooks — theme-owned, never touched by updates |
+| `inc/security.php` | User-enumeration hardening (REST `/wp/v2/users` + `?author=N`) — theme-owned, never touched by updates |
 | `resources/js/app.js` | Alpine.js + global JS — imports Tailwind CSS and custom SCSS |
 | `resources/css/app.css` | Tailwind v4 directives (`@import "tailwindcss"`) — imported by `app.js` |
 | `resources/scss/app.scss` | Global custom SCSS (fonts, overrides) — imported by `app.js` |
@@ -1441,6 +1444,18 @@ TAW\Core\Media\MediaFolders::enable();
 ```
 
 Remove that line from a site's `inc/customizations.php` if it doesn't need folder organization.
+
+---
+
+## Security Hardening
+
+`inc/security.php` (site-owned — required from `inc/customizations.php`, never touched by `update-theme`, same status as `inc/performance.php`) locks down username / user-ID enumeration in two layers:
+
+1. **REST users endpoint** — calls `TAW\Core\Security\Hardening::hideUsersEndpoint()` (provided by `taw/core`, also wired into `Theme::boot()` by default). Removes the public `/wp/v2/users` collection + single-user route for anonymous requests, across every routing form (`/wp-json/`, `?rest_route=`, `/batch/v1`) because it filters at `rest_endpoints` (REST dispatch). `/wp/v2/users/me` and all logged-in access stay intact. Opt a site out with `add_filter('taw_security_hide_users_endpoint', '__return_false')` — e.g. a headless front end that reads `/wp/v2/users` anonymously. Full detail: `taw/core` README § "Security / Hardening".
+
+2. **`?author=N` probe** — a `parse_request` handler that 301-redirects logged-out `?author=<digits>` requests to the home page. Kept here rather than in the framework: it is site policy (it also kills author-archive query URLs) and overlaps with what security plugins like WP Defender's "Prevent User Enumeration" already do. Author archives stay reachable via their pretty permalink.
+
+Trim either layer per site by editing `inc/security.php`.
 
 ---
 
