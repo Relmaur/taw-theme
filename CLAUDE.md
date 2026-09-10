@@ -50,6 +50,8 @@ Asset loading: `BlockRegistry::queue('hero', 'stats')` BEFORE `get_header()` →
 
 **TAW Hub fleet management:** Opt-in per site, **not** bundled. `php bin/taw hub:install` (or the **`hub-connect`** skill) installs the standalone `taw-hub-companion` plugin — a signed `wp-json/taw-hub/v1/` receiver a central [TAW Hub](https://github.com/Relmaur/taw-hub) uses for telemetry / framework sync / allow-listed `bin/taw` runs. Inert until `TAW_HUB_PUBLIC_KEY` is set in `wp-config.php`. Full detail: AGENTS.md § "Connecting to a TAW Hub fleet".
 
+**Content interchange:** `TAW\Core\Content\*` (from `taw/core` ≥ v1.25.0). `php bin/taw content:export` writes a portable snapshot (posts + `_taw_*` fields, options, terms, referenced media); `content:import <file>` is a dry-run diff by default, `--yes` applies it (rollback snapshot written to `uploads/taw-private/` first); `content:diff a b` emits a change-set. Records match by natural key, never numeric ID. wp-admin: **Tools → TAW Data**. `Theme::boot()` also REST-registers every TAW field over `wp/v2` for headless reads (`add_filter('taw_register_meta_in_rest', '__return_false')` to opt out). Full detail: AGENTS.md § "Content Interchange" and `taw/core` README § "Content Interchange".
+
 **Logging:** `TAW\Core\Log\Logger` (always on, from `taw/core`) — structured replacement for `error_log('[TAW …]')`. `Logger::error('subsystem.event', 'human message', ['ctx' => ...])` (+ `debug`/`info`/`notice`/`warning`/`critical`). Writes to `error_log()` **and** `wp-content/taw-logs/taw.log.jsonl`; read back with `php bin/taw log:tail`. Use it in blocks/`inc/`/`on_submit` callbacks instead of `error_log`. Full detail: AGENTS.md § "Logging".
 
 ## Options Page / Navigation / Helpers / Mail / REST / CSS Pipeline

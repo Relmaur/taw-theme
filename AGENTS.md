@@ -1459,6 +1459,27 @@ Trim either layer per site by editing `inc/security.php`.
 
 ---
 
+## Content Interchange
+
+Provided by `taw/core` (`TAW\Core\Content\*`, since v1.25.0). A portable snapshot / change-set format for moving content — posts, `_taw_*` metabox values, `_taw_*` options, terms, referenced media — between environments, or handing it to a code agent. Same **serialize → review → apply** shape as `seo:extract`/`seo:inject`.
+
+```bash
+php bin/taw content:export --output=/tmp/site.json     # build a snapshot
+php bin/taw content:import /tmp/site.json              # dry-run diff — writes nothing
+php bin/taw content:import /tmp/site.json --yes        # apply (rollback snapshot written first)
+php bin/taw content:diff a.json b.json --out=changes.json
+```
+
+- **Import is always a dry-run first.** Without `--yes` it prints a field-level diff and exits. `apply()` writes a full `Exporter` snapshot to `wp-content/uploads/taw-private/` before it touches the DB.
+- Records match by natural key (post `type`+`slug`, option key, term `taxonomy`+`slug`) — **never numeric ID**. Media matched by filename / sideloaded, IDs rewritten into content + `image`/`files` values.
+- wp-admin: **Tools → TAW Data** (Export button + Import-with-review). `GET /wp-json/taw/v1/content/export` (cap `export`).
+- `Theme::boot()` also REST-registers every TAW field (`register_post_meta` + `register_rest_field`) for headless / integration reads over `wp/v2`. Opt out: `add_filter('taw_register_meta_in_rest', '__return_false')`.
+- **Not** a full-DB dev refresh (that stays a separate SSH concern) and **not** a mobile editing UI (classic metaboxes stay desktop-only).
+
+Full detail: `taw/core` README § "Content Interchange".
+
+---
+
 ## Debug Helper
 
 Provided by `taw/core` (namespace `TAW\Helpers\Dump`). Global `dump()` / `dd()` functions are autoloaded from `utilities.php`.
