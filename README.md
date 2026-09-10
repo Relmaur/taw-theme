@@ -417,6 +417,19 @@ Menus (`primary`, `footer`) are registered in `inc/customizations.php` via `regi
 
 ---
 
+## Content Interchange
+
+`php bin/taw content:export` / `content:import` / `content:diff` (from `taw/core`) move a site's **state** — posts + `_taw_*` fields, options, terms, media, and opt-in authorship / users / comments / settings — between environments as one reviewable, diffable, rollback-able JSON file. Import is always a dry-run first, with an automatic rollback snapshot to `wp-content/uploads/taw-private/`. wp-admin: **Tools → TAW Data**.
+
+```bash
+php bin/taw content:export --migrate --output=/tmp/site.json
+php bin/taw content:import /tmp/site.json --yes --with-settings
+```
+
+→ **[taw.mlizardo.com/content-interchange](https://taw.mlizardo.com/content-interchange)** · AGENTS.md § "Content Interchange" · `taw/core` README § "Content Interchange".
+
+---
+
 ## Theme Updates
 
 `ThemeUpdater` hooks into WordPress's update system to check a GitHub Releases URL and surface the standard "Update Available" admin notice.

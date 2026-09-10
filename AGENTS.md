@@ -1461,22 +1461,24 @@ Trim either layer per site by editing `inc/security.php`.
 
 ## Content Interchange
 
-Provided by `taw/core` (`TAW\Core\Content\*`, since v1.25.0). A portable snapshot / change-set format for moving content — posts, `_taw_*` metabox values, `_taw_*` options, terms, referenced media — between environments, or handing it to a code agent. Same **serialize → review → apply** shape as `seo:extract`/`seo:inject`.
+Provided by `taw/core` (`TAW\Core\Content\*`, since v1.25.0; whole-site **state** migration since v1.26.0). A portable snapshot / change-set format for moving a site's state — posts + `_taw_*` fields, `_taw_*` options, terms, media, and (opt-in) authorship, users, comments, environment settings — between environments, or handing it to a code agent. Same **serialize → review → apply** shape as `seo:extract`/`seo:inject`. Schema `1.1` (importer also accepts `1.0`).
 
 ```bash
-php bin/taw content:export --output=/tmp/site.json     # build a snapshot
-php bin/taw content:import /tmp/site.json              # dry-run diff — writes nothing
-php bin/taw content:import /tmp/site.json --yes        # apply (rollback snapshot written first)
+php bin/taw content:export --migrate --output=/tmp/site.json   # full state (users, settings, all media, drafts)
+php bin/taw content:import /tmp/site.json                      # dry-run diff — writes nothing
+php bin/taw content:import /tmp/site.json --yes --with-settings # apply (rollback snapshot written first)
 php bin/taw content:diff a.json b.json --out=changes.json
 ```
 
-- **Import is always a dry-run first.** Without `--yes` it prints a field-level diff and exits. `apply()` writes a full `Exporter` snapshot to `wp-content/uploads/taw-private/` before it touches the DB.
-- Records match by natural key (post `type`+`slug`, option key, term `taxonomy`+`slug`) — **never numeric ID**. Media matched by filename / sideloaded, IDs rewritten into content + `image`/`files` values.
-- wp-admin: **Tools → TAW Data** (Export button + Import-with-review). `GET /wp-json/taw/v1/content/export` (cap `export`).
+- **Import is always a dry-run first.** Without `--yes` it prints a field-level diff and exits. `apply()` writes a full **maximal-scope** `Exporter` snapshot to `wp-content/uploads/taw-private/` before it touches the DB, in the order **users → terms → media → posts → comments → settings**.
+- Records match by natural key (post `type`+`slug` or `type`+`match_key` for slug-less drafts, option key, term `taxonomy`+`slug`, user login→email, comment content-hash) — **never numeric ID**. Media matched by filename / sideloaded, IDs rewritten into content + `image`/`files` values.
+- A clean `content:export --migrate` then `content:import --yes` against the **same** site = 0 created / 0 updated / 0 deleted.
+- **Opt-in scope flags** (all default off): `--with-users` (`--with-user-passwords` for hashes), `--with-comments`, `--with-settings` (+ `taw_content_export_settings_options` filter; **import-gated too**), `--all-media`, `--include-drafts`, `--migrate` (= the first-listed four minus passwords/comments). Any CPT with a `Metabox` attached auto-exports — no `taw_content_export_post_types` filter needed for a `public => false` content CPT.
+- wp-admin: **Tools → TAW Data** (Export with scope checkboxes + Import-with-review). `GET /wp-json/taw/v1/content/export` (cap `export`) is **content-only** — adds only `include_drafts`; no users/settings over REST.
 - `Theme::boot()` also REST-registers every TAW field (`register_post_meta` + `register_rest_field`) for headless / integration reads over `wp/v2`. Opt out: `add_filter('taw_register_meta_in_rest', '__return_false')`.
-- **Not** a full-DB dev refresh (that stays a separate SSH concern) and **not** a mobile editing UI (classic metaboxes stay desktop-only).
+- **Not** a full-DB byte-for-byte copy (still a separate SSH concern) and **not** a mobile editing UI (classic metaboxes stay desktop-only).
 
-Full detail: `taw/core` README § "Content Interchange".
+Full detail: `taw/core` README § "Content Interchange" and the docs site's **[Content Interchange](https://taw.mlizardo.com/content-interchange)** page.
 
 ---
 
