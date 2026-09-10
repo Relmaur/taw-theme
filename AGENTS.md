@@ -1478,6 +1478,8 @@ php bin/taw content:diff a.json b.json --out=changes.json
 - `Theme::boot()` also REST-registers every TAW field (`register_post_meta` + `register_rest_field`) for headless / integration reads over `wp/v2`. Opt out: `add_filter('taw_register_meta_in_rest', '__return_false')`.
 - **Not** a full-DB byte-for-byte copy (still a separate SSH concern) and **not** a mobile editing UI (classic metaboxes stay desktop-only).
 
+- **The `content-migrate` skill** (`.claude/skills/content-migrate/`, `owner: taw`) is the procedural wrapper: `pull` (remote → here), `push` (named records only, heavily gated), `migrate` (whole-site state over SSH), and an agent-transform variant (export both → `content:diff` → review → apply). It reads connection details from a gitignored `.sync/remote.env`. A site with its own source-of-truth policy authors an `owner: site` skill with a *different* name (`update-theme` overwrites `content-migrate` every sync).
+
 Full detail: `taw/core` README § "Content Interchange" and the docs site's **[Content Interchange](https://taw.mlizardo.com/content-interchange)** page.
 
 ---

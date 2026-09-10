@@ -426,6 +426,8 @@ php bin/taw content:export --migrate --output=/tmp/site.json
 php bin/taw content:import /tmp/site.json --yes --with-settings
 ```
 
+The **`content-migrate`** skill wraps this for a human-in-the-loop session — `pull` / `push` / `migrate` / agent-transform, with connection details in a gitignored `.sync/remote.env`. Ask an agent to "pull content from live" or "push the FAQ edits to staging".
+
 → **[taw.mlizardo.com/content-interchange](https://taw.mlizardo.com/content-interchange)** · AGENTS.md § "Content Interchange" · `taw/core` README § "Content Interchange".
 
 ---
