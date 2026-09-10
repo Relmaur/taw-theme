@@ -58,6 +58,9 @@ use TAW\CLI\IconsSyncCommand;
 use TAW\CLI\HubInstallCommand;
 use TAW\CLI\HubEnrollCommand;
 use TAW\CLI\LogTailCommand;
+use TAW\CLI\ContentExportCommand;
+use TAW\CLI\ContentImportCommand;
+use TAW\CLI\ContentDiffCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -79,5 +82,8 @@ $app->add(new IconsSyncCommand());
 $app->add(new HubInstallCommand($themeDir));
 $app->add(new HubEnrollCommand($themeDir));
 $app->add(new LogTailCommand($themeDir));
+$app->add(new ContentExportCommand($themeDir));
+$app->add(new ContentImportCommand($themeDir));
+$app->add(new ContentDiffCommand($themeDir));
 
 $app->run();
