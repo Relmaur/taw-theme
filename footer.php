@@ -40,7 +40,10 @@ use TAW\Core\OptionsPage\OptionsPage;
 
 <?php
 use TAW\Blocks\Chatbot\Chatbot;
-(new Chatbot())->render();
+use TAW\Core\Rag\RagSettings;
+if (RagSettings::isEnabled()) {
+    (new Chatbot())->render();
+}
 ?>
 
 <?php wp_footer(); ?>

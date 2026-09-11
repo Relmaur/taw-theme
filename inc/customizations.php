@@ -22,6 +22,13 @@ TAW\Core\Media\MediaFolders::enable();
 // opt-in per-site — uncomment to enable it for this site:
 // TAW\Core\Icons\Lucide::enable();
 
+// Sovereign Hybrid-RAG Chatbot (Settings -> TAW Chatbot, knowledge-base
+// uploads, WP-content ingestion, POST taw/v1/chat, and this theme's
+// site-wide Blocks/Chatbot widget) is opt-in per-site — needs an LLM
+// endpoint + TAW_RAG_API_KEY in wp-config.php, so it stays off by default.
+// Uncomment to enable it for this site:
+// TAW\Core\Rag\RagSettings::enable();
+
 // Client post-submission portal (page-client-submit.php, PagePassword-gated)
 // — a per-client feature, not something every taw-theme site should get
 // automatically. Requires TAW_CLIENT_PORTAL_PASSWORD defined in this site's

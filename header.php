@@ -2,12 +2,18 @@
 
 use TAW\Blocks\Chatbot\Chatbot;
 use TAW\Blocks\Menu\Menu;
+use TAW\Core\Rag\RagSettings;
 
 // Queue Menu assets before wp_head() so the <link> lands in <head>.
 // (new Menu())->enqueueAssets(); // To implement the custom search functionality on Menu.php, uncomment this line to load the necessary assets.
 
 // Chat widget assets — before wp_head() so its CSS lands in <head>.
-(new Chatbot())->enqueueAssets();
+// The RAG chatbot is opt-in at the taw/core level (RagSettings::enable()) —
+// skip enqueuing a widget that would just POST to a REST route that isn't
+// registered on sites that haven't turned it on.
+if (RagSettings::isEnabled()) {
+    (new Chatbot())->enqueueAssets();
+}
 ?>
 
 <!DOCTYPE html>
