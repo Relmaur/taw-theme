@@ -64,6 +64,7 @@ use TAW\CLI\ContentDiffCommand;
 use TAW\CLI\ContentReindexCommand;
 use TAW\CLI\ContentReindexKbCommand;
 use TAW\CLI\CorpusInstallCommand;
+use TAW\CLI\CorpusExportCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -91,5 +92,6 @@ $app->add(new ContentDiffCommand($themeDir));
 $app->add(new ContentReindexCommand($themeDir));
 $app->add(new ContentReindexKbCommand($themeDir));
 $app->add(new CorpusInstallCommand($themeDir));
+$app->add(new CorpusExportCommand());
 
 $app->run();
