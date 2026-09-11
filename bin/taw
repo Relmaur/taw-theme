@@ -62,6 +62,7 @@ use TAW\CLI\ContentExportCommand;
 use TAW\CLI\ContentImportCommand;
 use TAW\CLI\ContentDiffCommand;
 use TAW\CLI\ContentImportReferenceCommand;
+use TAW\CLI\ContentReindexCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -87,5 +88,6 @@ $app->add(new ContentExportCommand($themeDir));
 $app->add(new ContentImportCommand($themeDir));
 $app->add(new ContentDiffCommand($themeDir));
 $app->add(new ContentImportReferenceCommand($themeDir));
+$app->add(new ContentReindexCommand($themeDir));
 
 $app->run();
