@@ -61,8 +61,8 @@ use TAW\CLI\LogTailCommand;
 use TAW\CLI\ContentExportCommand;
 use TAW\CLI\ContentImportCommand;
 use TAW\CLI\ContentDiffCommand;
-use TAW\CLI\ContentImportReferenceCommand;
 use TAW\CLI\ContentReindexCommand;
+use TAW\CLI\ContentReindexKbCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -87,7 +87,7 @@ $app->add(new LogTailCommand($themeDir));
 $app->add(new ContentExportCommand($themeDir));
 $app->add(new ContentImportCommand($themeDir));
 $app->add(new ContentDiffCommand($themeDir));
-$app->add(new ContentImportReferenceCommand($themeDir));
 $app->add(new ContentReindexCommand($themeDir));
+$app->add(new ContentReindexKbCommand($themeDir));
 
 $app->run();
