@@ -38,6 +38,11 @@ use TAW\Core\OptionsPage\OptionsPage;
     </div>
 </footer><!-- #colophon -->
 
+<?php
+use TAW\Blocks\Chatbot\Chatbot;
+(new Chatbot())->render();
+?>
+
 <?php wp_footer(); ?>
 </body>
 

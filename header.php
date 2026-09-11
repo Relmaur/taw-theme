@@ -1,9 +1,13 @@
 <?php
 
+use TAW\Blocks\Chatbot\Chatbot;
 use TAW\Blocks\Menu\Menu;
 
 // Queue Menu assets before wp_head() so the <link> lands in <head>.
 // (new Menu())->enqueueAssets(); // To implement the custom search functionality on Menu.php, uncomment this line to load the necessary assets.
+
+// Chat widget assets — before wp_head() so its CSS lands in <head>.
+(new Chatbot())->enqueueAssets();
 ?>
 
 <!DOCTYPE html>
