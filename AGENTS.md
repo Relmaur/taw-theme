@@ -25,7 +25,7 @@
 | `resources/css/app.css` | Tailwind v4 directives — imported by `app.js`, not its own Vite entry | Yes |
 | `resources/scss/critical.scss` | Inlined `<head>` CSS, keep <14 KB, no `@font-face` | Yes |
 | `resources/fonts/` | Self-hosted WOFF2 | Yes |
-| `bin/taw` | Symfony CLI: `make:block`, `export/import:block`, `inspect`, `fields:get/set`, `sync` | read-only tool, not a source dir |
+| `bin/taw` | Symfony CLI: `make:block`, `export/import:block`, `inspect`, `fields:get/set`, `sync`, `content:reindex`, `content:reindex-kb` | read-only tool, not a source dir |
 | `tests/Unit/Blocks/{Name}Test.php` | Unit test for `{Name}::getData()` — required for every block, see § "Testing Blocks" | Yes — written alongside every new block |
 
 Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" below.
@@ -1481,6 +1481,24 @@ php bin/taw content:diff a.json b.json --out=changes.json
 - **The `content-migrate` skill** (`.claude/skills/content-migrate/`, `owner: taw`) is the procedural wrapper: `pull` (remote → here), `push` (named records only, heavily gated), `migrate` (whole-site state over SSH), and an agent-transform variant (export both → `content:diff` → review → apply). It reads connection details from a gitignored `.sync/remote.env`. A site with its own source-of-truth policy authors an `owner: site` skill with a *different* name (`update-theme` overwrites `content-migrate` every sync).
 
 Full detail: `taw/core` README § "Content Interchange" and the docs site's **[Content Interchange](https://taw.mlizardo.com/content-interchange)** page.
+
+---
+
+## Sovereign Hybrid-RAG Chatbot
+
+Backend (SQLite knowledge bases, embeddings, LLM orchestration, REST) is entirely `taw/core` (`TAW\Core\Rag\*`, since v1.27.0; content-agnostic knowledge bases since v1.28.0) — see its README § "Sovereign Hybrid-RAG Chatbot" for the full picture, including `Settings → TAW Chatbot → Knowledge Bases` (a wp-admin screen for uploading any `.sqlite` file as a named, semantically-searchable knowledge base — no theme involvement). This repo owns exactly one piece: the presentational widget.
+
+`Blocks/Chatbot` is a plain (non-`MetaBlock`) `Block`, mounted **site-wide** rather than per-page: `header.php` calls `(new Chatbot())->enqueueAssets()` before `wp_head()`, `footer.php` calls `(new Chatbot())->render()` right before `wp_footer()`. It talks only to `POST /wp-json/taw/v1/chat` — no LLM base URL or API key is ever present in `script.js`. Markdown replies go through `marked` then `DOMPurify.sanitize()` before any `x-html` binding, since assistant output is untrusted text.
+
+```php
+use TAW\Blocks\Chatbot\Chatbot;
+(new Chatbot())->enqueueAssets();   // header.php, before wp_head()
+(new Chatbot())->render();          // footer.php, before wp_footer()
+```
+
+Configuration (LLM base URL/model, indexed post types for the site's own content, whether anonymous visitors can chat) and knowledge-base management both live in wp-admin under **Settings → TAW Chatbot** — nothing here in the theme. `Chatbot::enqueueAssets()` localizes a nonce (`window.tawChatbot.nonce`) only when `RagSettings::publicChatEnabled()` is off, matching the endpoint's actual auth posture.
+
+Manual re-ingestion commands (`content:reindex` for the site's own content, `content:reindex-kb <id>` for one uploaded knowledge base) are registered in `bin/taw` — see `taw/core` README for usage. Uploading a new knowledge base itself is a wp-admin action, not a CLI one.
 
 ---
 
