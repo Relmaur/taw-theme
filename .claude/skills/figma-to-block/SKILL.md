@@ -59,6 +59,12 @@ Additional Figma-specific rules for the template:
 - **Fonts:** if the design specifies a typeface not already self-hosted in `resources/fonts/`, don't block on it — fall back to the closest Tailwind generic stack (`font-serif` / `font-sans` / `font-mono`) and leave a comment noting the exact intended typeface and pointing at `AGENTS.md`'s font-loading convention (`resources/fonts/` + `_fonts.scss` + preload hint) for the user to add it for pixel-exact results. Ask if they want you to source and wire up the webfont now instead.
 - **Don't force-fit an existing shared component** (e.g. a generic `Button` block) whose current styling doesn't match the design — hand-code the markup for this section rather than distorting a shared component's visuals for one caller, unless the user asks you to update the shared component itself.
 - **Every image from the design must render through `Image::render()`, never a raw `<img>` tag**, with CSS-reserved space (`aspect-ratio` or a fixed-height container) matching its real ratio — `width`/`height` attributes alone don't prevent CLS if CSS overrides them. This matters most for exactly the kind of repeated-row layout Figma designs often contain (logo bands, icon rows, card grids from a `repeater` field) — see `AGENTS.md` § "Performance Compliance" for a confirmed live incident where skipping this produced CLS that varied from 0.05 to 0.87 run-to-run on an otherwise-unchanged page.
+- **Check each image node's actual transform before assuming `object-fit:cover object-position:center`.** `get_design_context`/`download_assets` return the raw original uploaded image, not Figma's own scale/position transform on that image fill inside the frame — a tight face-crop, an off-center icon over a tinted panel, or any deliberate crop anchor is lost in the download, and a center-anchored `object-cover` recomputes its own crop that routinely looks "zoomed wrong" next to the actual design. Call `get_design_context` on the **specific image node** (not its parent card/frame) and read the returned `<img>`'s classes:
+  - `object-cover` with no offset → the default is already correct, no action needed.
+  - `absolute h-[X%] w-[Y%] left-[-A%] top-[-B%]` inside a `relative overflow-hidden` container → copy those percentages verbatim into an inline `style` on the live `<img>` instead of `object-cover`. They're relative to the *container*, not the image — apply as-is.
+  - For a `repeater` field, each row typically needs its own transform (no shared formula) — use an index-keyed lookup array in the template, with a plain `object-cover` fallback for rows beyond what Figma specified.
+
+  **`'thumbnail'` breaks this math** — WordPress hard-crops it to a square before any transform ever sees it, so an image getting a custom transform must use `'medium'`/`'large'`/`'full'` instead (see `taw-theme` `AGENTS.md` § "Image Helper").
 
 ## Step 6 — Ask about content population
 
@@ -84,6 +90,7 @@ Standard `make-metablock` verify steps apply (site loads, `php -l`, `composer du
 ## Don't
 
 - Don't ship React/JSX or literal Figma class names (`data-node-id`, etc.) into the PHP template — full conversion, not a copy-paste.
+- Don't assume `object-fit:cover object-position:center` matches the design for every image — check the specific image node's actual transform via `get_design_context` first (see Step 5); Figma's own crop/position on an image fill doesn't survive into the downloaded asset.
 - Don't invent global theme tokens for one-off design colors/fonts without flagging it to the user first.
 - Don't silently reuse a same-purpose block whose visuals don't actually match the design.
 - Don't skip `make-metablock`'s `getData(int|false $postId): array` signature check — it's the same site-wide-fatal risk here.

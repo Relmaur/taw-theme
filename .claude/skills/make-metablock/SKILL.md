@@ -84,7 +84,7 @@ Edit `Blocks/SectionName/index.php`:
 - For repeaters, `json_decode()` the value (or use `Metabox::get_repeater()` which already does this) and loop with `foreach`.
 - Use Tailwind utility classes for layout/styling, matching the visual conventions of neighboring blocks in `Blocks/` — check 1–2 existing block templates for the project's spacing/typography scale before writing markup from scratch.
 - If the section renders a `Form`, call `Form::display('form_id')` here.
-- **Render every image via `Image::render()`, never a raw `<img>` tag**, and give any image-bearing element CSS-reserved space (`aspect-ratio` or a fixed-height container) matching the image's real ratio — `width`/`height` attributes alone don't prevent CLS if CSS overrides them. This applies even to lazy-loaded, below-the-fold images (marquee/logo bands, repeater-driven card grids) — see `AGENTS.md` § "Performance Compliance" for why the shift shows up as flaky rather than consistent.
+- **Render every image via `Image::render()`, never a raw `<img>` tag**, and give any image-bearing element CSS-reserved space (`aspect-ratio` or a fixed-height container) matching the image's real ratio — `width`/`height` attributes alone don't prevent CLS if CSS overrides them. This applies even to lazy-loaded, below-the-fold images (marquee/logo bands, repeater-driven card grids) — see `AGENTS.md` § "Performance Compliance" for why the shift shows up as flaky rather than consistent. If this block's image content is sourced from a Figma design, see `figma-to-block` § Step 5 for why the design's own crop/position transform needs checking via `get_design_context` before defaulting to `object-cover`.
 
 ## Step 7 — Styles (if scaffolded with `--with-style`)
 

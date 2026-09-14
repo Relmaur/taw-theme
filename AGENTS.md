@@ -1114,6 +1114,18 @@ OptionsPage::get('company_name');                    // returns string
 OptionsPage::get_image_url('company_logo', 'large'); // returns URL string
 ```
 
+**`repeater`/`files` fields return the raw JSON string, not a decoded array** — same contract as Metabox (§ "Key Conventions": "Repeater and files field values are stored as JSON strings — callers must `json_decode()`"). This is an easy, silent trap: a `(array)` cast on a non-empty string doesn't decode it — it wraps the *whole string* as one bogus array element, so a badges/logos list renders one broken row instead of N, with no error anywhere.
+
+```php
+// Wrong — (array) on a non-empty JSON string wraps it as ONE element:
+$badges = OptionsPage::get('footer_award_badges');
+$badges = is_array($badges) ? $badges : (empty($badges) ? [] : (array) $badges);
+
+// Right:
+$badges = json_decode((string) OptionsPage::get('footer_award_badges'), true);
+$badges = is_array($badges) ? $badges : [];
+```
+
 **Option key pattern:** `_taw_{field_id}` (same prefix convention as Metabox)
 
 The theme's default options page is configured in `inc/options.php`, auto-loaded by `Theme::bootstrapFullSite()` if the file exists — nothing to require manually. To add a *second* options page, create a new file in `inc/` and require it from `inc/customizations.php` (not `functions.php`, which only auto-loads `options.php`/`performance.php`/`customizations.php` by convention, not arbitrary extra files).
@@ -1373,6 +1385,8 @@ echo Image::preloadTag($image_id, 'full');
 | `sizes` | `string` | auto | Custom `sizes` attribute |
 | `class` | `string` | — | CSS class(es) |
 | `attr` | `array` | — | Any additional HTML attributes |
+
+**`'thumbnail'` is hard-cropped to a square by WordPress before any custom position/crop transform ever sees it.** If a template applies its own crop/position transform on top of `Image::render()`'s output — most commonly a Figma-sourced `object-position`/absolute-positioning transform, see `figma-to-block` § Step 5 — it must request `'medium'`/`'large'`/`'full'` (WordPress's proportional, uncropped sizes), never `'thumbnail'`. The transform's math assumes the source's real, usually non-square, aspect ratio; `'thumbnail'` has already destroyed that by the time the transform runs.
 
 ---
 
