@@ -2,6 +2,7 @@
 /vendor
 /public
 /static-export
+/reports
 /.taw
 /.playwright-mcp
 .env

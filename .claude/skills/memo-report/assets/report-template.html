@@ -1,0 +1,475 @@
+<!--
+  TAW Report Template — component vocabulary
+  ===========================================
+  Shared visual engine for the `memo-report` and `ficha-tecnica` skills. Read this
+  comment block before filling the template; the component set below is fixed —
+  don't invent new classes for a one-off need, ask instead (see each skill's Don't
+  section).
+
+  TOKENS (string-substituted by the skill before the file is written — not live CSS
+  variables filled at runtime):
+    {{DOCUMENT_TITLE}}  <title> text
+    {{COMPANY_NAME}}    Letterhead wordmark
+    {{ACCENT_COLOR}}    Hex value driving --accent (the brand color; NOT the fixed
+                         semantic pill/callout colors, which never change per client)
+    {{VARIANT_CLASS}}   Empty for a normal memo, or "variant-confidencial" to switch
+                         to the red confidencial variant (accent overridden to red,
+                         reveals the CONFIDENCIAL banner) — set by ficha-tecnica only
+    {{DOC_TAG}}         Right-aligned mono tag in the letterhead, e.g. "MEMO-2026-014"
+    {{MEMO_PARA}}       Memo header: recipient
+    {{MEMO_DE}}         Memo header: sender
+    {{MEMO_FECHA}}      Memo header: date
+    {{MEMO_ASUNTO}}     Memo header: subject line
+    {{BODY_SECTIONS}}   Raw HTML — the filled-in .board / .clause markup goes here
+    {{SIGNOFF_NAME}}    Sign-off metadata
+    {{SIGNOFF_ROLE}}    Sign-off metadata
+    {{SIGNOFF_DATE}}    Sign-off metadata
+
+  COMPONENTS available for {{BODY_SECTIONS}}:
+
+    <section class="board">                        Optional status board — a numbered
+      <ol class="board__list">                      list of discrete items, each with
+        <li class="board__row">                     a description and a colored status
+          <span class="board__index">1</span>       pill. Three fixed semantic statuses
+          <span class="board__desc">...</span>       — never invent a fourth without
+          <span class="pill pill--done">Done</span>  updating this template deliberately:
+        </li>                                          pill--done   green  "done"
+      </ol>                                             pill--legal  amber  "requires input"
+    </section>                                          pill--out    grey   "out of scope"
+
+    <section class="clause">                        A numbered narrative section.
+      <h2 class="clause__title">
+        <span class="clause__numeral">I.</span> Title text
+      </h2>
+      <div class="clause__body">
+        <p>Plain paragraph.</p>
+
+        <blockquote class="exact">                  Verbatim quoted text — e.g. exact
+          "Quoted text, word for word."              copy a user agreed to. Never
+        </blockquote>                                paraphrase inside this element.
+
+        <div class="field-table-wrap">               Two-column technical/plain-language
+          <table class="field-table">                 field glossary. Wrapped in
+            <tbody>                                    .field-table-wrap for its own
+              <tr>                                      overflow-x:auto on a narrow
+                <td class="field-table__key">           viewport/PDF page.
+                  option_key
+                </td>
+                <td class="field-table__desc">
+                  Plain-language purpose.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout">Amber callout — flags something needing attention.</div>
+        <div class="callout confirmed">Green callout — flags a resolved/confirmed item.</div>
+
+        <ul><li>Plain bullet list item.</li></ul>
+      </div>
+    </section>
+
+  Everything else (letterhead, memo-block, sign-off, the confidencial banner) is
+  fixed structure the skill fills once, not per-section — see the body markup below.
+-->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{DOCUMENT_TITLE}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ffffff;
+    --paper-raised: #f6f5f2;
+    --ink: #1c1b18;
+    --ink-soft: #5c594f;
+    --ink-faint: #948f82;
+    --line: #e1ded4;
+    --line-strong: #c9c4b5;
+    --accent: {{ACCENT_COLOR}};
+
+    --done-bg: #e3f3e6;
+    --done-fg: #1e6b34;
+    --legal-bg: #fbf0d1;
+    --legal-fg: #8a5a00;
+    --out-bg: #ececea;
+    --out-fg: #6d6a63;
+
+    --callout-bg: #fbf0d1;
+    --callout-border: #c98a00;
+    --callout-confirmed-bg: #e3f3e6;
+    --callout-confirmed-border: #1e6b34;
+
+    --confidencial-red: #b3261e;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #17181a;
+      --paper-raised: #1f201f;
+      --ink: #ece9e1;
+      --ink-soft: #b3ada0;
+      --ink-faint: #7c776b;
+      --line: #35342c;
+      --line-strong: #47453a;
+
+      --done-bg: #17321f;
+      --done-fg: #7cd794;
+      --legal-bg: #382c0c;
+      --legal-fg: #f0c14b;
+      --out-bg: #2b2a27;
+      --out-fg: #b0aca1;
+
+      --callout-bg: #382c0c;
+      --callout-border: #f0c14b;
+      --callout-confirmed-bg: #17321f;
+      --callout-confirmed-border: #7cd794;
+
+      --confidencial-red: #e2726a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #17181a;
+    --paper-raised: #1f201f;
+    --ink: #ece9e1;
+    --ink-soft: #b3ada0;
+    --ink-faint: #7c776b;
+    --line: #35342c;
+    --line-strong: #47453a;
+
+    --done-bg: #17321f;
+    --done-fg: #7cd794;
+    --legal-bg: #382c0c;
+    --legal-fg: #f0c14b;
+    --out-bg: #2b2a27;
+    --out-fg: #b0aca1;
+
+    --callout-bg: #382c0c;
+    --callout-border: #f0c14b;
+    --callout-confirmed-bg: #17321f;
+    --callout-confirmed-border: #7cd794;
+
+    --confidencial-red: #e2726a;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+    overflow-x: hidden;
+  }
+
+  body {
+    color: var(--ink);
+    font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .report {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 56px 48px 72px;
+  }
+
+  h1, h2, h3, .clause__numeral, .letterhead__wordmark, blockquote.exact {
+    font-family: 'Newsreader', Georgia, serif;
+  }
+
+  code, .mono, .letterhead__doctag, .memo-block__label, .field-table__key,
+  .sign-off__meta, .board__index {
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* ---------- Confidencial banner (inert unless .variant-confidencial) ---------- */
+
+  .confidencial-banner {
+    display: none;
+  }
+
+  .report.variant-confidencial {
+    --accent: var(--confidencial-red);
+  }
+
+  .report.variant-confidencial .confidencial-banner {
+    display: block;
+    background: var(--confidencial-red);
+    color: #ffffff;
+    font-family: 'Public Sans', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 10px 16px;
+    margin: -56px -48px 32px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---------- Letterhead ---------- */
+
+  .letterhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 24px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--accent);
+    margin-bottom: 28px;
+  }
+
+  .letterhead__wordmark {
+    font-size: 1.5rem;
+    font-style: italic;
+    font-weight: 500;
+    color: var(--accent);
+  }
+
+  .letterhead__doctag {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    white-space: nowrap;
+  }
+
+  /* ---------- Memo block ---------- */
+
+  .memo-block {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    row-gap: 6px;
+    column-gap: 16px;
+    padding: 20px 24px;
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 36px;
+  }
+
+  .memo-block__label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    align-self: baseline;
+  }
+
+  .memo-block__value {
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* ---------- Status board ---------- */
+
+  .board { margin: 0 0 36px; }
+
+  .board__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .board__row {
+    display: grid;
+    grid-template-columns: 28px 1fr max-content;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .board__index {
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+
+  .board__desc {
+    color: var(--ink);
+  }
+
+  .pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pill--done { background: var(--done-bg); color: var(--done-fg); }
+  .pill--legal { background: var(--legal-bg); color: var(--legal-fg); }
+  .pill--out { background: var(--out-bg); color: var(--out-fg); }
+
+  /* ---------- Clause sections ---------- */
+
+  .clause { margin-bottom: 32px; }
+
+  .clause__title {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 1.15rem;
+    font-weight: 500;
+    margin: 0 0 14px;
+  }
+
+  .clause__numeral {
+    font-style: italic;
+    color: var(--accent);
+    font-size: 1.3rem;
+  }
+
+  .clause__body p {
+    margin: 0 0 14px;
+  }
+
+  .clause__body ul {
+    margin: 0 0 14px;
+    padding-left: 1.2em;
+  }
+
+  .clause__body li {
+    margin-bottom: 6px;
+  }
+
+  blockquote.exact {
+    margin: 0 0 18px;
+    padding: 4px 0 4px 20px;
+    border-left: 3px solid var(--accent);
+    font-style: italic;
+    color: var(--ink-soft);
+  }
+
+  .field-table-wrap {
+    overflow-x: auto;
+    margin: 0 0 18px;
+  }
+
+  table.field-table {
+    width: 100%;
+    min-width: 480px;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  table.field-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  table.field-table tr:nth-child(odd) td {
+    background: var(--paper-raised);
+  }
+
+  .field-table__key {
+    color: var(--ink);
+    white-space: nowrap;
+    width: 1%;
+  }
+
+  .field-table__desc {
+    color: var(--ink-soft);
+  }
+
+  .callout {
+    padding: 14px 18px;
+    margin: 0 0 18px;
+    background: var(--callout-bg);
+    border-left: 3px solid var(--callout-border);
+    border-radius: 0 3px 3px 0;
+    color: var(--ink);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .callout.confirmed {
+    background: var(--callout-confirmed-bg);
+    border-left-color: var(--callout-confirmed-border);
+  }
+
+  /* ---------- Sign-off ---------- */
+
+  .sign-off {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line-strong);
+  }
+
+  .sign-off__note {
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: 0 0 14px;
+  }
+
+  .sign-off__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 600px) {
+    .report { padding: 32px 20px 48px; }
+    .confidencial-banner { margin: -32px -20px 24px; }
+    .board__row { grid-template-columns: 20px 1fr; }
+    .board__row .pill { grid-column: 1 / -1; justify-self: start; margin-top: 4px; }
+  }
+
+  @page {
+    size: letter;
+    margin: 18mm 16mm;
+  }
+</style>
+</head>
+<body>
+<div class="report {{VARIANT_CLASS}}">
+  <div class="confidencial-banner">CONFIDENCIAL — NO DISTRIBUIR</div>
+
+  <header class="letterhead">
+    <div class="letterhead__wordmark">{{COMPANY_NAME}}</div>
+    <div class="letterhead__doctag">{{DOC_TAG}}</div>
+  </header>
+
+  <section class="memo-block">
+    <span class="memo-block__label">Para</span>
+    <span class="memo-block__value">{{MEMO_PARA}}</span>
+    <span class="memo-block__label">De</span>
+    <span class="memo-block__value">{{MEMO_DE}}</span>
+    <span class="memo-block__label">Fecha</span>
+    <span class="memo-block__value">{{MEMO_FECHA}}</span>
+    <span class="memo-block__label">Asunto</span>
+    <span class="memo-block__value">{{MEMO_ASUNTO}}</span>
+  </section>
+
+  <main class="report__body">
+    {{BODY_SECTIONS}}
+  </main>
+
+  <footer class="sign-off">
+    <p class="sign-off__note">Documento generado internamente. Cualquier duda sobre su contenido puede dirigirse a la persona indicada abajo.</p>
+    <div class="sign-off__meta">
+      <span>{{SIGNOFF_NAME}}</span>
+      <span>{{SIGNOFF_ROLE}}</span>
+      <span>{{SIGNOFF_DATE}}</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>
