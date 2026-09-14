@@ -65,6 +65,8 @@ use TAW\CLI\ContentReindexCommand;
 use TAW\CLI\ContentReindexKbCommand;
 use TAW\CLI\CorpusInstallCommand;
 use TAW\CLI\CorpusExportCommand;
+use TAW\CLI\CatechismInstallCommand;
+use TAW\CLI\CatechismExportCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
 
@@ -93,5 +95,7 @@ $app->add(new ContentReindexCommand($themeDir));
 $app->add(new ContentReindexKbCommand($themeDir));
 $app->add(new CorpusInstallCommand($themeDir));
 $app->add(new CorpusExportCommand());
+$app->add(new CatechismInstallCommand($themeDir));
+$app->add(new CatechismExportCommand());
 
 $app->run();
