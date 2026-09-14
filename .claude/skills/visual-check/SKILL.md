@@ -43,6 +43,7 @@ Using the Playwright MCP browser tools:
 3. **Single section:** scroll the section into view and screenshot just that element (target it by a stable selector — an `id`/`data-*` attribute on the block's wrapper if the template has one, otherwise the full viewport framed on that section is an acceptable fallback, but say which you used).
 4. **Full page:** take a full-page screenshot (not just the viewport) so every section is captured top to bottom.
 5. If the design has meaningfully different breakpoints worth checking (e.g. the Figma file has separate mobile/desktop frames), ask whether to check more than one viewport rather than assuming — don't multiply screenshots the user didn't ask for.
+6. **Save captured/reference screenshots to your session's scratchpad directory, not the project root or repo working directory.** Left at the project root, these accumulate as untracked, ad-hoc-named PNGs (`services-live.png`, `whyparallel-badges-final.png`, ...) that nothing gitignores and nobody cleans up.
 
 ## Step 3 — Get the reference image
 

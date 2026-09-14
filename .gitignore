@@ -3,6 +3,7 @@
 /public
 /static-export
 /.taw
+/.playwright-mcp
 .env
 .DS_Store
 .phpunit.result.cache
