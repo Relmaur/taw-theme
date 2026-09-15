@@ -272,7 +272,7 @@ TAW ships with [Swup v4](https://swup.js.org/) for SPA-style page transitions, b
 |---|---|---|---|
 | Block scripts run once, outside the swapped container | Blocks not on the landing page never initialize after navigating to them | Centralize all DOM init in `app.js`'s `initAll()`, run on `DOMContentLoaded` **and** the library's post-swap hook | `app.js` — sample 1 |
 | `initAll()` reruns on every navigation | Carousels/handlers double-initialize on the page that had them from the start | Guard attribute (`data-*-ready`) set after init, `:not([data-*-ready])` selector before init | `initGalleries()` — sample 1 |
-| Embla/Splide-style instances leak `ResizeObserver`s + listeners across swaps | Memory usage climbs with every navigation | Register a teardown closure per instance in a `window._tawCleanup` `Set`; flush it in the library's before-swap hook | sample 1 |
+| Embla/Splide-style instances leak `ResizeObserver`s + listeners across swaps | Memory usage climbs with every navigation | `registerCleanup()` a teardown closure per instance (`resources/js/cleanup-registry.js`); `flushCleanup()` it in the library's before-swap hook | sample 1, `cleanup-registry.js` |
 | *(plausible-looking, not actually a problem)* — `x-data` components inside `#content` seeming like they'd stop reacting after a swap | — | **No manual `Alpine.destroyTree()`/`Alpine.initTree()` calls needed.** Alpine ships its own global `MutationObserver` (`onElAdded`/`onElRemoved` in `alpinejs/dist/module.esm.js`) that already inits/destroys anything added/removed anywhere in the document — including a Swup container's `replaceWith(cloneNode())` swap. Verified live (`npm run dev` **and** a production build, repeated navigations) with zero manual tree calls anywhere in `app.js`; adding them back is redundant, not just unnecessary | — |
 | Block script registers `Alpine.data()` but loads after `Alpine.start()` already ran | `x-data="name"` elements get empty/broken state on later navigations | Shared `onAlpineReady(callback)` helper: if `window._alpineStarted`, call back immediately; else defer to `alpine:init`. Must run to completion *before* Swup performs the DOM swap — Alpine's own auto-init observer (see row above) reacts to that swap immediately, so a registration arriving after it has already fired misses that pass — see the next row | sample 2 |
 | A `<script>` cloned into `<head>` by a head-diffing plugin (e.g. `@swup/head-plugin`) doesn't reliably re-execute in a **production build** | A block not on the landing page renders blank/broken on a genuinely first-ever visit to its page, but works on the very next visit — because by then the script already executed once | Explicitly re-`import()` every current `script[type="module"][src]` URL in the transition library's *before*-swap hook, registered after the head-diffing plugin's own head-mount hook (same-timing hooks run in registration order) and before the DOM swap. `import()` on an already-loaded URL is a safe no-op — same per-realm module map a `<script>` tag uses, never re-executes — so this runs unconditionally, not just for "new" scripts | sample 2, `loadPageScripts()` |
@@ -282,26 +282,25 @@ TAW ships with [Swup v4](https://swup.js.org/) for SPA-style page transitions, b
 
 **Sample 1 — centralized, idempotent init with teardown (`app.js`):**
 
+`registerCleanup()`/`flushCleanup()` come from `resources/js/cleanup-registry.js` — a real, importable module rather than a `window._tawCleanup` global every site used to hand-declare itself (see that file's own doc comment for the full contract).
+
 ```js
 import EmblaCarousel from 'embla-carousel';
+import { registerCleanup, flushCleanup } from './cleanup-registry.js';
 
 function initGalleries() {
     document.querySelectorAll('.gallery__embla:not([data-ready])').forEach(root => {
         const embla = EmblaCarousel(root, { loop: true });
-        root.setAttribute('data-ready', '');               // guard: skip on next initAll()
-        window._tawCleanup.add(() => embla.destroy());      // teardown, flushed before next swap
+        root.setAttribute('data-ready', '');   // guard: skip on next initAll()
+        registerCleanup(() => embla.destroy()); // teardown, flushed before next swap
     });
 }
 
 function initAll() { initGalleries(); /* ...one function per block type */ }
 
 document.addEventListener('DOMContentLoaded', initAll);
-swup.hooks.on('page:view', initAll);                          // rerun after every swap
-
-swup.hooks.before('content:replace', () => {                  // flush teardowns before the swap
-    window._tawCleanup.forEach(fn => fn());
-    window._tawCleanup.clear();
-});
+swup.hooks.on('page:view', initAll);            // rerun after every swap
+swup.hooks.before('content:replace', flushCleanup); // flush teardowns before the swap
 ```
 
 **Sample 2 — Alpine lifecycle across swaps, including a genuinely-first-ever visit to a page:**
@@ -594,8 +593,8 @@ When active, every change you make in the visual panel — text edits, style twe
 | Fonts             | Self-hosted WOFF2 with preloads via `ViteLoader::assetUrl()` (from `taw/core`)          |
 | Performance       | `performance.php` removes WP bloat, adds resource hints (autoloaded from `taw/core`)    |
 | Page transitions  | Swup v4 swaps `#content`; `app.js` owns all block DOM init via `initAll()` on `page:view` |
-| Alpine lifecycle  | `destroyTree` / `initTree` on content swap; `Alpine.start()` called once only           |
-| Embla teardown    | `window._tawCleanup` Set — callbacks registered after init, flushed before each swap    |
+| Alpine lifecycle  | Alpine's own `MutationObserver` handles the swap; `Alpine.start()` called once only — no manual `destroyTree`/`initTree` |
+| Embla teardown    | `resources/js/cleanup-registry.js` — `registerCleanup()` after init, `flushCleanup()` before each swap |
 | Theme updates     | GitHub Releases-based auto-updater (`TAW\Core\Theme\ThemeUpdater` in `taw/core`)        |
 | Framework updates | `composer update taw/core` — update across all sites independently                      |
 
