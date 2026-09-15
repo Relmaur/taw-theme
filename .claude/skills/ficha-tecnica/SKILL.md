@@ -68,20 +68,39 @@ substitute template for a document this sensitive.
 
 ## Step 6 — Collect credentials interactively
 
-Use `AskUserQuestion`, grouped by system as applicable to this site (WP admin / SSH / FTP /
-hosting panel / domain registrar / other) — state up front, explicitly, that values are used only
-to generate this one file and are never logged or written anywhere else.
+Use `AskUserQuestion`, grouped by system, **in this fixed order** — the first two groups apply to
+every site and are always asked; anything past that is only asked if applicable to this
+particular site's setup:
 
-**Never read a credential from `wp-config.php`, an environment variable, or any file already on
-disk — always ask fresh**, even for a value that's technically already known or discoverable
-elsewhere on the system. The point of asking is that the human confirms the exact value going
-into a handoff document meant to outlive this session, not that the value is otherwise unknown.
+1. **Información General** — site URL, domain name, hosting provider, hosting plan, vencimiento
+   (renewal date).
+2. **Accesos de Administración (WordPress)** — admin URL, usuario, contraseña.
+3. Whatever else applies to this site — SSH / FTP / hosting panel / domain registrar / other.
+
+State up front, explicitly, that values are used only to generate this one file and are never
+logged or written anywhere else.
+
+**Never read a value from `wp-config.php`, an environment variable, or any file already on disk —
+always ask fresh**, even for a value that's technically already known or discoverable elsewhere
+on the system (a hosting invoice, a registrar dashboard, this site's own `wp_options`). This
+applies to every field collected here, not just passwords — a domain name or renewal date isn't
+secret, but the point of asking is still that the human confirms the exact value going into a
+handoff document meant to outlive this session, not that the value is otherwise unknown.
 
 ## Step 7 — Compose the document
 
 `{{VARIANT_CLASS}}` = `variant-confidencial` (activates the red accent + the "CONFIDENCIAL — NO
-DISTRIBUIR" banner already built into the shared template). One `.field-table` clause section per
-credential system collected in Step 6.
+DISTRIBUIR" banner already built into the shared template).
+
+**Fixed opening shape — every ficha técnica opens the same way, regardless of site:**
+
+1. *Información General* — one `.field-table` clause with Step 6 group 1's values.
+2. *Accesos de Administración (WordPress)* — one `.field-table` clause with Step 6 group 2's
+   values.
+
+Followed by one additional `.field-table` clause section per other credential system collected in
+Step 6 (SSH / FTP / hosting panel / registrar / other), numbered 3 onward in whatever order they
+were collected — these vary per site, unlike the two fixed leading sections above.
 
 ## Step 8 — Write the file — no PDF by default
 
@@ -106,3 +125,7 @@ the handoff is done.
 - Don't improvise a different template if the shared one is missing — point at `update-theme`.
 - Don't skip confirming the `.gitignore` fix in Step 3 — appending to `.gitignore` is itself a
   change worth showing the user, not a silent side effect of running this skill.
+- Don't reorder or drop the two fixed leading sections (*Información General* / *Accesos de
+  Administración*) even when a field seems inapplicable to this site — ask the user how to
+  handle it (e.g. mark it "N/A") rather than silently omitting the section. The fixed opening
+  shape is the point: every ficha técnica this skill produces should read the same way.
