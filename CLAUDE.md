@@ -86,7 +86,7 @@ Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')`
 
 ## Metabox Field Types
 
-`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`, `icon` (opt-in, see "Icon System" above) — full options/conditional logic: AGENTS.md § "The Metabox Framework" (or taw/core README).
+`text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`, `icon` (opt-in, see "Icon System" above), `gradient_text` (ordered `{text, highlighted}` segments — a gradient heading where the highlight isn't always the trailing run), `hubspot_form` (`{portal_id, form_id, region}`, render via `TAW\Core\Integrations\Hubspot::render()`) — full options/conditional logic: AGENTS.md § "The Metabox Framework" (or taw/core README).
 
 Any field also accepts `'readonly' => true` — renders as non-interactive text with a lock icon next to its label, never saved from POST. Use for values an external process owns (e.g. a sync pipeline).
 

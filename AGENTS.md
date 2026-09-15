@@ -61,7 +61,7 @@ Full API + option tables: §§ "The Metabox Framework", "Form System", "Options 
 
 ### Field types
 
-- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker icon` (`icon` is opt-in — requires `Lucide::enable()`)
+- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker icon gradient_text hubspot_form` (`icon` is opt-in — requires `Lucide::enable()`)
 - **Form:** `text email tel url textarea select checkbox date`
 
 ### Fatal mistakes (full list in § "Do NOT" below)
@@ -861,7 +861,7 @@ final class SectionNameTest extends TestCase
 
 Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-driven, supports:
 
-**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`
+**Field types:** `text`, `textarea`, `wysiwyg`, `url`, `number`, `range`, `select`, `image`, `files`, `group`, `checkbox`, `color`, `repeater`, `post_select`, `datepicker`, `gradient_text`, `hubspot_form`
 
 **Features:**
 - `screens` key (array) — accepts post type slugs, page template filenames, page slugs, or mixed
@@ -877,6 +877,8 @@ Provided by `taw/core` (namespace `TAW\Core\Metabox\Metabox`). Configuration-dri
 - `color` type renders a native color picker
 - `checkbox` type renders a boolean toggle
 - `datepicker` type renders a jQuery UI date picker; stored as a date string (default `YYYY-MM-DD`); supports `date_format`, `min_date`, `max_date`
+- `gradient_text` type — ordered `{text, highlighted}` segments (JSON array); Alpine-only admin segment editor, no drag-reorder. Render with `Metabox::renderGradientText($segments, $highlightClass)`, passing the theme's own gradient utility classes.
+- `hubspot_form` type — `{portal_id, form_id, region}` (JSON object). Render with `TAW\Core\Integrations\Hubspot::render($config)` (gate with `Hubspot::isConfigured($config)` to fall back to the site's native `Form` block when unconfigured).
 
 → Full reference: **[taw/core README — Metabox System](https://github.com/Relmaur/taw-core#metabox-system)**
 
@@ -1327,9 +1329,13 @@ php bin/taw fields:get 42 team_members --json                        # repeater 
 php bin/taw fields:set 42 hero_heading "Welcome"
 php bin/taw fields:set 42 team_members --file=/tmp/team.json         # --file avoids shell JSON-quoting for repeater/array-shaped values
 php bin/taw fields:set 42 hero_heading "Welcome" --dry-run           # preview the sanitized result without writing
+
+php bin/taw fields:set options company_phone "555-1234"              # 'options' targets a site-wide OptionsPage field, not a post
 ```
 
 For a group sub-field, use the compound ID exactly as `inspect` reports it (e.g. `hero_cta_text` for the `cta_text` sub-field of a `hero_cta` group) — it's registered in the field registry under that compound key already.
+
+Pass the literal `options` in place of the post ID to read/write a site-wide `OptionsPage` field instead — same commands, same `--dry-run`/`--file`/`--json` flags, resolved via `OptionsPage::getFieldConfig()`/`writeOption()` instead of the `Metabox` registry (taw/core README § "CLI" has the full detail).
 
 **What this doesn't do:** it doesn't upload media (an `image`/`files` field value must already be a valid attachment ID — get one via `wp eval` or the Media Library first), and it doesn't check whether a field's owning block is actually attached to the target post's post type or template — same trust model as any other direct WordPress data write. If a field ID isn't found in the registry, the error message points at `inspect --json` to list what's actually registered.
 
