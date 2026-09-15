@@ -274,7 +274,9 @@ TAW ships with [Swup v4](https://swup.js.org/) for SPA-style page transitions, b
 | `initAll()` reruns on every navigation | Carousels/handlers double-initialize on the page that had them from the start | Guard attribute (`data-*-ready`) set after init, `:not([data-*-ready])` selector before init | `initGalleries()` — sample 1 |
 | Embla/Splide-style instances leak `ResizeObserver`s + listeners across swaps | Memory usage climbs with every navigation | Register a teardown closure per instance in a `window._tawCleanup` `Set`; flush it in the library's before-swap hook | sample 1 |
 | Alpine bindings on swapped nodes go stale | `x-data` components inside `#content` stop reacting after navigation | `Alpine.destroyTree()` before the swap, `Alpine.initTree()` after; call `Alpine.start()` exactly once, ever | sample 2 |
-| Block script registers `Alpine.data()` but loads after `Alpine.start()` already ran | `x-data="name"` elements get empty/broken state on later navigations | Check `window._alpineStarted`: if true, register then `destroyTree`/`initTree` the affected elements; if false, defer registration to `alpine:init` | sample 2 |
+| Block script registers `Alpine.data()` but loads after `Alpine.start()` already ran | `x-data="name"` elements get empty/broken state on later navigations | Shared `onAlpineReady(callback)` helper: if `window._alpineStarted`, call back immediately; else defer to `alpine:init`. Must run to completion *before* the `content:replace` `Alpine.initTree()` call above, or the registration arrives too late for that pass — see the next row | sample 2 |
+| A `<script>` cloned into `<head>` by a head-diffing plugin (e.g. `@swup/head-plugin`) doesn't reliably re-execute in a **production build** | A block not on the landing page renders blank/broken on a genuinely first-ever visit to its page, but works on the very next visit — because by then the script already executed once | Explicitly re-`import()` every current `script[type="module"][src]` URL in the transition library's *before*-swap hook, registered after the head-diffing plugin's own head-mount hook (same-timing hooks run in registration order) and before the DOM swap. `import()` on an already-loaded URL is a safe no-op — same per-realm module map a `<script>` tag uses, never re-executes — so this runs unconditionally, not just for "new" scripts | sample 2, `loadPageScripts()` |
+| PHP-rendered persistent nav's active-state classes go stale | `isInActiveTrail()`/`isActive()` computed once at first render never update after a swap, since the nav lives outside the swapped container | Two options, see **[Keeping a persistent nav's active state in sync](#keeping-a-persistent-navs-active-state-in-sync)** below | — |
 | Block-specific logic needs to run post-navigation beyond `initAll()` | Menu highlighting, analytics, etc. don't update on swap | Listen for the `taw:page-view` `CustomEvent` dispatched by `app.js` after every `initAll()`; also usable as a no-op-safe fallback init since guard attributes prevent double-init | `document.addEventListener('taw:page-view', ...)` |
 | Third-party CSS (e.g. PhotoSwipe) imported inside multiple JS entry points | Unreliable style injection via Vite's dev-mode HMR module system | Import third-party CSS into `resources/css/app.css`, never into a JS file | sample 3 |
 
@@ -302,26 +304,69 @@ swup.hooks.before('content:replace', () => {                  // flush teardowns
 });
 ```
 
-**Sample 2 — Alpine lifecycle across swaps, including late-registering block scripts:**
+**Sample 2 — Alpine lifecycle across swaps, including a genuinely-first-ever visit to a page:**
+
+Two distinct problems stack here, and both fixes are required together — verified live
+(Chrome DevTools, production build) against the exact bug this guards: a block blank on a
+first-ever visit, fine on the second. Neither fix alone was sufficient.
 
 ```js
 // app.js
+const swup = new Swup({
+    containers: ['#content'],  // + a nav container too, if using Option A below
+    plugins: [
+        new SwupHeadPlugin({ persistAssets: true, awaitAssets: true }),
+        // ...other plugins
+    ],
+});
+
+// Problem 1: a <script> cloned into <head> by the head-diffing plugin does not
+// reliably re-execute in a production build — explicitly re-import every current
+// module script's URL to guarantee its top-level code (including any
+// onAlpineReady() registration below) has actually run. Registered *after*
+// SwupHeadPlugin's own before() hook (same-timing hooks run in registration
+// order, so the plugin's head-mount has already happened by the time this
+// fires) and *before* the DOM swap, so this always completes ahead of the
+// Alpine.initTree() call below — and ahead of Alpine's own auto-init
+// MutationObserver ever getting a chance to race it.
+function loadPageScripts() {
+    const urls = [...document.querySelectorAll('script[type="module"][src]')].map(s => s.src);
+    return Promise.all(urls.map(url => import(/* @vite-ignore */ url)));
+}
+swup.hooks.before('content:replace', loadPageScripts);
+
 swup.hooks.before('content:replace', () => Alpine.destroyTree(document.getElementById('content')));
 swup.hooks.on('content:replace', () => Alpine.initTree(document.getElementById('content')));
+```
 
-// Blocks/PostGrid/script.js — registering Alpine.data() safely regardless of load order
-const registerVideoModal = () => Alpine.data('videoModal', () => ({ isOpen: false }));
-
-if (window._alpineStarted) {
-    registerVideoModal();
-    document.querySelectorAll('[x-data="videoModal"]').forEach(el => {
-        Alpine.destroyTree(el);
-        Alpine.initTree(el);
-    });
-} else {
-    document.addEventListener('alpine:init', registerVideoModal);
+```js
+// resources/js/alpine-lifecycle.js — shared by every block script instead of a
+// naive document.addEventListener('alpine:init', ...), which fires exactly once,
+// at the original Alpine.start(): a page-specific block script loading for the
+// first time via a later navigation would register too late to ever be seen.
+export function onAlpineReady(callback) {
+    if (window._alpineStarted) {
+        callback();                                      // Alpine already running — register now
+    } else {
+        document.addEventListener('alpine:init', callback); // still starting up — defer
+    }
 }
 ```
+
+```js
+// Blocks/PostGrid/script.js — registering Alpine.data() safely regardless of
+// whether this script's module code runs before or after Alpine.start()
+import { onAlpineReady } from '../../resources/js/alpine-lifecycle.js';
+
+onAlpineReady(() => Alpine.data('videoModal', () => ({ isOpen: false })));
+```
+
+Problem 2's fix (`onAlpineReady`) only handles *when* a registered component's factory
+function runs relative to `Alpine.start()`. Problem 1's fix (`loadPageScripts()`) is what
+guarantees the block script's module code — and therefore its `onAlpineReady()` call —
+has actually executed at all before `Alpine.initTree()` re-scans the swapped container;
+without it, `onAlpineReady`'s registration can simply never happen on a first-ever visit,
+regardless of the dual-check logic being correct in isolation.
 
 **Sample 3 — third-party CSS goes in the CSS entry, not a JS import:**
 
@@ -346,9 +391,60 @@ Plugins:
 
 | Plugin | Purpose |
 |---|---|
-| `@swup/head-plugin` (`persistAssets: true`) | Syncs `<head>` elements; keeps already-loaded scripts across navigations |
+| `@swup/head-plugin` (`persistAssets: true, awaitAssets: true`) | Syncs `<head>` elements; keeps already-loaded scripts across navigations |
 | `@swup/scroll-plugin` | Scrolls to top after each swap |
 | `@swup/preload-plugin` | Preloads target page on hover/focus |
+
+**`persistAssets: true` is required, not optional, on this stack.** `@swup/head-plugin` diffs
+`<head>` by exact `outerHTML` string equality. In `npm run dev`, Vite's dev client injects
+`app.css` as a runtime `<style data-vite-dev-id>` tag that never appears in any page's raw
+server HTML — without `persistAssets`, the first navigation treats that live tag as orphaned
+(absent from the incoming page's raw head) and deletes it, and nothing ever recreates it, so
+the site goes permanently unstyled until a real reload. `awaitAssets: true` waits on new
+stylesheets before continuing — needed alongside `loadPageScripts()` above so a newly-added
+page's critical assets are actually in place before its scripts execute.
+
+### Keeping a persistent nav's active state in sync
+
+Any nav rendered outside the swapped container (`<header>`-level, using `Menu`'s
+`isInActiveTrail()`/`isActive()`) computes its active-state classes once, at first page load,
+and never updates again — a view-transition library only swaps `#content`. Two legitimate
+options here, not a clear winner either way:
+
+**Option A — add the nav as a second swap container** (correctness-by-construction, less code):
+
+```js
+new Swup({ containers: ['#content', '#primary-nav'] });
+```
+
+WordPress's own per-request render is always correct, so this needs zero JS trail-matching
+logic to get right or keep in sync with `Menu`'s real behavior — at the cost of a full node
+replacement of the nav on every navigation.
+
+**Option B — keep the nav as a persistent node, recompute active state in JS** (zero DOM
+churn, more logic to maintain):
+
+```js
+function updateActiveTrail() {
+    const path = location.pathname.replace(/\/$/, '') || '/';  // normalize trailing slash
+
+    document.querySelectorAll('#primary-nav a[href]').forEach(link => {
+        const href = link.getAttribute('href');   // the raw attribute, NOT link.href —
+        if (!href || href === '#') return;         // link.href resolves "#" to the current
+                                                     // page's own full URL, not an empty string
+        const linkPath = new URL(href, location.origin).pathname.replace(/\/$/, '') || '/';
+        link.classList.toggle('is-active', linkPath === path || path.startsWith(linkPath + '/'));
+    });
+}
+document.addEventListener('taw:page-view', updateActiveTrail);
+```
+
+Two edge cases this has to get right that PHP's `isInActiveTrail()` already handles for free:
+dropdown-trigger links using `href="#"` (must check the raw attribute — `link.href` resolves
+to the current page's own URL, not an empty string) and trailing-slash mismatches between the
+current path and a nav item's `href`. Worth reconsidering if `Menu`'s own trail-matching logic
+ever gets more nuanced (e.g. CPT-archive matching) — this JS copy won't track that
+automatically; Option A never has this problem at all.
 
 ---
 
