@@ -273,8 +273,8 @@ TAW ships with [Swup v4](https://swup.js.org/) for SPA-style page transitions, b
 | Block scripts run once, outside the swapped container | Blocks not on the landing page never initialize after navigating to them | Centralize all DOM init in `app.js`'s `initAll()`, run on `DOMContentLoaded` **and** the library's post-swap hook | `app.js` — sample 1 |
 | `initAll()` reruns on every navigation | Carousels/handlers double-initialize on the page that had them from the start | Guard attribute (`data-*-ready`) set after init, `:not([data-*-ready])` selector before init | `initGalleries()` — sample 1 |
 | Embla/Splide-style instances leak `ResizeObserver`s + listeners across swaps | Memory usage climbs with every navigation | Register a teardown closure per instance in a `window._tawCleanup` `Set`; flush it in the library's before-swap hook | sample 1 |
-| Alpine bindings on swapped nodes go stale | `x-data` components inside `#content` stop reacting after navigation | `Alpine.destroyTree()` before the swap, `Alpine.initTree()` after; call `Alpine.start()` exactly once, ever | sample 2 |
-| Block script registers `Alpine.data()` but loads after `Alpine.start()` already ran | `x-data="name"` elements get empty/broken state on later navigations | Shared `onAlpineReady(callback)` helper: if `window._alpineStarted`, call back immediately; else defer to `alpine:init`. Must run to completion *before* the `content:replace` `Alpine.initTree()` call above, or the registration arrives too late for that pass — see the next row | sample 2 |
+| *(plausible-looking, not actually a problem)* — `x-data` components inside `#content` seeming like they'd stop reacting after a swap | — | **No manual `Alpine.destroyTree()`/`Alpine.initTree()` calls needed.** Alpine ships its own global `MutationObserver` (`onElAdded`/`onElRemoved` in `alpinejs/dist/module.esm.js`) that already inits/destroys anything added/removed anywhere in the document — including a Swup container's `replaceWith(cloneNode())` swap. Verified live (`npm run dev` **and** a production build, repeated navigations) with zero manual tree calls anywhere in `app.js`; adding them back is redundant, not just unnecessary | — |
+| Block script registers `Alpine.data()` but loads after `Alpine.start()` already ran | `x-data="name"` elements get empty/broken state on later navigations | Shared `onAlpineReady(callback)` helper: if `window._alpineStarted`, call back immediately; else defer to `alpine:init`. Must run to completion *before* Swup performs the DOM swap — Alpine's own auto-init observer (see row above) reacts to that swap immediately, so a registration arriving after it has already fired misses that pass — see the next row | sample 2 |
 | A `<script>` cloned into `<head>` by a head-diffing plugin (e.g. `@swup/head-plugin`) doesn't reliably re-execute in a **production build** | A block not on the landing page renders blank/broken on a genuinely first-ever visit to its page, but works on the very next visit — because by then the script already executed once | Explicitly re-`import()` every current `script[type="module"][src]` URL in the transition library's *before*-swap hook, registered after the head-diffing plugin's own head-mount hook (same-timing hooks run in registration order) and before the DOM swap. `import()` on an already-loaded URL is a safe no-op — same per-realm module map a `<script>` tag uses, never re-executes — so this runs unconditionally, not just for "new" scripts | sample 2, `loadPageScripts()` |
 | PHP-rendered persistent nav's active-state classes go stale | `isInActiveTrail()`/`isActive()` computed once at first render never update after a swap, since the nav lives outside the swapped container | Two options, see **[Keeping a persistent nav's active state in sync](#keeping-a-persistent-navs-active-state-in-sync)** below | — |
 | Block-specific logic needs to run post-navigation beyond `initAll()` | Menu highlighting, analytics, etc. don't update on swap | Listen for the `taw:page-view` `CustomEvent` dispatched by `app.js` after every `initAll()`; also usable as a no-op-safe fallback init since guard attributes prevent double-init | `document.addEventListener('taw:page-view', ...)` |
@@ -320,23 +320,21 @@ const swup = new Swup({
     ],
 });
 
-// Problem 1: a <script> cloned into <head> by the head-diffing plugin does not
-// reliably re-execute in a production build — explicitly re-import every current
-// module script's URL to guarantee its top-level code (including any
-// onAlpineReady() registration below) has actually run. Registered *after*
-// SwupHeadPlugin's own before() hook (same-timing hooks run in registration
-// order, so the plugin's head-mount has already happened by the time this
-// fires) and *before* the DOM swap, so this always completes ahead of the
-// Alpine.initTree() call below — and ahead of Alpine's own auto-init
-// MutationObserver ever getting a chance to race it.
+// A <script> cloned into <head> by the head-diffing plugin does not reliably
+// re-execute in a production build — explicitly re-import every current module
+// script's URL to guarantee its top-level code (including any onAlpineReady()
+// registration below) has actually run. Registered *after* SwupHeadPlugin's own
+// before() hook (same-timing hooks run in registration order, so the plugin's
+// head-mount has already happened by the time this fires) and *before* the DOM
+// swap, so registration always completes ahead of Alpine's own auto-init
+// MutationObserver reacting to that swap — no manual Alpine.destroyTree()/
+// initTree() call needed anywhere here; Alpine's own observer already handles
+// the swap itself (see the table above).
 function loadPageScripts() {
     const urls = [...document.querySelectorAll('script[type="module"][src]')].map(s => s.src);
     return Promise.all(urls.map(url => import(/* @vite-ignore */ url)));
 }
 swup.hooks.before('content:replace', loadPageScripts);
-
-swup.hooks.before('content:replace', () => Alpine.destroyTree(document.getElementById('content')));
-swup.hooks.on('content:replace', () => Alpine.initTree(document.getElementById('content')));
 ```
 
 ```js
@@ -361,12 +359,15 @@ import { onAlpineReady } from '../../resources/js/alpine-lifecycle.js';
 onAlpineReady(() => Alpine.data('videoModal', () => ({ isOpen: false })));
 ```
 
-Problem 2's fix (`onAlpineReady`) only handles *when* a registered component's factory
-function runs relative to `Alpine.start()`. Problem 1's fix (`loadPageScripts()`) is what
-guarantees the block script's module code — and therefore its `onAlpineReady()` call —
-has actually executed at all before `Alpine.initTree()` re-scans the swapped container;
-without it, `onAlpineReady`'s registration can simply never happen on a first-ever visit,
-regardless of the dual-check logic being correct in isolation.
+`onAlpineReady` only handles *when* a registered component's factory function runs
+relative to `Alpine.start()`. `loadPageScripts()` is what guarantees the block script's
+module code — and therefore its `onAlpineReady()` call — has actually executed at all
+before Swup performs the DOM swap that Alpine's own auto-init observer reacts to; without
+it, `onAlpineReady`'s registration can simply never happen on a first-ever visit,
+regardless of the dual-check logic being correct in isolation. Nothing here manually
+walks the Alpine tree — Alpine's own global `MutationObserver` already does that for any
+element the swap adds or removes, which is also why no manual `Alpine.destroyTree()`/
+`Alpine.initTree()` call appears anywhere in this sample.
 
 **Sample 3 — third-party CSS goes in the CSS entry, not a JS import:**
 
