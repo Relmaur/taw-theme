@@ -75,7 +75,7 @@ Image::render($id, 'large', ['above_fold' => true]);
 
 **Register in `boot()`, never in templates** — the AJAX handler won't exist on `admin-ajax.php` otherwise. Full pattern, code sample, field-type list, and security details (CSRF/honeypot/rate-limit/Turnstile): AGENTS.md § "Form System" and § "Form security".
 
-Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')` in the template.
+Quick reference: `Form::register([...])` in `boot()`, `Form::display('contact')` in the template. `'submit_icon' => 'send'` renders an icon after the submit label (Lucide name or raw SVG/HTML) — AGENTS.md § "Form System".
 
 ## Key Conventions
 

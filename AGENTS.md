@@ -963,6 +963,17 @@ Form::display('contact');
 
 **Form field types:** `text`, `email`, `tel`, `url`, `textarea`, `select`, `checkbox`, `date`. Fields support `required`, `placeholder`, `width` (12-column grid %, e.g. `50`), `rows` (textarea), `conditions`, and validation rules (`min_length`, `max_length`, `pattern`, `min`/`max` on `number` fields — see Security below).
 
+**`submit_icon`** — optionally renders an icon after the submit button's label: a Lucide icon name (`Lucide::render()` — no `enable()` needed, same as any direct template call to it) or raw `'<svg>...</svg>'`/HTML, printed as-is inside `<span class="taw-btn-icon" aria-hidden="true">`. Nothing renders when unset, empty, or an unrecognized icon name.
+
+```php
+Form::register([
+    'id'           => 'contact',
+    'submit_label' => 'Send message',
+    'submit_icon'  => 'send',
+    'fields'       => [...],
+]);
+```
+
 ### Form security
 
 Every form has CSRF (nonce) protection and honeypot spam filtering by default. Two more layers, both opt-in/configurable:
