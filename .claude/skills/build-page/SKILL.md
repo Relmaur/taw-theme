@@ -21,13 +21,29 @@ This skill fulfills requests like *"I need a homepage with a hero, features, and
 
 **Text brief:** Parse the user's request into an ordered list of sections (top to bottom, matching the page's visual flow). If vague ("a homepage"), propose a sensible default order (e.g. Hero → Features → Testimonials → Pricing → FAQ → CTA) and confirm before building, unless already specified.
 
-**Figma brief:** If given a `figma.com` URL, extract `fileKey`/`nodeId` and call `get_metadata` on the target node (or omit `nodeId` to list top-level pages first, if the URL points at the whole file rather than one page). Read the child frame names to identify section boundaries — in Figma files built for this kind of work, top-level section frames are typically named descriptively (e.g. `Section - II. Value Proposition`); use those names and their rendering order as your section list. Don't call `get_design_context` on every section yet — that happens per-section inside `figma-to-block` in Step 2. If the file contains multiple alternative page proposals (e.g. several full homepage variants), confirm with the user which one to build before proceeding.
+**Figma brief:** If given a `figma.com` URL, extract `fileKey`/`nodeId` and call `get_metadata` on the target node (or omit `nodeId` to list top-level pages first, if the URL points at the whole file rather than one page). Read the child frame names to identify section boundaries — in Figma files built for this kind of work, top-level section frames are typically named descriptively (e.g. `Section - II. Value Proposition`); use those names and their rendering order as your section list. Don't call `get_design_context` on every section yet — that happens per-section inside `figma-to-block` in its own Step 3. If the file contains multiple alternative page proposals (e.g. several full homepage variants), confirm with the user which one to build before proceeding.
 
 **Screenshot brief:** Same as a Figma brief, but reading section boundaries visually from a pasted/attached image instead of Figma's frame tree — identify distinct visual sections top to bottom and treat each as a section, same as above.
 
-**If this is a Figma or screenshot brief, ask the content-population question once, for the whole page, right here** — don't let each section ask it separately later: populate real extracted content, leave fields as fallbacks, or fill with Lorem Ipsum. Carry the answer through Step 2 so `make-metablock`/`figma-to-block` don't re-ask it per section.
+**If this is a Figma or screenshot brief, ask the content-population question once, for the whole page, right here** — don't let each section ask it separately later: populate real extracted content, leave fields as fallbacks, or fill with Lorem Ipsum. Carry the answer through Step 3 so `make-metablock`/`figma-to-block` don't re-ask it per section.
 
-## Step 2 — Resolve each section against existing blocks
+## Step 2 — Extract the design system into shared tokens (Figma/screenshot brief only)
+
+Skip this step entirely for a text brief.
+
+Before resolving individual sections, pull the design's **complete** token set once, up front — don't let each section discover colors/spacing/type ad hoc through `figma-to-block`'s own per-node `get_design_context` calls, which only ever return what that one node happens to use, never the file's overall system:
+
+1. Call `get_variable_defs` on the file if the design uses Figma Variables (color, spacing, radius, typography, etc.) — this is the authoritative, declared token source when it exists. If the file references a shared library instead of local variables, `get_libraries`/`search_design_system` surfaces that.
+2. Figma files often use two overlapping systems — Variables *and* named Text/Effect Styles — so also check `get_metadata`'s frame tree / `get_design_context` output for named styles the Variables call didn't cover.
+3. If the file has no first-class token layer at all (many hand-built designs don't), fall back to inspecting `get_design_context` on 2–3 varied sections and inferring the recurring palette/spacing scale by eye — say explicitly that you're inferring a system rather than reading a declared one.
+
+Reconcile against what this project already has — check `resources/scss/app.scss`/`resources/css/app.css` for an existing Tailwind v4 `@theme` block — and write or extend **one canonical token block**: a `@theme { ... }` block in `resources/scss/app.scss` (or a new `resources/scss/_tokens.scss` partial it `@import`s, if the token list is large enough to warrant its own file), covering every color, spacing value, type-scale entry (size/weight/line-height), radius, and shadow the design actually defines — not just the ones the first section you're about to build happens to use. Name tokens so they trace back to Figma's own names where practical (e.g. Figma's `color/primary/600` → CSS custom property `--color-primary-600`, usable as Tailwind's `bg-primary-600`), so the mapping stays legible to whoever touches this later.
+
+**Confirm the token file with the user before treating it as final** — a wrong color/spacing value here silently propagates into every section that references it afterward, unlike a single arbitrary-value mistake contained to one block.
+
+This flips `figma-to-block` Step 5's usual default for every section built under this skill: once this token set exists, a section should reference it (`bg-primary-600`, a named spacing token, etc.) instead of reaching for a Tailwind arbitrary value for anything that traces back to a declared Figma variable/style. Arbitrary values remain correct for genuine one-offs the token set doesn't cover — this step doesn't eliminate them, it just makes them the exception rather than the default.
+
+## Step 3 — Resolve each section against existing blocks
 
 For every section in the list:
 
@@ -40,7 +56,7 @@ For every section in the list:
 
 Keep a running map of `section name → block id` (the `$id` property, used for `queue()`/`render()`) as you go — you'll need it for the template.
 
-## Step 3 — Determine the target template file
+## Step 4 — Determine the target template file
 
 Ask (or infer from context) which page this is for, then pick the file per WordPress's template hierarchy:
 
@@ -55,7 +71,7 @@ If the target file already exists, read it first — you're likely inserting/reo
 
 **Slug/ID-matched templates (`page-{slug}.php`, `page-{id}.php`, `front-page.php`) apply automatically — they never appear in the block editor's "Template" dropdown**, and this project has no template using a `Template Name:` header (which is the only kind that *does* show up there). Don't expect or ask the user to manually select the template from a dropdown for these; the fix is simply assigning the matching slug (or post ID) to the Page in WP Admin. If the user specifically wants a template selectable regardless of slug, add a `Template Name: X` header comment instead — flag that this deviates from every other template in this repo before doing it.
 
-## Step 4 — Write the template
+## Step 5 — Write the template
 
 Follow the exact skeleton from `AGENTS.md`:
 
@@ -84,22 +100,22 @@ Rules:
 - The `render()` call order determines both visual order on the page and, if `MetaboxOrder::lockFromTemplate()` is active (see `AGENTS.md` § "The Metabox Framework" → "Locking Metabox Order"), the metabox order in wp-admin — so section order in the template is not cosmetic, it drives the editing UI too.
 - Don't add manual `wp_enqueue_style`/`wp_enqueue_script` calls — blocks self-enqueue via the queue/render pattern.
 
-## Step 5 — Populate content (Figma/screenshot brief only)
+## Step 6 — Populate content (Figma/screenshot brief only)
 
 Skip this step entirely for a text brief with no design-sourced content to populate.
 
 If Step 1's population answer was "populate real values" or "Lorem Ipsum", resolve the actual target WP post now:
 
-- If the Page post this template will render for already exists (matching slug/ID per Step 3), use it.
+- If the Page post this template will render for already exists (matching slug/ID per Step 4), use it.
 - If it doesn't exist yet, tell the user a Page post needs to be created before content can be populated (this skill writes the *template*, not page content) and ask whether to create it now (`wp post create` or similar) or defer population until they create it themselves.
 
 Once a target post id exists, invoke `populate-content` **once per section**, passing the population choice from Step 1 and the copy/placeholder content each section's `make-metablock`/`figma-to-block` invocation already gathered — don't re-extract it. `populate-content` owns the actual dry-run/confirmation flow per `AGENTS.md` § "Content-writing safety model"; this skill doesn't shortcut that by batching all sections into one silent write.
 
-## Step 6 — No functions.php changes
+## Step 7 — No functions.php changes
 
 `BlockLoader::loadAll()` auto-discovers every block in `Blocks/*/`. Never manually register blocks in `functions.php`. The only thing that might belong in `functions.php` is `MetaboxOrder::lockFromTemplate()` (already present in this project) — don't touch it unless asked.
 
-## Step 7 — Verify
+## Step 8 — Verify
 
 - Confirm every queued block id matches an actual `$id` property in `Blocks/*/*.php`. `php bin/taw inspect` reports the live registered block ids/fields if you want to double-check without reading source.
 - Run `php bin/ci/check-getdata-signature.php` — same check CI runs, catches the `getData(int|false $postId)` signature bug across every block in the project in one shot.
@@ -107,7 +123,7 @@ Once a target post id exists, invoke `populate-content` **once per section**, pa
 - If a dev server is running, **ask before driving a Playwright browser check** of section order/rendering and the wp-admin metabox UI — the developer may already have the page open and be able to tell at a glance, especially for a small change. Only open/drive a browser via Playwright on an explicit yes, same as the pixel-accuracy pass below.
 - **For a Figma/screenshot brief, once the full page is wired up, offer (don't auto-run) a pixel-accuracy pass via the `visual-check` skill** — a real browser screenshot of the finished page compared against the design reference. This is a separate opt-in step the developer decides on, not part of this checklist by default.
 - Report back the final section list and which blocks were reused vs newly created.
-- A 404 on the intended URL after the template file is written correctly usually means the Page post itself doesn't exist yet with the matching slug — that's expected, it's a content-authoring step, not a bug in the template. See the note in Step 3 about slug-matched templates never needing manual selection.
+- A 404 on the intended URL after the template file is written correctly usually means the Page post itself doesn't exist yet with the matching slug — that's expected, it's a content-authoring step, not a bug in the template. See the note in Step 4 about slug-matched templates never needing manual selection.
 
 ## Marking generated files (when explicitly requested)
 
@@ -127,6 +143,7 @@ Don't add this by default — only when asked.
 - Don't create a new block for a section that already exists under a different name without checking first.
 - Don't reorder existing, unrelated sections in a template the user didn't ask you to touch.
 - Don't skip `make-metablock`'s or `figma-to-block`'s own conventions (naming, field catalog, escaping, signature checks) when creating missing blocks — this skill delegates block creation, it doesn't duplicate that logic.
-- Don't fix unrelated fatal errors you discover in `Blocks/*/*.php` while verifying without telling the user first — flag it and get confirmation before touching code outside the scope of the request (see Step 7), even though the bug may be blocking your own verification.
+- Don't fix unrelated fatal errors you discover in `Blocks/*/*.php` while verifying without telling the user first — flag it and get confirmation before touching code outside the scope of the request (see Step 8), even though the bug may be blocking your own verification.
 - Don't skip the page-level population question (Step 1) for a Figma/screenshot brief, and don't let `populate-content`'s per-section confirmation gates get silently batched away — every section's write still needs its own dry-run/confirmation per `AGENTS.md`'s safety model.
 - For a Figma brief, don't skip straight to full `get_design_context` calls for every section up front — get the section list cheaply via `get_metadata` first, confirm scope with the user if the file has multiple page variants, then pull full context per-section only once you're actually building it.
+- Don't skip Step 2's token extraction and let each section invent its own arbitrary values for colors/spacing that trace back to a declared Figma variable or style — a page assembled that way accumulates near-duplicate one-off values instead of one shared, maintainable source.
