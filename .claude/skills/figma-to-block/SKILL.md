@@ -65,7 +65,10 @@ Additional Figma-specific rules for the template:
 - **Check each image node's actual transform before assuming `object-fit:cover object-position:center`.** `get_design_context`/`download_assets` return the raw original uploaded image, not Figma's own scale/position transform on that image fill inside the frame — a tight face-crop, an off-center icon over a tinted panel, or any deliberate crop anchor is lost in the download, and a center-anchored `object-cover` recomputes its own crop that routinely looks "zoomed wrong" next to the actual design. Call `get_design_context` on the **specific image node** (not its parent card/frame) and read the returned `<img>`'s classes:
   - `object-cover` with no offset → the default is already correct, no action needed.
   - `absolute h-[X%] w-[Y%] left-[-A%] top-[-B%]` inside a `relative overflow-hidden` container → copy those percentages verbatim into an inline `style` on the live `<img>` instead of `object-cover`. They're relative to the *container*, not the image — apply as-is.
+  - `size-full` with **no** `object-cover` and no offsets → Figma is *stretching* the image (`object-fit: fill`), not cropping it — reproduce with `object-fill` in an `aspect-[W/H]`-locked box, not `object-cover`.
   - For a `repeater` field, each row typically needs its own transform (no shared formula) — use an index-keyed lookup array in the template, with a plain `object-cover` fallback for rows beyond what Figma specified.
+
+  The percentage transform is only valid in a container whose aspect ratio matches Figma's frame, and the mobile frame has its own crop — the full procedure (fluid-container `object-position` derivation, mobile crops, stretch diagnosis) is the **`figma-image-crop-fix`** skill; run it when an image doesn't match after this step.
 
   **`'thumbnail'` breaks this math** — WordPress hard-crops it to a square before any transform ever sees it, so an image getting a custom transform must use `'medium'`/`'large'`/`'full'` instead (see `taw-theme` `AGENTS.md` § "Image Helper").
 
@@ -98,6 +101,7 @@ Standard `make-metablock` verify steps apply (site loads, `php -l`, `composer du
 - Don't invent global theme tokens for one-off design colors/fonts without flagging it to the user first.
 - Don't silently reuse a same-purpose block whose visuals don't actually match the design.
 - Don't skip `make-metablock`'s `getData(int|false $postId): array` signature check — it's the same site-wide-fatal risk here.
+- Don't call a section "matched" on the strength of the translated markup alone — the fidelity pass (measure the live DOM against Figma's numbers on desktop **and** mobile, close the gaps, list the drift) is the **`figma-fidelity`** skill. Offer it once the block is wired in; it shares the same ask-before-browser gate as `visual-check`.
 - Don't leave temporary test wiring (queue/render calls added purely to verify) in a page template — revert it after checking.
 - Don't populate real content from the design without asking the three-way question in Step 6 first, and don't skip `populate-content`'s dry-run/confirmation safety model just because the content came from an approved design.
 - Don't assume a shared fluid/`clamp()`-based spacing utility reproduces a section's own literal Figma spacing token just because it "looks like padding" — verify the actual rendered value against the literal token (see Step 5); a project-wide fluid class is a generic approximation, not a per-section guarantee.

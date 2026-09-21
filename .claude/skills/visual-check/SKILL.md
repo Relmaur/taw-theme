@@ -55,6 +55,8 @@ Using the Playwright MCP browser tools:
 
 Present the rendered screenshot and the reference image in the same response so they're both directly visible, then compare them yourself (Claude's own vision) rather than asserting a match. Call out concrete, specific deviations — spacing/padding, alignment, color values, font/weight, image cropping, missing or extra elements, text overflow/wrapping — not a vague "looks close." Structure findings as a short list, one line per deviation, each naming the element and what's off. If nothing meaningful differs, say so plainly rather than padding the list.
 
+This skill compares by eye. When the developer wants the page to match Figma *exactly* — element sizes, spacing, wrapping, image crops — hand off to the **`figma-fidelity`** skill, which measures live element boxes against Figma's own numbers on both desktop and mobile frames instead.
+
 If the user wants an objective diff score or a highlighted-diff image on top of the visual read, offer to write a one-off `pixelmatch`/`odiff` comparison script into the scratchpad directory rather than adding a persistent devDependency to the project — only do this if asked, it's not part of the default flow.
 
 ## Step 5 — Report and hand the decision back

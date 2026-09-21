@@ -974,6 +974,20 @@ Form::register([
 ]);
 ```
 
+**Per-form styling hooks** (`taw/core` ≥ v1.40.0): `'class' => 'contact-form'` appends to the `<form>`'s `taw-form`; `'button_class' => 'btn-black'` appends to the submit button's `taw-btn taw-btn-primary` (and Next on a multi-step form). Both *add to* the defaults — scope overrides as `.contact-form .taw-input { … }` instead of inventing an ancestor wrapper. A field's `width` is emitted as the `--taw-span` custom property (not an inline `grid-column`), so a theme can override `grid-column` on `.taw-form-field` with an ordinary selector — no `!important`.
+
+```php
+Form::register([
+    'id'           => 'contact',
+    'class'        => 'contact-form',
+    'button_class' => 'btn-black',
+    'fields'       => [
+        ['id' => 'first', 'label' => 'First name', 'type' => 'text', 'width' => 50],
+        ['id' => 'last',  'label' => 'Last name',  'type' => 'text', 'width' => 50],
+    ],
+]);
+```
+
 ### Form security
 
 Every form has CSRF (nonce) protection and honeypot spam filtering by default. Two more layers, both opt-in/configurable:
@@ -1636,6 +1650,8 @@ The async `media="print"` trick makes stylesheets non-render-blocking — the br
 | `resources/scss/app.scss` | Custom SCSS (fonts, global rules). Imported by `app.js`. |
 | `resources/scss/critical.scss` | Standalone Vite entry. Inlined into `<head>` by `vite_inline_critical_css()`. Must stay under ~14 KB. No `@font-face` here — inlined CSS resolves `url()` against the page origin, not a stylesheet location, causing 404s. |
 | `Blocks/*/style.css` | Per-block styles. Auto-discovered by `vite.config.js`, separate Rollup entries. |
+
+**`critical.scss` is unlayered, so it beats Tailwind utilities.** Tailwind v4 emits utilities inside `@layer utilities`; `critical.scss` is inlined as plain, unlayered CSS, and unlayered rules win over layered ones regardless of specificity or source order. Any element that `critical.scss` also styles (typically the Hero's inner column: `padding`, `max-width`) will **silently ignore** a conflicting utility (`pb-0`, `md:max-w-*`) in the template. To vary an above-the-fold block per page or per state (home vs inner-page hero, with vs without an image), define **modifier classes in `critical.scss`** (`.hero__inner--inner-page`, `.hero__inner--with-image`) and toggle them from the template — not utilities. Keep any rule shared between `critical.scss` and `app.css` (e.g. `.section-shell`) identical in both, and revisit `critical.scss` whenever the classes on the header/hero markup change. See the `figma-fidelity` skill.
 
 ### `critical.scss` must contain real content — this is not optional decoration
 
