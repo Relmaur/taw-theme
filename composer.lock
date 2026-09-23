@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "54c3d657df0f198cb6651ab79ef93c7f",
+    "content-hash": "97f82c3109eb706f00172d4cf81b19d5",
     "packages": [
         {
             "name": "enshrined/svg-sanitize",
@@ -164,10 +164,16 @@
         {
             "name": "reactiph/reactiph",
             "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Relmaur/reactiph.git",
+                "reference": "b02ed73aae9daea0b19e73e65b8e154ee0ebbb35"
+            },
             "dist": {
-                "type": "path",
-                "url": "/Users/marcolizardodelriego/Documents/reactiph",
-                "reference": "103ef37bb64bc565ab87f63344dafac033a3cb8d"
+                "type": "zip",
+                "url": "https://api.github.com/repos/Relmaur/reactiph/zipball/b02ed73aae9daea0b19e73e65b8e154ee0ebbb35",
+                "reference": "b02ed73aae9daea0b19e73e65b8e154ee0ebbb35",
+                "shasum": ""
             },
             "require": {
                 "nikic/php-parser": "^5.9",
@@ -178,6 +184,10 @@
                 "phpstan/phpstan": "^2.2",
                 "phpunit/phpunit": "^10.5"
             },
+            "default-branch": true,
+            "bin": [
+                "bin/reactiph"
+            ],
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -213,17 +223,25 @@
                 "MIT"
             ],
             "description": "A Viewi-style reactive PHP component framework: server-rendered, transpiled to JS for client-side reactivity.",
-            "transport-options": {
-                "relative": false
-            }
+            "support": {
+                "source": "https://github.com/Relmaur/reactiph/tree/main",
+                "issues": "https://github.com/Relmaur/reactiph/issues"
+            },
+            "time": "2026-09-23T17:51:27+00:00"
         },
         {
             "name": "reactiph/taw-bridge",
             "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Relmaur/reactiph-taw-bridge.git",
+                "reference": "6d244072dae4bb41b0d6bc4126ba4417604adc04"
+            },
             "dist": {
-                "type": "path",
-                "url": "/Users/marcolizardodelriego/Documents/reactiph/packages/taw-bridge",
-                "reference": "ac91a420e2a5c9c362bf4fc04d903fbce95f33bc"
+                "type": "zip",
+                "url": "https://api.github.com/repos/Relmaur/reactiph-taw-bridge/zipball/6d244072dae4bb41b0d6bc4126ba4417604adc04",
+                "reference": "6d244072dae4bb41b0d6bc4126ba4417604adc04",
+                "shasum": ""
             },
             "require": {
                 "php": "^8.2",
@@ -236,6 +254,7 @@
                 "phpstan/phpstan": "^2.2",
                 "phpunit/phpunit": "^10.5"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -270,17 +289,25 @@
                 "MIT"
             ],
             "description": "Reactiph integration for the TAW theme framework: a ReactiveMetaBlock block type that composes reactiph/wordpress-bridge's WordPressBridge for asset/RPC delivery (a TAW site is a real WordPress site) -- no new BridgeInterface implementation.",
-            "transport-options": {
-                "relative": false
-            }
+            "support": {
+                "source": "https://github.com/Relmaur/reactiph-taw-bridge/tree/main",
+                "issues": "https://github.com/Relmaur/reactiph-taw-bridge/issues"
+            },
+            "time": "2026-09-23T17:49:57+00:00"
         },
         {
             "name": "reactiph/wordpress-bridge",
             "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Relmaur/reactiph-wordpress-bridge.git",
+                "reference": "9a9662d259d5da597d70900a7ea37a8876e2b2b5"
+            },
             "dist": {
-                "type": "path",
-                "url": "/Users/marcolizardodelriego/Documents/reactiph/packages/wordpress-bridge",
-                "reference": "15280f5b6c5191f1a32057e86f8ecb937aee8f12"
+                "type": "zip",
+                "url": "https://api.github.com/repos/Relmaur/reactiph-wordpress-bridge/zipball/9a9662d259d5da597d70900a7ea37a8876e2b2b5",
+                "reference": "9a9662d259d5da597d70900a7ea37a8876e2b2b5",
+                "shasum": ""
             },
             "require": {
                 "php": "^8.1",
@@ -291,6 +318,7 @@
                 "phpstan/phpstan": "^2.2",
                 "phpunit/phpunit": "^10.5"
             },
+            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -325,9 +353,11 @@
                 "MIT"
             ],
             "description": "WordPress BridgeInterface implementation for Reactiph: asset serving and an RPC endpoint via the WP REST API.",
-            "transport-options": {
-                "relative": false
-            }
+            "support": {
+                "source": "https://github.com/Relmaur/reactiph-wordpress-bridge/tree/main",
+                "issues": "https://github.com/Relmaur/reactiph-wordpress-bridge/issues"
+            },
+            "time": "2026-09-23T17:49:55+00:00"
         },
         {
             "name": "symfony/console",

@@ -30,16 +30,16 @@
             "url": "https://github.com/Relmaur/taw-core"
         },
         {
-            "type": "path",
-            "url": "/Users/marcolizardodelriego/Documents/reactiph"
+            "type": "vcs",
+            "url": "https://github.com/Relmaur/reactiph"
         },
         {
-            "type": "path",
-            "url": "/Users/marcolizardodelriego/Documents/reactiph/packages/wordpress-bridge"
+            "type": "vcs",
+            "url": "https://github.com/Relmaur/reactiph-wordpress-bridge"
         },
         {
-            "type": "path",
-            "url": "/Users/marcolizardodelriego/Documents/reactiph/packages/taw-bridge"
+            "type": "vcs",
+            "url": "https://github.com/Relmaur/reactiph-taw-bridge"
         }
     ],
     "minimum-stability": "dev",
