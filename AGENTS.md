@@ -1805,7 +1805,7 @@ When a session is active, this agent applies incoming changes following the TAW-
 | Technology | Version | Purpose |
 |---|---|---|
 | WordPress | 6.0+ | CMS |
-| PHP | 8.1+ | Server-side |
+| PHP | 8.2+ | Server-side |
 | Tailwind CSS | v4 | Utility-first CSS (via `@tailwindcss/vite`) |
 | Alpine.js | v3 | Lightweight JS reactivity |
 | Vite | v7 | Build tool + HMR |

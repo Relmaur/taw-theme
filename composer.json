@@ -1,6 +1,6 @@
 {
     "name": "taw/theme",
-    "description": "TAW Theme — Tailwind + Alpine + WordPress starter theme",
+    "description": "TAW Theme — WordPress starter theme built on taw/core",
     "type": "project",
     "license": "GPL-2.0-or-later",
     "authors": [

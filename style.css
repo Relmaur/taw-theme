@@ -3,11 +3,11 @@ Theme Name: TAW Theme
 Theme URI: https://mlizardo.com
 Author: M. Lizardo
 Author URI: https://mlizardo.com
-Description: A classic WordPress theme with a component-based block architecture, featuring Vite v7, Tailwind CSS v4, Alpine.js, and a bespoke metabox framework. TAW = Tailwind + Alpine + WordPress.
+Description: A classic WordPress theme with a component-based block architecture, featuring Vite v7, Tailwind CSS v4, Alpine.js, and a bespoke metabox framework.
 Version: 1.0.0
 Requires at least: 6.0
 Tested up to: 6.7
-Requires PHP: 7.4
+Requires PHP: 8.2
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: taw-theme

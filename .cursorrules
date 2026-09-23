@@ -17,7 +17,7 @@ Full architecture docs: see AGENTS.md in the repo root (start with its "Codex â€
 
 # Stack
 
-WordPress 6.0+, PHP 8.1+, Tailwind CSS v4 (`@tailwindcss/vite`, entry `resources/css/app.css`), Alpine.js v3, Vite v7 (dev server `localhost:5173`, builds to `public/build/`), SCSS via `sass` (`resources/scss/app.scss` global, `style.scss` per-block).
+WordPress 6.0+, PHP 8.2+, Tailwind CSS v4 (`@tailwindcss/vite`, entry `resources/css/app.css`), Alpine.js v3, Vite v7 (dev server `localhost:5173`, builds to `public/build/`), SCSS via `sass` (`resources/scss/app.scss` global, `style.scss` per-block).
 
 Bespoke metabox framework lives at `vendor/taw/core/src/Core/Metabox/Metabox.php` (not `inc/`).
 

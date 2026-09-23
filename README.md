@@ -2,7 +2,7 @@
 
 **A modern WordPress theme framework that makes building custom pages feel like assembling components — not fighting WordPress.**
 
-TAW (Tailwind + Alpine + WordPress) gives you a clean, component-based block architecture on top of classic WordPress. Every section of a page — hero, stats, testimonials — is a self-contained block that owns its data, markup, styles, and scripts. Only the assets a page actually uses get loaded.
+TAW gives you a clean, component-based block architecture on top of classic WordPress. Every section of a page — hero, stats, testimonials — is a self-contained block that owns its data, markup, styles, and scripts. Only the assets a page actually uses get loaded.
 
 No Gutenberg blocks. No ACF dependency. No bloat. Just PHP classes, templates, and a convention that works.
 
@@ -570,7 +570,7 @@ When active, every change you make in the visual panel — text edits, style twe
 | [Vite v7](https://vitejs.dev/)                                             | Build tool with instant HMR in development                        |
 | [SCSS](https://sass-lang.com/)                                             | Optional custom styles — global and per-block                     |
 | [Symfony Console](https://symfony.com/doc/current/components/console.html) | CLI scaffolding commands (`bin/taw`) — shipped inside `taw/core`  |
-| PHP 8.1+                                                                   | PSR-4 autoloading via Composer                                    |
+| PHP 8.2+                                                                   | PSR-4 autoloading via Composer                                    |
 | [`taw/core`](https://github.com/Relmaur/taw-core)                          | Versioned composer package containing all framework internals     |
 
 ### Architecture at a Glance
@@ -626,7 +626,7 @@ taw-theme/
 | Dependency | Version |
 | ---------- | ------- |
 | WordPress  | 6.0+    |
-| PHP        | 8.1+    |
+| PHP        | 8.2+    |
 | Composer   | 2.0+    |
 | Node.js    | 20.19+  |
 | npm        | 8+      |
