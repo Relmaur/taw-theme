@@ -52,6 +52,9 @@ cd wp-content/themes/
 # This command will create the starter theme with the correct structure and dependencies. Replace <theme_name> with your desired theme folder name.
 composer create-project taw/theme <theme_name> --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-theme"}'
 
+# Or use the TAW installer, which can also start the block theme (taw-gutenberg) instead:
+# TAW_STARTER=theme composer create-project taw/create <theme_name> --repository='{"type":"vcs","url":"https://github.com/Relmaur/taw-create"}'
+
 cd <theme_name>
 git init && git add -A && git commit -m "Initial commit"
 git remote add origin <your-client-repo-url>
