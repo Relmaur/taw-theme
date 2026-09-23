@@ -15,6 +15,7 @@
 | `Blocks/{Name}/index.php` | Template, receives `extract()`-ed `getData()` array | Yes |
 | `Blocks/{Name}/style.{css,scss}`, `script.js` | Auto-enqueued block assets | Yes, optional |
 | `inc/options.php` | `OptionsPage` fields | Yes — never touched by `update-theme` |
+| `taw-schema/*.json` | Post types, taxonomies, fieldsets, options pages as JSON (taw/core ≥ v1.44, § "Schema") — create the folder when first needed | Yes |
 | `inc/performance.php` | `Theme::performance()` config array | Yes — never touched |
 | `inc/customizations.php` | theme supports, nav menus, `VisualEditor::enable()`, `MediaFolders::enable()` (on by default), `Lucide::enable()` (commented out), `MetaboxOrder::lock()`, `Svg::register()`, `MailTester`, `require inc/security.php` | Yes — never touched |
 | `inc/security.php` | User-enumeration hardening — `Hardening::hideUsersEndpoint()` + logged-out `?author=N` redirect | Yes — never touched |
@@ -25,7 +26,7 @@
 | `resources/css/app.css` | Tailwind v4 directives — imported by `app.js`, not its own Vite entry | Yes |
 | `resources/scss/critical.scss` | Inlined `<head>` CSS, keep <14 KB, no `@font-face` | Yes |
 | `resources/fonts/` | Self-hosted WOFF2 | Yes |
-| `bin/taw` | Symfony CLI: `make:block`, `export/import:block`, `inspect`, `fields:get/set`, `sync`, `content:reindex`, `content:reindex-kb` | read-only tool, not a source dir |
+| `bin/taw` | Symfony CLI: `make:block`, `export/import:block`, `inspect`, `fields:get/set`, `sync`, `content:reindex`, `content:reindex-kb`, `schema:validate` | read-only tool, not a source dir |
 | `tests/Unit/Blocks/{Name}Test.php` | Unit test for `{Name}::getData()` — required for every block, see § "Testing Blocks" | Yes — written alongside every new block |
 
 Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" below.
@@ -1503,6 +1504,30 @@ Remove that line from a site's `inc/customizations.php` if it doesn't need folde
 Trim either layer per site by editing `inc/security.php`.
 
 ---
+
+## Schema — post types, taxonomies, fieldsets, options pages (taw/core ≥ v1.43)
+
+Define the site's content model in one place instead of scattering `register_post_type()` calls and
+`new Metabox([...])` arrays. There are two equivalent ways (authoritative reference: `taw/core`
+README § "Schema"; decisions in taw-core ADR-0004):
+
+- **PHP:** `add_action('taw_schema_register', fn (\TAW\Core\Schema\Registry $s) => $s->add(Schema::postType('book')->labels('Book', 'Books')));`
+  with `Schema::taxonomy()`, `Schema::fieldset()->on('book')->fields([Field::text('book_author'), …])`
+  and `Schema::optionsPage()`. Put it in `inc/customizations.php`, never `functions.php`.
+- **JSON:** one entity per file in `taw-schema/` (subfolders one level deep are fine), with
+  `"$schema": "../vendor/taw/core/resources/schema/taw-schema-1.0.json"` for editor autocomplete.
+  Validate with `php bin/taw schema:validate` (no WordPress needed; run it before committing).
+
+Fieldsets compile into regular Metaboxes (`_taw_{field}` meta, `Metabox::get()` reads, REST, content
+export), so nothing else changes. Schema post types always get `custom-fields` support so their meta
+reaches REST. Namespace field ids by entity (`book_author`): the field registry is keyed by bare id.
+Existing MetaBlocks and `inc/options.php` keep working unchanged, so use the schema for *new* data
+models.
+
+`taw/core` is TAW's data layer, shared with the block theme **taw-gutenberg**, which boots only
+`Boot::data()`. This theme boots the full toolkit through `bootstrapFullSite()`. Since v1.42.0 the
+Performance optimizations register inside that boot rather than at Composer autoload. Behavior here
+is identical (verified hook-for-hook).
 
 ## Content Interchange
 
