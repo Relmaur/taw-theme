@@ -11,7 +11,8 @@
     ],
     "require": {
         "php": ">=8.2",
-        "taw/core": "^1.0"
+        "taw/core": "^1.0",
+        "reactiph/taw-bridge": "*"
     },
     "autoload": {
         "psr-4": {
@@ -27,8 +28,22 @@
         {
             "type": "vcs",
             "url": "https://github.com/Relmaur/taw-core"
+        },
+        {
+            "type": "path",
+            "url": "/Users/marcolizardodelriego/Documents/reactiph"
+        },
+        {
+            "type": "path",
+            "url": "/Users/marcolizardodelriego/Documents/reactiph/packages/wordpress-bridge"
+        },
+        {
+            "type": "path",
+            "url": "/Users/marcolizardodelriego/Documents/reactiph/packages/taw-bridge"
         }
     ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
     "scripts": {
         "post-create-project-cmd": [
             "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",

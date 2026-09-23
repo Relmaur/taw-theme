@@ -56,6 +56,21 @@ add_action('admin_init', function () {
     remove_post_type_support('page', 'editor');
 });
 
+// Reactiph live-verification spike (ADR 0021) — registers the runtime-JS
+// asset routes and RPC endpoint any ReactiveMetaBlock (e.g. Blocks/Counter)
+// needs. Temporary while verifying reactiph/taw-bridge against this site.
+add_action('rest_api_init', function () {
+    (new \Reactiph\WordPressBridge\WordPressBridge())->registerRoutes();
+});
+
+// Reactiph RPC-round-trip follow-up spike — [reactiph_guestbook] shortcode,
+// a genuine get_option/update_option server round-trip via the RPC endpoint
+// registered above. Temporary, same as the block above.
+require_once __DIR__ . '/reactiph-guestbook.php';
+add_action('init', function () {
+    add_shortcode('reactiph_guestbook', 'ReactiphDemo\\render_guestbook_shortcode');
+});
+
 add_action('after_setup_theme', function () {
     // Textdomain loading is handled by Theme::bootstrapFullSite() itself,
     // on an earlier after_setup_theme priority than this callback — don't
