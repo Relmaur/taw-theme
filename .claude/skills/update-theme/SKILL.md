@@ -128,7 +128,9 @@ This same principle generalizes: **any Tier 2 file that's a structured manifest 
 
 ## Step 4 — taw/core is a separate decision
 
-If Step 1 reported `taw_core.behind: true`, that's a different action from anything above — this skill only ever touches the `taw-theme` scaffold, never the `taw/core` package. Tell the user it's available and ask whether to also run `composer update taw/core` (see `AGENTS.md`'s ship pattern for the full verify-after-update sequence) — don't run it silently as a side effect of this skill.
+If Step 1 reported `taw_core.behind: true`, that's a different action from anything above — this skill only ever touches the `taw-theme` scaffold, never the `taw/core` package. Tell the user it's available (installed → latest) and ask whether to also run `composer update taw/core` — don't run it silently as a side effect of this skill.
+
+If they say yes: after the update, **read `vendor/taw/core/UPGRADING.md`** (the new version's copy) and work through every section newer than the version the site came from. It lists, per release, what changes by default (for example a REST route hidden, metabox tabs rendering) and the **Check** to run for each. Then verify as it says (tests, the `visual-check` skill, wp-admin screens with metaboxes and options pages) and report each check's outcome — "not applicable" is a valid outcome, a skipped check is not.
 
 ## Step 5 — Report
 

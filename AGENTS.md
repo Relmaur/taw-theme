@@ -35,7 +35,8 @@ Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" belo
 
 | Call | Does |
 |---|---|
-| `Metabox::get($postId,$field)` / `get_bool` / `get_image_url` / `get_color` / `get_posts` / `get_repeater` | Typed field read, meta key `_taw_{field}` |
+| `Metabox::get($postId,$field)` / `get_bool` / `get_image_url` / `get_color` / `get_posts` / `get_repeater` | Raw field read, meta key `_taw_{field}` |
+| `$this->fields($postId)->field('x')` in a MetaBlock; `Taw::post()`, `Taw::term()`, `Taw::user()`, `Taw::option('x')` (taw/core ≥ 1.57) | Typed read: `->text()`, `->bool()`, `->image()->url()`, `->rows()`, `->posts()`, `->link()`; `echo` is escaped by type |
 | `OptionsPage::get($field)` / `get_image_url($field,$size)` | `wp_options` read, same `_taw_` prefix |
 | `Menu::get($location)` → `->items()` returns `MenuItem[]` | Typed nav tree — never `wp_nav_menu()` |
 | `Image::render($id,$size,['above_fold'=>bool,'class'=>...])` | Perf-optimised `<img>` |
@@ -62,7 +63,7 @@ Full API + option tables: §§ "The Metabox Framework", "Form System", "Options 
 
 ### Field types
 
-- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker icon gradient_text hubspot_form` (`icon` is opt-in — requires `Lucide::enable()`)
+- **Metabox:** `text textarea wysiwyg url number range select image files group checkbox color repeater post_select datepicker icon gradient_text hubspot_form link` (`icon` is opt-in — requires `Lucide::enable()`; `link` = URL + text + new tab in one field, taw/core ≥ 1.59)
 - **Form:** `text email tel url textarea select checkbox date`
 
 ### Fatal mistakes (full list in § "Do NOT" below)
@@ -508,7 +509,7 @@ Framework internals are maintained as a standalone composer package at **`https:
 This separation means:
 - The core framework can be versioned and updated independently of any theme.
 - Themes declare a version constraint in `composer.json` (`"taw/core": "^1.0"`).
-- To pull a framework update: `composer update taw/core`.
+- To pull a framework update: `composer update taw/core`, then read `vendor/taw/core/UPGRADING.md` for every release since the one you came from (what changes by default, and what to check).
 - To change framework behaviour, work in the `taw-core` repo, tag a release, then update the constraint here.
 
 **Gotcha — a `taw-core` change on its `main` branch does not exist here until tagged AND pulled.** `composer.lock` pins an exact tag; a commit sitting on `taw-core`'s `main` (even pushed) changes nothing in this repo until (1) `taw-core` cuts a new version tag and (2) `composer update taw/core` runs *here* and the updated `composer.lock` is committed. If a block here is written against a `taw-core` class/method that only exists on `main` and not yet in a tagged release, `composer run phpstan`/`composer run test` will fail with `class.notFound` — that's not a false positive, it means the dependency genuinely isn't resolvable yet. **Never "fix" this by hand-copying files into `vendor/taw/core/` to make a local check pass** — that bypasses Composer's real version resolution, so a check that passes that way will still fail in CI (which always does a real `composer install` against the committed lock file). The only real fix is the tag-then-update sequence above.
@@ -721,12 +722,16 @@ class Features extends MetaBlock
 
     protected function getData(int|false $postId): array
     {
+        $fields = $this->fields($postId);   // typed reads (taw/core ≥ 1.57); getMeta() still works
+
         return [
-            'heading' => $this->getMeta($postId, 'features_heading'),
+            'heading' => $fields->field('features_heading')->text(),
         ];
     }
 }
 ```
+
+**Reading fields in `getData()`:** prefer `$this->fields($postId)` for new blocks, and return **plain values** from its typed accessors (`->text()`, `->bool()`, `->int()`, `->image()->url('large')`, `->link()->url()`, rows mapped to arrays) so the template keeps its own `esc_html()`/`esc_url()` and the block's unit test compares plain arrays. Never pass a field `Value` itself to `esc_html()`: echoing a `Value` already escapes it, so escaping again double-escapes (and turns a link's `<a>` into text). Missing posts and fields read as empty, never fatal.
 
 ### Step 2: Create the template
 
