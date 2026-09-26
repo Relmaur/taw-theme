@@ -38,6 +38,7 @@ Full path-by-path detail: § "Quick Orientation" and § "PSR-4 Autoloading" belo
 | `Metabox::get($postId,$field)` / `get_bool` / `get_image_url` / `get_color` / `get_posts` / `get_repeater` | Raw field read, meta key `_taw_{field}` |
 | `$this->fields($postId)->field('x')` in a MetaBlock; `Taw::post()`, `Taw::term()`, `Taw::user()`, `Taw::option('x')` (taw/core ≥ 1.57) | Typed read: `->text()`, `->bool()`, `->image()->url()`, `->rows()`, `->posts()`, `->link()`; `echo` is escaped by type |
 | `OptionsPage::get($field)` / `get_image_url($field,$size)` | `wp_options` read, same `_taw_` prefix |
+| Block Bindings source `taw/field` (taw/core ≥ 1.60) | Core blocks in the block editor (post content here) can show TAW fields: the "TAW field" toolbar button binds a paragraph, heading, button or image, with an editor preview (≥ 1.61). Front-end PHP templates keep using the typed reads above |
 | `Menu::get($location)` → `->items()` returns `MenuItem[]` | Typed nav tree — never `wp_nav_menu()` |
 | `Image::render($id,$size,['above_fold'=>bool,'class'=>...])` | Perf-optimised `<img>` |
 | `Svg::render($id,$alt)` / `::inline($id)` / `::register()` | SVG upload + render |
