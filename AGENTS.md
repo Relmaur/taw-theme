@@ -1500,7 +1500,7 @@ Remove that line from a site's `inc/customizations.php` if it doesn't need folde
 
 ## Security Hardening
 
-`inc/security.php` (site-owned — required from `inc/customizations.php`, never touched by `update-theme`, same status as `inc/performance.php`) locks down username / user-ID enumeration in two layers:
+`inc/security.php` (site-owned — required from `inc/customizations.php`, never touched by `update-theme`, same status as `inc/performance.php`; a site created before it existed doesn't have it, and sync won't add it: copy the file from the starter and add the `require` by hand) locks down username / user-ID enumeration in two layers:
 
 1. **REST users endpoint** — calls `TAW\Core\Security\Hardening::hideUsersEndpoint()` (provided by `taw/core`, also wired into `Theme::boot()` by default). Removes the public `/wp/v2/users` collection + single-user route for anonymous requests, across every routing form (`/wp-json/`, `?rest_route=`, `/batch/v1`) because it filters at `rest_endpoints` (REST dispatch). `/wp/v2/users/me` and all logged-in access stay intact. Opt a site out with `add_filter('taw_security_hide_users_endpoint', '__return_false')` — e.g. a headless front end that reads `/wp/v2/users` anonymously. Full detail: `taw/core` README § "Security / Hardening".
 
@@ -1563,7 +1563,7 @@ Full detail: `taw/core` README § "Content Interchange" and the docs site's **[C
 
 Backend (SQLite knowledge bases, embeddings, LLM orchestration, REST) is entirely `taw/core` (`TAW\Core\Rag\*`, since v1.27.0; content-agnostic knowledge bases since v1.28.0) — see its README § "Sovereign Hybrid-RAG Chatbot" for the full picture, including `Settings → TAW Chatbot → Knowledge Bases` (a wp-admin screen for uploading any `.sqlite` file as a named, semantically-searchable knowledge base — no theme involvement). This repo owns exactly one piece: the presentational widget.
 
-`Blocks/Chatbot` is a plain (non-`MetaBlock`) `Block`, mounted **site-wide** rather than per-page: `header.php` calls `(new Chatbot())->enqueueAssets()` before `wp_head()`, `footer.php` calls `(new Chatbot())->render()` right before `wp_footer()`. It talks only to `POST /wp-json/taw/v1/chat` — no LLM base URL or API key is ever present in `script.js`. Markdown replies go through `marked` then `DOMPurify.sanitize()` before any `x-html` binding, since assistant output is untrusted text.
+The widget is optional: new sites start with it, and `update-theme` never adds it to an existing site (nor its `marked`/`dompurify` packages). `Blocks/Chatbot` is a plain (non-`MetaBlock`) `Block`, mounted **site-wide** rather than per-page: `header.php` calls `(new Chatbot())->enqueueAssets()` before `wp_head()`, `footer.php` calls `(new Chatbot())->render()` right before `wp_footer()`. It talks only to `POST /wp-json/taw/v1/chat` — no LLM base URL or API key is ever present in `script.js`. Markdown replies go through `marked` then `DOMPurify.sanitize()` before any `x-html` binding, since assistant output is untrusted text.
 
 ```php
 use TAW\Blocks\Chatbot\Chatbot;
