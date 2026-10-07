@@ -67,6 +67,8 @@ use TAW\CLI\CorpusInstallCommand;
 use TAW\CLI\CorpusExportCommand;
 use TAW\CLI\CatechismInstallCommand;
 use TAW\CLI\CatechismExportCommand;
+use TAW\CLI\CanonLawInstallCommand;
+use TAW\CLI\CanonLawExportCommand;
 use TAW\CLI\SchemaValidateCommand;
 
 $app = new Application('TAW CLI', '1.0.0');
@@ -98,6 +100,8 @@ $app->add(new CorpusInstallCommand($themeDir));
 $app->add(new CorpusExportCommand());
 $app->add(new CatechismInstallCommand($themeDir));
 $app->add(new CatechismExportCommand());
+$app->add(new CanonLawInstallCommand($themeDir));
+$app->add(new CanonLawExportCommand());
 $app->add(new SchemaValidateCommand($themeDir));
 
 $app->run();
