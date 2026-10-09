@@ -53,9 +53,21 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.2"
-          tools: composer:v2, wp-cli
+          tools: composer:v2
           extensions: mysqli
           coverage: none
+
+      # setup-php's wp-cli download 404s (releases ship wp-cli-<version>.phar), so
+      # install the pinned release phar and check it against its published sha512.
+      - name: Install WP-CLI
+        env:
+          WP_CLI_VERSION: "2.12.0"
+        run: |
+          base="https://github.com/wp-cli/wp-cli/releases/download/v${WP_CLI_VERSION}/wp-cli-${WP_CLI_VERSION}.phar"
+          curl -fsSL -o /tmp/wp-cli.phar "$base"
+          echo "$(curl -fsSL "${base}.sha512" | cut -d' ' -f1)  /tmp/wp-cli.phar" | sha512sum -c -
+          sudo install -m 0755 /tmp/wp-cli.phar /usr/local/bin/wp
+          wp --info
 
       - name: Authenticate composer with GitHub
         run: composer config -g github-oauth.github.com "${{ secrets.GITHUB_TOKEN }}"
