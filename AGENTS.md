@@ -510,7 +510,7 @@ Framework internals are maintained as a standalone composer package at **`https:
 This separation means:
 - The core framework can be versioned and updated independently of any theme.
 - Themes declare a version constraint in `composer.json` (`"taw/core": "^1.0"`).
-- To pull a framework update: `composer update taw/core`, then read `vendor/taw/core/UPGRADING.md` for every release since the one you came from (what changes by default, and what to check).
+- To pull a framework update: `composer update taw/core --with-dependencies` (without `-W`, a release that needs a newer dependency changes nothing; check the version moved), then read `vendor/taw/core/UPGRADING.md` for every release since the one you came from (what changes by default, and what to check).
 - To change framework behaviour, work in the `taw-core` repo, tag a release, then update the constraint here.
 
 **Gotcha — a `taw-core` change on its `main` branch does not exist here until tagged AND pulled.** `composer.lock` pins an exact tag; a commit sitting on `taw-core`'s `main` (even pushed) changes nothing in this repo until (1) `taw-core` cuts a new version tag and (2) `composer update taw/core` runs *here* and the updated `composer.lock` is committed. If a block here is written against a `taw-core` class/method that only exists on `main` and not yet in a tagged release, `composer run phpstan`/`composer run test` will fail with `class.notFound` — that's not a false positive, it means the dependency genuinely isn't resolvable yet. **Never "fix" this by hand-copying files into `vendor/taw/core/` to make a local check pass** — that bypasses Composer's real version resolution, so a check that passes that way will still fail in CI (which always does a real `composer install` against the committed lock file). The only real fix is the tag-then-update sequence above.
@@ -1911,7 +1911,7 @@ After adding new block classes, run `composer dump-autoload`.
 | `npm run dev` | Start Vite dev server (port 5173) with HMR |
 | `npm run build` | Production build → `public/build/` |
 | `composer install` | Install PHP dependencies (including `taw/core`) |
-| `composer update taw/core` | Pull the latest framework package update |
+| `composer update taw/core --with-dependencies` | Pull the latest framework package update (and the dependencies it needs) |
 | `composer dump-autoload` | Rebuild autoload classmap (after adding new blocks) |
 | `php bin/taw make:block Name` | Scaffold a new block |
 | `php bin/taw export:block Name` | Export a block as a ZIP |

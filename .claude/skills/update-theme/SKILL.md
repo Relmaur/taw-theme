@@ -134,7 +134,7 @@ This same principle generalizes: **any Tier 2 file that's a structured manifest 
 
 ## Step 4 — taw/core is a separate decision
 
-If Step 1 reported `taw_core.behind: true`, that's a different action from anything above — this skill only ever touches the `taw-theme` scaffold, never the `taw/core` package. Tell the user it's available (installed → latest) and ask whether to also run `composer update taw/core` — don't run it silently as a side effect of this skill.
+If Step 1 reported `taw_core.behind: true`, that's a different action from anything above — this skill only ever touches the `taw-theme` scaffold, never the `taw/core` package. Tell the user it's available (installed → latest) and ask whether to also run `composer update taw/core --with-dependencies` — don't run it silently as a side effect of this skill. (Without `--with-dependencies`, a release that needs a newer dependency is a silent no-op; check the version moved.)
 
 If they say yes: after the update, **read `vendor/taw/core/UPGRADING.md`** (the new version's copy) and work through every section newer than the version the site came from. It lists, per release, what changes by default (for example a REST route hidden, metabox tabs rendering) and the **Check** to run for each. Then verify as it says (tests, the `visual-check` skill, wp-admin screens with metaboxes and options pages) and report each check's outcome — "not applicable" is a valid outcome, a skipped check is not.
 
@@ -156,29 +156,29 @@ Run every command with the site's own PHP (`<php> bin/taw …`, `<php> <composer
 - `dirty`: `git status --porcelain` isn't empty;
 - `wrong-branch`: the theme is on neither its default branch nor the batch branch;
 - `pull-failed`: `git pull --ff-only` on the default branch fails (no network, diverged);
-- `scaffold`: the theme is the canonical `taw-theme` or `taw-gutenberg` itself.
+- `scaffold`: the theme is the canonical `taw-theme` or `taw-gutenberg` itself. Decide by `git remote get-url origin` (`Relmaur/taw-theme` or `Relmaur/taw-gutenberg`), not by `composer.json`'s `name`: client themes keep the scaffold's `taw/theme` name.
 
 **B2. Branch.** `chore/taw-core-<newest version>` (or `chore/update-theme-<YYYY-MM-DD>` when taw/core is current) from the up-to-date default branch. If it already exists, check it out and continue from where it is (a re-run resumes, it doesn't ask).
 
-**B3. taw/core first.** When taw/core is behind, run `composer update taw/core` (approved in batch mode). Do this **before** the sync: `bin/taw sync` runs from the theme's installed taw/core, and the manifest suggestions need v1.78.0 or later. Note the version before and after.
+**B3. taw/core first.** When taw/core is behind, run `composer update taw/core --with-dependencies` (approved in batch mode, including taw/core's own dependencies it moves). Do this **before** the sync: `bin/taw sync` runs from the theme's installed taw/core, and the manifest suggestions need v1.78.0 or later. Without `--with-dependencies`, a release that needs a newer dependency (v1.77.0 needs `enshrined/svg-sanitize ^1.0`) is a silent no-op: "Nothing to modify in lock file", exit 0, sometimes after "Found N security vulnerability advisories". **Check the version moved** (`composer show taw/core`). If it didn't, run `composer why-not taw/core <newest>`, then stop with `status: "failed"`, `reason: "core-held-back"`, and what holds it back in `notes`. Note the version before and after, and every other package that moved.
 
 **B4. Sync.**
 1. `bin/taw sync --json`, keep the output.
 2. `bin/taw sync --apply`: Tier 1, as always.
-3. `bin/taw sync --apply-manifests` when a `merge` entry has `add` or `bump`. Then `composer update <packages whose constraint changed>` and, after a `package.json` change, `npm install`.
-4. **Re-read this file.** Tier 1 just refreshed `.claude/skills/`, so it may be newer than the copy you started with. Follow the new one from here.
+3. `bin/taw sync --apply-manifests` when a `merge` entry has `add` or `bump`. Then, only if a `require`/`require-dev` key was added or bumped, `composer update <those packages>`; after a `package.json` change, `npm install`. Skip both when nothing of the kind changed.
+4. **Re-read this file.** Tier 1 just refreshed `.claude/skills/`, so the theme's copy may now be newer than the one you followed (the theme's old copy, or the canonical one if the old copy had no batch mode). Follow the theme's refreshed copy from here, and say in `notes` if it differed from the one you followed.
 
 Never hand-edit `composer.json`/`package.json` in batch mode. Without a `merge` entry (taw/core older than 1.78.0), or for `review` items, report them as proposals.
 
-**B5. Tier 2 prose is a proposal.** Don't apply any changed Tier 2 file other than through B4.3. For each, add a proposal with the path, its diff size, a one-line summary of what changed upstream, and anything site-specific the overwrite would lose (a section the site added). The coordinator asks the user and applies what's approved.
+**B5. Tier 2 prose is a proposal.** Don't apply any changed Tier 2 file other than through B4.3. For each, add a proposal with the path, `diff_lines` (the line count of sync's `diff` field), a one-line summary of what changed upstream, and anything site-specific the overwrite would lose (a section the site added). The coordinator asks the user and applies what's approved. To tell whether the chatbot's optional lines apply, you may check that `Blocks/Chatbot/` **exists**; don't read anything in `Blocks/`.
 
-**B6. UPGRADING checks.** Read `vendor/taw/core/UPGRADING.md` and give every section newer than the version you came from one outcome:
+**B6. UPGRADING checks.** Read `vendor/taw/core/UPGRADING.md` and give every **Check** in each section newer than the version you came from an entry of its own (a section can have several; an instruction such as "delete the regular plugin" counts as one). Checks are worded for a site upgraded by hand; judge them after the sync by their intent (a retired command that the synced `bin/taw` no longer lists is a pass). Each gets one outcome:
 - `pass`, or `not-applicable` (with why);
 - `needs-wordpress`: the check needs the site running and it isn't (don't start it; the coordinator asks once for every site);
 - `needs-browser`: it needs a browser (never open one in batch mode);
 - `failed`, with what happened.
 
-**B7. Verify.** Run each of these that the theme has; record `pass`, `fail` (with the last lines of output) or `missing` (no such script):
+**B7. Verify.** Run each of these that the theme has; record `pass`, `fail` (with the last lines of output), `missing` (no such script) or `not-needed` (the build, when nothing that triggers it changed):
 - `composer run test`;
 - `composer run phpstan`;
 - `npm run build`, when `package.json`, `vite.config.js` or anything under `resources/` changed, or Tier 1 touched `resources/js/`.
@@ -203,12 +203,17 @@ Never hand-edit `composer.json`/`package.json` in batch mode. Without a `merge` 
   ],
   "skills": { "preserved": [], "deleted": [], "warn": [], "clash": [] },
   "upgrading": [ { "version": "1.77.0", "outcome": "pass", "note": "hub:* stubs print the notice" } ],
-  "verify": { "test": "pass", "phpstan": "pass", "build": "missing" },
+  "verify": { "test": "pass", "phpstan": "pass", "build": "not-needed" },
   "notes": ""
 }
 ```
 
-`status` is one of `updated` (committed, every check `pass`/`not-applicable`), `needs-attention` (committed, but something failed, needs WordPress, a browser or a decision), `up-to-date` (nothing to change, no commit), `skipped` (B1, with `reason`), or `failed` (couldn't finish; `reason` says where).
+`status` is one of:
+- `updated`: committed, every check `pass`/`not-applicable`, every verify `pass`/`missing`/`not-needed`. Open `proposals` alone don't change this: they're the coordinator's to ask about;
+- `needs-attention`: committed, but a check or verify failed, or a check is `needs-wordpress`/`needs-browser`;
+- `up-to-date`: nothing to change, no commit;
+- `skipped`: B1, with `reason`;
+- `failed`: couldn't finish; `reason` says where (e.g. `core-held-back`).
 
 **Never in batch mode:** ask the user, push, open a PR, start or stop a site, open a browser, touch another theme or site, apply a Tier 2 prose change, or hand-edit a manifest.
 
