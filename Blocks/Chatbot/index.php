@@ -3,6 +3,20 @@
  * @var string $heading
  * @var string $placeholder
  */
+
+use TAW\Blocks\Chatbot\Chatbot;
+use TAW\Core\Form\Turnstile;
+use TAW\Core\Rag\RagSettings;
+
+// Kill switch on: no launcher. (A page cached before the switch still has
+// one; the endpoint then answers `paused` and script.js says so.)
+if (RagSettings::chatPaused()) {
+    return;
+}
+
+if (Chatbot::needsTurnstile()) {
+    Turnstile::enqueueScript();
+}
 ?>
 
 <div x-data="Chatbot()" x-cloak class="taw-chatbot fixed bottom-5 right-5 z-50 font-sans">
@@ -47,6 +61,18 @@
             <p x-show="error" x-cloak x-text="error" class="text-sm text-red-600"></p>
         </div>
 
+        <?php if (Chatbot::needsTurnstile()) : ?>
+            <!-- Turnstile mounts here on the first message, "interaction-only":
+                 invisible unless Cloudflare needs a click. Never display:none,
+                 or the challenge can't render when it is needed. -->
+            <div
+                x-ref="turnstile"
+                class="flex justify-center"
+                data-sitekey="<?php echo esc_attr((string) Turnstile::siteKey()); ?>"
+                data-theme="light"
+            ></div>
+        <?php endif; ?>
+
         <form @submit.prevent="send()" class="flex items-center gap-2 border-t border-gray-200 p-3">
             <label class="sr-only" for="taw-chatbot-input"><?php echo esc_html($placeholder); ?></label>
             <input
@@ -54,6 +80,7 @@
                 type="text"
                 x-model="input"
                 placeholder="<?php echo esc_attr($placeholder); ?>"
+                :maxlength="maxChars"
                 :disabled="loading"
                 autocomplete="off"
                 class="flex-1 text-sm border border-gray-300 rounded-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
