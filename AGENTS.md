@@ -901,6 +901,8 @@ Metabox::get_posts(int $postId, string $fieldId): array   // post_select → arr
 Metabox::get_repeater(int $postId, string $fieldId): array // repeater → array of rows
 ```
 
+**Default content goes in `'defaults'`, not in `getData()`** (taw/core ≥ v1.80.0). `'defaults' => ['field_id' => value]` on the metabox (or options page) is what the field reads and shows in the editor while nothing is stored, so write `$this->getMeta($postId, 'hero_heading')`, not `getMeta(...) ?: 'Welcome'`. A `?:` fallback is invisible to wp-admin and to content exports; a default can be saved as a record (Tools → TAW Data → *Defaults*, or `php bin/taw content:defaults --apply`). Repeater defaults are arrays of rows. Full detail: taw/core README § "Metabox System → Defaults".
+
 ### Locking Metabox Order
 
 By default WordPress lets any user drag-and-drop reorder metaboxes, saved per-user, so the same edit screen can look different for every editor. `TAW\Core\Metabox\MetaboxOrder` forces a fixed order and disables dragging.
@@ -1544,6 +1546,7 @@ php bin/taw content:export --migrate --output=/tmp/site.json   # full state (use
 php bin/taw content:import /tmp/site.json                      # dry-run diff — writes nothing
 php bin/taw content:import /tmp/site.json --yes --with-settings # apply (rollback snapshot written first)
 php bin/taw content:diff a.json b.json --out=changes.json
+php bin/taw content:defaults [--apply | --undo=<journal>]       # save fields' `defaults` into empty fields
 ```
 
 - **Import is always a dry-run first.** Without `--yes` it prints a field-level diff and exits. `apply()` writes a full **maximal-scope** `Exporter` snapshot to `wp-content/uploads/taw-private/` before it touches the DB, in the order **users → terms → media → posts → comments → settings**.
