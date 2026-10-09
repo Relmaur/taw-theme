@@ -60,23 +60,17 @@ jobs:
     # bin/ci/smoke-test.php, failing loudly on any runtime error a static
     # check can't see (an undefined function call, a template referencing
     # a variable getData() never returned, WP API misuse, etc).
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: wordpress_smoke_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=6
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # The runner's own MySQL 8 (root/root): no image pull, so no Docker Hub rate limit.
+      - name: Start MySQL
+        run: |
+          sudo systemctl start mysql.service
+          mysqladmin --user=root --password=root --host=127.0.0.1 --silent --wait=30 ping
+          mysql --user=root --password=root --host=127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS wordpress_smoke_test"
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
