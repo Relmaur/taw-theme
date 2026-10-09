@@ -5,12 +5,7 @@
         "scaffold": "auto",
         "manifests": "add+bump",
         "docs": "framework-sections",
-        "checks": [
-            "lint",
-            "phpstan",
-            "test",
-            "build"
-        ],
+        "checks": ["lint", "phpstan", "test", "build"],
         "deliver": "pr"
     }
 }
