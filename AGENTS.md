@@ -1606,7 +1606,7 @@ Logger::warning('hero.missing_background', 'Hero has no background image — fal
 // debug() info() notice() warning() error() critical()  — PSR-3 minus alert/emergency
 ```
 
-Each entry has a human `message` **and** a machine-stable `code` (`subsystem.event`) plus a `context` array. Two sinks by default: PHP `error_log()` (one readable line) and `wp-content/taw-logs/taw.log.jsonl` (size-rotated JSON Lines). Read it back with `php bin/taw log:tail [--level=] [--code=] [--since=] [--json]`, or — on a fleet site — the `taw-hub-companion` `/logs` route. Full API (sinks, the `taw_core_log_sinks` / `taw_core_log_entry` filters, `LogReader`): `taw/core` README § "Logging".
+Each entry has a human `message` **and** a machine-stable `code` (`subsystem.event`) plus a `context` array. Two sinks by default: PHP `error_log()` (one readable line) and `wp-content/taw-logs/taw.log.jsonl` (size-rotated JSON Lines). Read it back with `php bin/taw log:tail [--level=] [--code=] [--since=] [--json]`, or — on a production site — `taw-fleet live <site> --logs 20` (the companion's `/logs` route). Full API (sinks, the `taw_core_log_sinks` / `taw_core_log_entry` filters, `LogReader`): `taw/core` README § "Logging".
 
 ---
 
@@ -1918,22 +1918,21 @@ After adding new block classes, run `composer dump-autoload`.
 | `php bin/taw import:block path.zip` | Import a block from a ZIP |
 | `php bin/taw sync --json` | Check for drift: `taw/core` version + `taw-theme` Tier 1/Tier 2 scaffold paths |
 | `php bin/taw sync --apply` | Also write Tier 1 scaffold changes (Tier 2 is always report-only) |
-| `php bin/taw hub:install --activate` | Install the `taw-hub-companion` fleet plugin (see § "Connecting to a TAW Hub fleet") |
 | `php bin/taw log:tail --level=error` | Read back the structured log (`wp-content/taw-logs/`) — see § "Logging" |
 | `composer run phpstan` | Static analysis (`Blocks/`, `inc/`) — also runs in CI |
 | `composer run test` | Run the block unit test suite (`tests/Unit/`) — see § "Testing Blocks" |
 
 ---
 
-## Connecting to a TAW Hub fleet
+## Production view: the companion and taw-fleet
 
-The [TAW Hub](https://github.com/Relmaur/taw-hub) is a separate control app that manages a fleet of TAW sites (telemetry, framework syncs, allow-listed `bin/taw` runs). A site opts in by installing **`taw-hub-companion`** — a standalone plugin (`Relmaur/taw-hub-companion`, public) that exposes a signed `wp-json/taw-hub/v1/` receiver, verifying every request against the Hub's Ed25519 key ([wire protocol: taw-hub ADR-0003](https://github.com/Relmaur/taw-hub/blob/main/docs/ADR/0003-wire-protocol-and-signatures.md)).
+[taw-fleet](https://github.com/Relmaur/taw-fleet) (the terminal dashboard for the TAW sites on a Mac) reads each production site through the **companion**, `taw/hub-companion` ([`Relmaur/taw-hub-companion`](https://github.com/Relmaur/taw-hub-companion)): a signed, read-mostly `wp-json/taw-hub/v1/` receiver (health, inventory, vulnerabilities, logs) that verifies every request against a trusted Ed25519 key. It replaces the taw-hub control app, retired 2026-10-08 (`hub:install` / `hub:enroll` are retired stubs since `taw/core` v1.77.0, and the `hub-connect` skill is gone).
 
-**Not bundled with the theme, by design** — only fleet sites need it, and it's a security boundary with its own release cadence. Nothing about a normal TAW site changes unless you install it. It replaces the short-lived `TAW\Hub` subsystem that briefly shipped in `taw/core` v1.20.0 (reverted in v1.20.1).
+**Not in this scaffold, by design:** the key a site trusts belongs to whoever runs the fleet, and `taw/theme` is public. Add it per client project:
 
-- `php bin/taw hub:install [--activate] [--update]` (`taw/core` ≥ v1.20.2) git-clones the plugin into `wp-content/plugins/` and optionally activates it. It only fetches code — configuring `TAW_HUB_PUBLIC_KEY` in `wp-config.php` and registering the site's key with the Hub stay deliberate.
-- The **`hub-connect`** skill orchestrates the whole thing interactively — install, gather the Hub's key via `AskUserQuestion`, write `wp-config.php` (confirmed), verify `/health` returns `401` not `501`, and surface this site's `taw_hub_companion_public_key` / `_key_id` to register with the Hub.
-- Until `TAW_HUB_PUBLIC_KEY` is defined the plugin is inert (routes return `501`). To disconnect: deactivate the plugin and remove the `TAW_HUB_*` constants.
+- `composer.json`: the VCS repository `https://github.com/Relmaur/taw-hub-companion`, `"taw/hub-companion": "^0.3"`, and the fleet key in `"extra": {"taw-companion": {"keys": {"taw-fleet": "<taw-fleet live key show>"}}}`.
+- The deploy copies `vendor/taw/hub-companion/mu-loader/taw-companion.php` to `wp-content/mu-plugins/` (see a client theme's `.github/workflows/deploy.yml`, step "Install the TAW companion loader"). The companion then runs as an mu-plugin and updates with `composer.lock`.
+- Check with `taw-fleet live <site>`, then pin the site's key once with `taw-fleet live trust <site>`.
 
 ---
 
