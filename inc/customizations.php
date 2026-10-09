@@ -26,6 +26,8 @@ TAW\Core\Media\MediaFolders::enable();
 // uploads, WP-content ingestion, POST taw/v1/chat, and this theme's
 // site-wide Blocks/Chatbot widget) is opt-in per-site — needs an LLM
 // endpoint + TAW_RAG_API_KEY in wp-config.php, so it stays off by default.
+// It also needs TAW_TURNSTILE_SITE_KEY/SECRET_KEY (or Human Check set to
+// Off), and its Budget tab set, before it answers anyone (taw/core v1.81.0).
 // Uncomment to enable it for this site:
 // TAW\Core\Rag\RagSettings::enable();
 

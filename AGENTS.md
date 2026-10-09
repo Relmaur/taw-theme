@@ -1577,6 +1577,14 @@ use TAW\Blocks\Chatbot\Chatbot;
 
 Configuration (LLM base URL/model, indexed post types for the site's own content, whether anonymous visitors can chat) and knowledge-base management both live in wp-admin under **Settings → TAW Chatbot** — nothing here in the theme. `Chatbot::enqueueAssets()` localizes a nonce (`window.tawChatbot.nonce`) only when `RagSettings::publicChatEnabled()` is off, matching the endpoint's actual auth posture.
 
+**Cost guardrails (taw/core ≥ v1.81.0, its ADR-0017).** Every message can spend a paid API key, so the endpoint gates it, and the widget has to cooperate:
+- **Human check.** While **TAW Chatbot → Access → Human Check** is `turnstile` (the default), `script.js` solves Cloudflare Turnstile once per conversation. It renders into the `x-ref="turnstile"` mount in "interaction-only" mode, posts the token to `POST taw/v1/chat/session`, and sends the returned session as `X-TAW-Chat-Session`. On `401` it re-verifies once and retries.
+- **Turnstile keys.** Define `TAW_TURNSTILE_SITE_KEY`/`TAW_TURNSTILE_SECRET_KEY` in wp-config.php, or the chat refuses every message (`503 not_protected`).
+- **Refusals.** They carry a `code` (`rate_limited`, `budget_exhausted`, `paused`, `human_check_failed`), and their visitor copy is localized from `Chatbot.php` (`window.tawChatbot.copy`, translatable).
+- **Kill switch.** When it's on (`TAW_RAG_CHAT_DISABLED` or the setting), `index.php` renders nothing.
+- **Budgets, limits and spend.** These live in wp-admin (Budget / Limits tabs, **TAW Chatbot → Usage**) and in `php bin/taw rag:usage`.
+- **Before giving a site a key:** set its budget, prices and Assistant Scope, use a provider key with a hard monthly limit, and check the Usage screen's "Resolved" IP (behind Cloudflare, set `TAW_TRUSTED_PROXIES`).
+
 Manual re-ingestion commands (`content:reindex` for the site's own content, `content:reindex-kb <id>` for one uploaded knowledge base) are registered in `bin/taw` — see `taw/core` README for usage. Uploading a new knowledge base itself is a wp-admin action, not a CLI one.
 
 ---
