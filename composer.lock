@@ -1108,16 +1108,16 @@
         },
         {
             "name": "taw/core",
-            "version": "v1.89.0",
+            "version": "v1.90.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Relmaur/taw-core.git",
-                "reference": "758863917018c038d4c2e86a1cc7d1b02b490ed2"
+                "reference": "75f8dc9980862f6e44d285ae490ec3f917925c25"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/758863917018c038d4c2e86a1cc7d1b02b490ed2",
-                "reference": "758863917018c038d4c2e86a1cc7d1b02b490ed2",
+                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/75f8dc9980862f6e44d285ae490ec3f917925c25",
+                "reference": "75f8dc9980862f6e44d285ae490ec3f917925c25",
                 "shasum": ""
             },
             "require": {
@@ -1138,6 +1138,9 @@
                 "emailit/emailit-php": "Required for EmailConfig::useEmailit() — route all wp_mail() through the Emailit REST API",
                 "ext-pdo_sqlite": "Required for the SQLite-backed features only (RAG knowledge bases, the Bible/Catechism SQLite readers, corpus:export). Everything else — including the whole data layer — works without it; the corpus readers fall back to MySQL (ADR-0002)."
             },
+            "bin": [
+                "bin/taw"
+            ],
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -1187,10 +1190,10 @@
             ],
             "description": "TAW — data layer framework for WordPress (fields, options, REST-exposed meta, content interchange), plus an optional classic-theme toolkit (block system, Vite asset pipeline)",
             "support": {
-                "source": "https://github.com/Relmaur/taw-core/tree/v1.89.0",
+                "source": "https://github.com/Relmaur/taw-core/tree/v1.90.0",
                 "issues": "https://github.com/Relmaur/taw-core/issues"
             },
-            "time": "2026-10-09T22:37:37+00:00"
+            "time": "2026-10-09T23:37:35+00:00"
         }
     ],
     "packages-dev": [
