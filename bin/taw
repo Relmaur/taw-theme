@@ -103,5 +103,10 @@ $app->add(new CatechismExportCommand());
 $app->add(new CanonLawInstallCommand($themeDir));
 $app->add(new CanonLawExportCommand());
 $app->add(new SchemaValidateCommand($themeDir));
+// taw/core's site skills (resolve-comments, perf-audit…) into .claude/skills/.
+// Guarded: bin/ syncs into sites before their taw/core may have the command.
+if (class_exists(\TAW\CLI\SkillsSyncCommand::class)) {
+    $app->add(new \TAW\CLI\SkillsSyncCommand($themeDir));
+}
 
 $app->run();
