@@ -14,3 +14,5 @@ yarn-error.log*
 release-notes.md
 NEW-CLIENT-PROJECT.md
 CLAUDE-HANDOFF.md
+# Content snapshots, database dumps and remote.env (credentials): never committed.
+/.sync/

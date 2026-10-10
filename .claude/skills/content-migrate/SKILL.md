@@ -68,9 +68,21 @@ should author an `owner: site` skill with a **different name** that extends or r
    `200` = ready · `404` = remote is on an older core (deploy the bump first, or use the SSH
    export in S1) · `401`/`403` = bad credentials or a WAF is blocking `/wp-json/taw/*` (see S1).
 
-2. **`.sync/` workspace** — add `/.sync/` to `.gitignore` if it isn't there. `mkdir -p .sync/backups`.
-   `content:export --output` and `content:diff --out` write here; nothing under `.sync/` is ever
-   committed.
+2. **`.sync/` workspace, kept out of git, and proven.** `.sync/` holds snapshots, database dumps
+   and `remote.env` (production credentials), and a theme repo can be public. Create it so it
+   ignores itself, whatever the root `.gitignore` says, then check:
+
+   ```sh
+   mkdir -p .sync/backups
+   [ -f .sync/.gitignore ] || printf '*\n' > .sync/.gitignore
+   git check-ignore -q .sync/remote.env || { echo '.sync/ is NOT ignored: stop'; exit 1; }
+   ```
+
+   **Stop if the check fails.** Never append to the root `.gitignore` with `echo >>`: a file without
+   a final newline turns `yarn-error.log*` and `/.sync/` into one line that matches neither (that's
+   how a database dump reached a public repo, 2026-10-08). The scaffold's `.gitignore` lists
+   `/.sync/`; edit the file if a site lacks it. `content:export --output` and `content:diff --out`
+   write here.
 
 3. **Connection** — load `.sync/remote.env`. If it's missing, write this template and **stop**,
    asking the user to fill it (the app password: remote **Users → your admin user → Application
