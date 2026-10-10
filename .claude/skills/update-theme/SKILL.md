@@ -36,10 +36,12 @@ bin/                                  (type: dir  — rsync -a --delete)
 .github/workflows/ci.yml              (type: file)
 .github/workflows/framework-sync.yml  (type: file)
 tests/bootstrap.php                   (type: file)
-tests/TestCase.php                    (type: file)
+tests/TestCase.php                    (type: file, keep_edited — see below)
 .claude/skills/                       (type: skills-dir — per-skill reconcile, see below)
 .agents/skills/                       (type: skills-dir — per-skill reconcile, see below)
 ```
+
+**`tests/TestCase.php` is `keep_edited` (taw/core 1.93.1+).** Sync replaces it only when it is a version the scaffold shipped (the manifest lists their sha256), or missing. A copy holding the site's own helpers is kept and reported as `kept: true` ("has this site's own changes, left as is"). Never force it over: compare it with the canonical copy and take only what the framework changed.
 
 **Tier 1 skills directories are `skills-dir`, not `dir` — they are NOT a blind `rsync --delete`.** Claude Code and the agents runtime only auto-discover skills directly under `.claude/skills/` and `.agents/skills/`, so a client site's *own* skills (site-specific editorial/publishing workflows, etc.) have to live in the same folder as the framework's. `sync` reconciles that folder one skill subdirectory at a time:
 
