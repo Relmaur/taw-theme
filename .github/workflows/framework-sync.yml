@@ -15,6 +15,6 @@ permissions:
 
 jobs:
   sync:
-    uses: Relmaur/taw-core/.github/workflows/theme-framework-sync.yml@feat/update-policy
+    uses: Relmaur/taw-core/.github/workflows/theme-framework-sync.yml@v1
     with:
       smoke: true
