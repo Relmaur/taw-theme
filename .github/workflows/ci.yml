@@ -1,126 +1,18 @@
 name: CI
 
+# The checks live in taw/core (shared workflow theme-ci.yml) and update with
+# it; this file only says when to run them. Framework-owned: replaced on sync.
+# By hand: see the "By hand" notes at the top of
+# vendor/taw/core/.github/workflows/theme-ci.yml.
+
 on:
   push:
     branches: [main, master]
   pull_request:
 
 jobs:
-  checks:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.2"
-          tools: composer:v2
-          coverage: none
-
-      - name: Validate composer.json
-        run: composer validate --no-check-all --no-check-publish
-
-      - name: Authenticate composer with GitHub
-        # taw/core is installed from a VCS (github.com) repository, not
-        # Packagist — Composer's GitHub driver uses the GitHub API to
-        # resolve tags/refs, and unauthenticated API access is capped at
-        # 60 requests/hour PER IP. Actions runners share IPs across
-        # countless concurrent workflows worldwide, so that cap is hit
-        # constantly without this. GITHUB_TOKEN is provided free by
-        # Actions and raises the limit to 5000/hour — no repo secret needed.
-        run: composer config -g github-oauth.github.com "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: PHP lint (php -l on every file)
-        run: |
-          find . -name "*.php" \
-            -not -path "./vendor/*" \
-            -not -path "./node_modules/*" \
-            -print0 | xargs -0 -n1 -P4 php -l
-
-      - name: MetaBlock getData() signature check
-        run: php bin/ci/check-getdata-signature.php
-
-      - name: PHPStan static analysis
-        run: composer run phpstan
-
-  smoke-test:
-    runs-on: ubuntu-latest
-
-    # A real (if minimal) WordPress + MySQL environment — the static checks
-    # above (php lint, the getData signature check, phpstan) catch a lot,
-    # but none of them actually execute a block's render path. This job
-    # does: it boots a real WP install with this theme active, creates one
-    # real post, and renders every registered block + form against it via
-    # bin/ci/smoke-test.php, failing loudly on any runtime error a static
-    # check can't see (an undefined function call, a template referencing
-    # a variable getData() never returned, WP API misuse, etc).
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # The runner's own MySQL 8 (root/root): no image pull, so no Docker Hub rate limit.
-      - name: Start MySQL
-        run: |
-          sudo systemctl start mysql.service
-          mysqladmin --user=root --password=root --host=127.0.0.1 --silent --wait=30 ping
-          mysql --user=root --password=root --host=127.0.0.1 -e "CREATE DATABASE IF NOT EXISTS wordpress_smoke_test"
-
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: "8.2"
-          tools: composer:v2
-          extensions: mysqli
-          coverage: none
-
-      # setup-php's wp-cli download 404s (releases ship wp-cli-<version>.phar), so
-      # install the pinned release phar and check it against its published sha512.
-      - name: Install WP-CLI
-        env:
-          WP_CLI_VERSION: "2.12.0"
-        run: |
-          base="https://github.com/wp-cli/wp-cli/releases/download/v${WP_CLI_VERSION}/wp-cli-${WP_CLI_VERSION}.phar"
-          curl -fsSL -o /tmp/wp-cli.phar "$base"
-          echo "$(curl -fsSL "${base}.sha512" | cut -d' ' -f1)  /tmp/wp-cli.phar" | sha512sum -c -
-          sudo install -m 0755 /tmp/wp-cli.phar /usr/local/bin/wp
-          wp --info
-
-      - name: Authenticate composer with GitHub
-        run: composer config -g github-oauth.github.com "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Install WordPress core
-        run: |
-          wp core download --path=/tmp/wordpress
-          wp config create --path=/tmp/wordpress \
-            --dbname=wordpress_smoke_test --dbuser=root --dbpass=root --dbhost=127.0.0.1
-          wp core install --path=/tmp/wordpress \
-            --url=http://localhost:8080 --title="CI Smoke Test" \
-            --admin_user=admin --admin_password=admin --admin_email=admin@example.com
-
-      - name: Install and activate this theme
-        run: |
-          rsync -a --exclude=.git "$GITHUB_WORKSPACE/" /tmp/wordpress/wp-content/themes/ci-theme/
-          wp theme activate ci-theme --path=/tmp/wordpress
-
-      - name: Create a test post
-        id: post
-        run: |
-          POST_ID=$(wp post create --path=/tmp/wordpress \
-            --post_type=page --post_title="Smoke Test" --post_status=publish --porcelain)
-          echo "post_id=$POST_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Run block/form smoke test
-        run: |
-          php /tmp/wordpress/wp-content/themes/ci-theme/bin/ci/smoke-test.php \
-            /tmp/wordpress/wp-load.php \
-            ${{ steps.post.outputs.post_id }}
+  ci:
+    uses: Relmaur/taw-core/.github/workflows/theme-ci.yml@v1
+    with:
+      smoke: true
+      build: false

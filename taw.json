@@ -1,0 +1,11 @@
+{
+    "$schema": "./vendor/taw/core/resources/schema/taw-json-1.0.json",
+    "update": {
+        "core": "minor",
+        "scaffold": "auto",
+        "manifests": "add+bump",
+        "docs": "framework-sections",
+        "checks": ["lint", "phpstan", "test", "build"],
+        "deliver": "pr"
+    }
+}

@@ -48,6 +48,9 @@
         "post-create-project-cmd": [
             "npm install --silent"
         ],
+        "post-update-cmd": [
+            "TAW\\CLI\\ComposerScripts::postUpdate"
+        ],
         "phpstan": "phpstan analyse --memory-limit=-1",
         "test": "phpunit"
     },

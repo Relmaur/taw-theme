@@ -1,17 +1,10 @@
+# PHPStan. taw:config 1
+# The base (level, paths, the WordPress extension) comes from taw/core and
+# updates with `composer update taw/core`; this file is the site's own and
+# updates never change it. Add this site's own settings below (scanFiles,
+# ignoreErrors, more paths…); they merge with the base.
 includes:
-    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+    - vendor/taw/core/resources/phpstan/classic.neon
 
 parameters:
-    level: 5
-    paths:
-        - Blocks/
-        - inc/
-
-    excludePaths:
-        - vendor/
-        - node_modules/ (?)
-        - public/build/ (?)
-
-    ignoreErrors:
-        # taw/core registers blocks/fields via magic array shapes the WP
-        # stubs can't see — narrow, documented exceptions only, never blanket.
+    # This site's own settings.
