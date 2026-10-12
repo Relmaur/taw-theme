@@ -34,9 +34,11 @@ before filling the template; don't guess at class names.
 
 ## Step 2 — Resolve company name and accent color
 
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
 ```bash
-php bin/taw wp option get _taw_company_name
-php bin/taw wp option get _taw_brand_primary_color
+taw wp option get _taw_company_name
+taw wp option get _taw_brand_primary_color
 ```
 
 Either command failing (non-zero exit — option not set) or returning empty means that value isn't

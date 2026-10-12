@@ -3,7 +3,7 @@ name: export-static
 owner: taw
 description: >
     Exports the site as a static HTML/CSS/JS bundle for edge hosting (Cloudflare Pages,
-    Vercel, etc.) via `php bin/taw export:static`. Triggers on "export the site as static" /
+    Vercel, etc.) via `taw export:static`. Triggers on "export the site as static" /
     "build a static export" / "generate the SSG bundle" / "export-static". Dynamic behavior
     (forms, search) is NOT frozen into the export — it keeps hitting this WordPress install's
     REST/AJAX endpoints, which requires TAW_HEADLESS_ORIGINS to be configured once the export
@@ -34,8 +34,10 @@ npm run build
 
 ## Step 2 — Run the export
 
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
 ```bash
-php bin/taw export:static
+taw export:static
 ```
 
 Pass through any flags the user gave:

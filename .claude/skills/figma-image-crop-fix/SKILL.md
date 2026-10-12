@@ -44,8 +44,9 @@ solved.
 ## Step 1 — Get the node ID(s)
 
 Resolve the Figma `fileKey`/`nodeId` for each image in scope, same as `figma-to-block` Step 1. If
-auditing "all images," walk every block's registered `image`-type fields (`php bin/taw inspect
+auditing "all images," walk every block's registered `image`-type fields (`taw inspect
 --json` lists them) and match each to its Figma node via the block's own design reference.
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
 
 ## Step 2 — Pull the exact transform (desktop AND mobile)
 

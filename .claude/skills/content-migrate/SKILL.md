@@ -5,7 +5,7 @@ description: >
     Move site STATE — posts / CPT entries, `_taw_*` metabox values, `_taw_*` options, terms,
     referenced media, and (opt-in) authorship / users / comments / environment settings — between
     a remote environment and this install, using `taw/core`'s Content Interchange
-    (`bin/taw content:export` / `content:import` / `content:diff` — portable JSON snapshots,
+    (`taw content:export` / `content:import` / `content:diff` — portable JSON snapshots,
     mandatory dry-run, automatic rollback snapshot). Triggered by the user ("pull content from
     live", "push the FAQ edits to staging", "migrate this site to the new host"). `pull` refreshes
     this install from a remote snapshot; `push` exports ONLY the records the user names and applies
@@ -56,7 +56,9 @@ should author an `owner: site` skill with a **different name** that extends or r
 
 ## Step 0 — Preflight (all flows)
 
-1. **Versions.** `php bin/taw content:export --help` must show `--migrate` (needs `taw/core`
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
+1. **Versions.** `taw content:export --help` must show `--migrate` (needs `taw/core`
    ≥ 1.26 — `composer show taw/core`). For a `pull`/`push` over REST, the **remote** must also
    be ≥ 1.26 — check the route exists:
 
@@ -108,7 +110,7 @@ should author an `owner: site` skill with a **different name** that extends or r
    TS=$(date +%Y%m%d-%H%M%S)
    ```
 
-4. **Wrong-way guard** — `php bin/taw wp option get siteurl` MUST equal `$LOCAL_URL`. Stop
+4. **Wrong-way guard** — `taw wp option get siteurl` MUST equal `$LOCAL_URL`. Stop
    otherwise. (A `push` writes the remote; a `pull` / `migrate` overwrites *this* install — the
    direction of travel must be unambiguous.)
 
@@ -147,7 +149,7 @@ Sanity-check: valid JSON, `meta.source.url` == `$REMOTE_URL`, `posts` non-empty,
 ### S2. Dry-run → review → apply
 
 ```sh
-php bin/taw content:import ".sync/remote-${TS}.json"            # dry-run: field-level diff, writes nothing
+taw content:import ".sync/remote-${TS}.json"            # dry-run: field-level diff, writes nothing
 ```
 
 Show the user the plan table. If any `registry_drift` warnings appear (a block or field the
@@ -156,7 +158,7 @@ those values may not render. It's a local refresh, so a broad confirm is fine �
 gate. Then:
 
 ```sh
-php bin/taw content:import ".sync/remote-${TS}.json" --yes --policy=update
+taw content:import ".sync/remote-${TS}.json" --yes --policy=update
 ```
 
 The importer sideloads any referenced media from the remote URLs (with title / description / alt
@@ -166,16 +168,16 @@ The importer sideloads any referenced media from the remote URLs (with title / d
 
 ```sh
 # If this theme registers nav menus in code, rebuild them — the snapshot never carried them.
-# The command name varies per site; common ones: `wp taw nav menus`, a `bin/taw` subcommand,
+# The command name varies per site; common ones: `wp taw nav menus`, a `taw` subcommand,
 # or a WP-CLI eval of an inc/menus.php function. Skip if this site manages menus in wp-admin.
-php bin/taw wp cache flush
-php bin/taw wp rewrite flush --hard
+taw wp cache flush
+taw wp rewrite flush --hard
 ```
 
 ### S4. Report
 
 Created / updated / skipped counts · media sideloaded · rollback snapshot path · anything
-reconciled in S3. **To undo:** `php bin/taw content:import <rollback-snapshot> --yes --with-settings`.
+reconciled in S3. **To undo:** `taw content:import <rollback-snapshot> --yes --with-settings`.
 
 ---
 
@@ -191,8 +193,8 @@ remote 'wp taw content:export --migrate --output=wp-content/uploads/taw-private/
 rsync -az -e "$RSH" "${REMOTE_SSH}:${REMOTE_PATH}/wp-content/uploads/taw-private/migrate.json" ".sync/migrate-${TS}.json"
 remote 'wp eval "@unlink(WP_CONTENT_DIR.\"/uploads/taw-private/migrate.json\");"'
 
-php bin/taw content:import ".sync/migrate-${TS}.json"                       # dry-run — read it in full
-php bin/taw content:import ".sync/migrate-${TS}.json" --yes --with-settings # apply (settings need the flag on import too)
+taw content:import ".sync/migrate-${TS}.json"                       # dry-run — read it in full
+taw content:import ".sync/migrate-${TS}.json" --yes --with-settings # apply (settings need the flag on import too)
 ```
 
 Notes:
@@ -222,7 +224,7 @@ in the file. So `push` doesn't need `content:diff`: export the named records, ve
 ### P1. Export the named records
 
 ```sh
-php bin/taw content:export --posts=<slug,slug,…> --output=".sync/push-${TS}.json"
+taw content:export --posts=<slug,slug,…> --output=".sync/push-${TS}.json"
 ```
 
 The file carries those posts + every media file they reference + (currently) every term. This
@@ -275,12 +277,12 @@ When an agent edits content in the JSON rather than a human editing in wp-admin:
 
 ```sh
 # export both sides in full
-php bin/taw content:export --output=".sync/here-${TS}.json"
+taw content:export --output=".sync/here-${TS}.json"
 curl -fsS -u "${REMOTE_APP_USER}:${REMOTE_APP_PASS}" "${REMOTE_URL}/wp-json/taw/v1/content/export" -o ".sync/remote-${TS}.json"
 
 # agent edits .sync/here-${TS}.json (bulk copy edits, field restructuring, …)
 
-php bin/taw content:diff ".sync/remote-${TS}.json" ".sync/here-${TS}.json" --out=".sync/changes-${TS}.json"
+taw content:diff ".sync/remote-${TS}.json" ".sync/here-${TS}.json" --out=".sync/changes-${TS}.json"
 ```
 
 The change-set is the form that carries **deletes and renames** (a plain snapshot is upsert-only)
@@ -305,4 +307,4 @@ and it now also diffs the `users` and `comments` sections. Vet `operations[]`:
 - **Don't** commit anything under `.sync/` — gitignored on purpose.
 - **Don't** edit this file for a site's own policy — it's `owner: taw` and `update-theme`
   overwrites it. Author an `owner: site` skill with a different name that calls into the same
-  `bin/taw content:*` commands.
+  `taw content:*` commands.
