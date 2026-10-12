@@ -3,7 +3,7 @@ name: audit-seo
 owner: taw
 description: >
     Audits a page's (or the whole site's) copy AND SEO meta — title tag, meta description,
-    social/OG image — for SEO and conversion quality, using `php bin/taw seo:extract`/
+    social/OG image — for SEO and conversion quality, using `taw seo:extract`/
     `seo:inject`. Asks whether to apply approved rewrites directly to the database or produce a
     polished, shareable client-approval report (Artifact) instead. Triggers on "audit SEO for
     page [ID]" / "review copy on post [ID]" / "audit SEO for the whole site" / "audit-seo".
@@ -12,15 +12,17 @@ argument-hint: "<post_id> | --all"
 
 ## Overview
 
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
 Two CLI primitives do the mechanical work, shipped in `taw/core`:
 
-- **`php bin/taw seo:extract <post_id>`** (or `--all` for every published page/post in one run)
+- **`taw seo:extract <post_id>`** (or `--all` for every published page/post in one run)
   — walks every registered Metabox field for the post, keeps only non-empty `text`/`textarea`/
   `wysiwyg` content (including inside repeater rows, recursively), plus SEO meta (title,
   description, social image — see below), and writes a hierarchical JSON dump. Deliberately
   excludes image/URL/ID/layout fields from the copy itself — this is a copy audit, not a
   general field dump.
-- **`php bin/taw seo:inject <post_id>`** (or `--all` for a site-wide dump) — writes an edited
+- **`taw seo:inject <post_id>`** (or `--all` for a site-wide dump) — writes an edited
   copy of that same JSON shape back. Validates every field against the live registry *before*
   writing anything for a given post (all-or-nothing per post — a half-applied rewrite is worse
   than a rejected one; with `--all`, one post failing validation doesn't block the others). For
@@ -44,12 +46,12 @@ scoring or rewriting on its own.
 
 Single post:
 ```bash
-php bin/taw seo:extract <post_id> --output=.taw/seo-dump.json
+taw seo:extract <post_id> --output=.taw/seo-dump.json
 ```
 
 Whole site ("audit SEO for the whole site" / "site-wide audit"):
 ```bash
-php bin/taw seo:extract --all --output=.taw/seo-site-dump.json
+taw seo:extract --all --output=.taw/seo-site-dump.json
 ```
 
 If a single-post extract reports 0 fields across 0 blocks (and empty `seo_meta`), say so plainly
@@ -191,8 +193,8 @@ project follows (`populate-content`, `fields:set`) — not a lighter version of 
    fields under `blocks`, meta rewrites under `seo_meta`), save as `.taw/seo-optimized.json`
    (or `.taw/seo-site-optimized.json` for `--all`), and run:
    ```bash
-   php bin/taw seo:inject <post_id> --input=.taw/seo-optimized.json --dry-run
-   # or: php bin/taw seo:inject --all --input=.taw/seo-site-optimized.json --dry-run
+   taw seo:inject <post_id> --input=.taw/seo-optimized.json --dry-run
+   # or: taw seo:inject --all --input=.taw/seo-site-optimized.json --dry-run
    ```
    Show the dry-run output — it's the actual sanitized values that would be written, a final
    concrete check before the real write.

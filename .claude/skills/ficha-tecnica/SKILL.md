@@ -51,11 +51,13 @@ anything sensitive touches disk, not after.
 
 ## Step 4 — Resolve company name and accent color
 
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
 Same as `memo-report` Step 2 — this is non-sensitive, safe to do once the gate above has passed:
 
 ```bash
-php bin/taw wp option get _taw_company_name
-php bin/taw wp option get _taw_brand_primary_color
+taw wp option get _taw_company_name
+taw wp option get _taw_brand_primary_color
 ```
 
 Missing or empty → ask directly rather than guessing.

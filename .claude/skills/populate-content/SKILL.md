@@ -5,14 +5,14 @@ description: >
     Fills in a block's metabox fields (or an OptionsPage field) on a real post with content from
     a document, list, or plain-language description the user provides — e.g. "fill in the
     team_members repeater on the About page with this list" or "populate the FAQ block on post 12
-    from this doc". Writes via `php bin/taw fields:set`, with mandatory dry-run previews and
+    from this doc". Writes via `taw fields:set`, with mandatory dry-run previews and
     confirmation before any risky write. Not for scaffolding new blocks — see `make-metablock`.
 argument-hint: "<target post/page> <field or block> <source content — pasted text, a file, or a description>"
 ---
 
 ## Overview
 
-This skill turns a source document (pasted text, an attached file, a list, or a plain description) into real field values on a real post, using `php bin/taw fields:get`/`fields:set` — the same primitive the Visual Editor's REST endpoint uses, so writes are sanitized exactly like a real admin form save. It does **not** create blocks or fields — if the target field/block doesn't exist yet, hand off to `make-metablock` first.
+This skill turns a source document (pasted text, an attached file, a list, or a plain description) into real field values on a real post, using `taw fields:get`/`fields:set` — the same primitive the Visual Editor's REST endpoint uses, so writes are sanitized exactly like a real admin form save. `taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder. It does **not** create blocks or fields — if the target field/block doesn't exist yet, hand off to `make-metablock` first.
 
 **Source of truth:** `AGENTS.md` § "`fields:get` / `fields:set`" and § "Content-writing safety model" — read the safety model before writing anything. This skill is the procedural wrapper around those rules, not a replacement for them.
 
@@ -22,8 +22,8 @@ This skill turns a source document (pasted text, an attached file, a list, or a 
 
 Resolve unambiguously before doing anything else:
 
-- **Post:** if the user names a page/post by title or slug, confirm the ID with `php bin/taw wp post list --s="<title>" --fields=ID,post_title,post_status` (the `bin/taw wp` wrapper resolves the Local by Flywheel socket quirk automatically — see AGENTS.md's WP-CLI section). If more than one result plausibly matches, list them and ask which one — never guess.
-- **Field(s):** run `php bin/taw inspect --json` and match the user's description (field id, label, or block name) against the registered field list. If the description is ambiguous (e.g. two blocks on the same post both have a `heading` field), ask which one. If the field genuinely doesn't exist yet, stop and say so — offer to hand off to `make-metablock` rather than guessing at a field id that isn't registered.
+- **Post:** if the user names a page/post by title or slug, confirm the ID with `taw wp post list --s="<title>" --fields=ID,post_title,post_status` (the `taw wp` wrapper resolves the Local by Flywheel socket quirk automatically — see AGENTS.md's WP-CLI section). If more than one result plausibly matches, list them and ask which one — never guess.
+- **Field(s):** run `taw inspect --json` and match the user's description (field id, label, or block name) against the registered field list. If the description is ambiguous (e.g. two blocks on the same post both have a `heading` field), ask which one. If the field genuinely doesn't exist yet, stop and say so — offer to hand off to `make-metablock` rather than guessing at a field id that isn't registered.
 
 For a group sub-field, use the compound id exactly as `inspect` reports it (e.g. `hero_cta_text`), same as `fields:set` itself expects.
 
@@ -44,8 +44,8 @@ Build the full JSON payload for each field before moving to Step 3 — don't int
 For every field, run:
 
 ```bash
-php bin/taw fields:get <post_id> <field_id> --json      # current value, if any
-php bin/taw fields:set <post_id> <field_id> --file=/tmp/<field>.json --dry-run --json   # or inline value for scalars
+taw fields:get <post_id> <field_id> --json      # current value, if any
+taw fields:set <post_id> <field_id> --file=/tmp/<field>.json --dry-run --json   # or inline value for scalars
 ```
 
 Use `--file` for anything repeater/array-shaped — never fight shell quoting on a multi-row JSON payload. Compare the dry-run's sanitized output against what you intended to write; if the sanitizer stripped or changed something unexpected (e.g. a tag you expected to survive didn't), investigate before proceeding rather than writing it anyway.

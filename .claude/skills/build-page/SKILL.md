@@ -117,7 +117,7 @@ Once a target post id exists, invoke `populate-content` **once per section**, pa
 
 ## Step 8 — Verify
 
-- Confirm every queued block id matches an actual `$id` property in `Blocks/*/*.php`. `php bin/taw inspect` reports the live registered block ids/fields if you want to double-check without reading source.
+- Confirm every queued block id matches an actual `$id` property in `Blocks/*/*.php`. `taw inspect` reports the live registered block ids/fields if you want to double-check without reading source. (`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.)
 - Run `php bin/ci/check-getdata-signature.php` — same check CI runs, catches the `getData(int|false $postId)` signature bug across every block in the project in one shot.
 - **Check the site loads at all before checking anything page-specific** (e.g. `curl -sL -o /dev/null -w '%{http_code}' <site-url>/`). `BlockLoader::loadAll()` auto-discovers and instantiates *every* block in `Blocks/*/` on *every* request, so a fatal error in any single block file — including ones you didn't touch this session — takes the entire site down, not just the page you built. If you get a 500/503, check `wp-content/debug.log` before assuming the problem is in your new code; it may be pre-existing breakage you've just now exposed by loading a page for the first time since it broke.
 - If a dev server is running, **ask before driving a Playwright browser check** of section order/rendering and the wp-admin metabox UI — the developer may already have the page open and be able to tell at a glance, especially for a small change. Only open/drive a browser via Playwright on an explicit yes, same as the pixel-accuracy pass below.

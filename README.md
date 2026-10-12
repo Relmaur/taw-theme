@@ -18,7 +18,7 @@ This theme itself is a scaffold on top of that framework: every real site is a d
 
 **Zero-config blocks.** Create a folder, drop in a class and a template — it's live. No registration, no `functions.php` edits, no build step required for new blocks.
 
-**CLI scaffolding.** `php bin/taw make:block MyBlock --type=meta --with-style` creates the folder, class, template, and stylesheet in one command. Export and import blocks between projects as portable ZIPs.
+**CLI scaffolding.** `taw make:block MyBlock --type=meta --with-style` creates the folder, class, template, and stylesheet in one command. Export and import blocks between projects as portable ZIPs.
 
 **Scoped asset loading.** Each block can ship its own CSS and JS. Assets are only enqueued on pages that use that block. Your homepage doesn't load your blog's scripts.
 
@@ -79,19 +79,21 @@ Every block is a folder inside `Blocks/`. The folder name **must** match the cla
 
 ### Via CLI (recommended)
 
-```bash
-php bin/taw make:block Hero --type=meta --with-style # Creates a MetaBlock
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
 
-php bin/taw make:block Button --type=ui --with-style --with-script # Creates a UI Block
+```bash
+taw make:block Hero --type=meta --with-style # Creates a MetaBlock
+
+taw make:block Button --type=ui --with-style --with-script # Creates a UI Block
 
 # Create a block inside a subgroup (optional) — great for organization and namespacing:
 
-php bin/taw make:block Hero --group=sections # Blocks/sections/Hero/
+taw make:block Hero --group=sections # Blocks/sections/Hero/
 
-php bin/taw make:block Badge --group=ui/cards # Blocks/ui/cards/Badge/
+taw make:block Badge --group=ui/cards # Blocks/ui/cards/Badge/
 
 # For more help with the CLI tool:
-php bin/taw make:block --help
+taw make:block --help
 
 composer dump-autoload
 ```
@@ -518,11 +520,11 @@ Menus (`primary`, `footer`) are registered in `inc/customizations.php` via `regi
 
 ## Content Interchange
 
-`php bin/taw content:export` / `content:import` / `content:diff` (from `taw/core`) move a site's **state** — posts + `_taw_*` fields, options, terms, media, and opt-in authorship / users / comments / settings — between environments as one reviewable, diffable, rollback-able JSON file. Import is always a dry-run first, with an automatic rollback snapshot to `wp-content/uploads/taw-private/`. wp-admin: **Tools → TAW Data**.
+`taw content:export` / `content:import` / `content:diff` (from `taw/core`) move a site's **state** — posts + `_taw_*` fields, options, terms, media, and opt-in authorship / users / comments / settings — between environments as one reviewable, diffable, rollback-able JSON file. Import is always a dry-run first, with an automatic rollback snapshot to `wp-content/uploads/taw-private/`. wp-admin: **Tools → TAW Data**.
 
 ```bash
-php bin/taw content:export --migrate --output=/tmp/site.json
-php bin/taw content:import /tmp/site.json --yes --with-settings
+taw content:export --migrate --output=/tmp/site.json
+taw content:import /tmp/site.json --yes --with-settings
 ```
 
 The **`content-migrate`** skill wraps this for a human-in-the-loop session — `pull` / `push` / `migrate` / agent-transform, with connection details in a gitignored `.sync/remote.env`. Ask an agent to "pull content from live" or "push the FAQ edits to staging".
@@ -645,9 +647,9 @@ taw-theme/
 | `composer install`                          | Install PHP dependencies (including `taw/core`)          |
 | `composer update taw/core`                  | Pull the latest framework update                         |
 | `composer dump-autoload`                    | Rebuild PSR-4 classmap after adding new block classes    |
-| `php bin/taw make:block Name --type=meta`   | Scaffold a new block                                     |
-| `php bin/taw export:block Name`             | Export a block as a portable ZIP                         |
-| `php bin/taw import:block path/to/Block.zip`| Import a block from a ZIP                                |
+| `taw make:block Name --type=meta`           | Scaffold a new block                                     |
+| `taw export:block Name`                     | Export a block as a portable ZIP                         |
+| `taw import:block path/to/Block.zip`        | Import a block from a ZIP                                |
 | `composer run phpstan`                      | Static analysis (`Blocks/`, `inc/`) — also runs in CI     |
 
 → Full `make:block`/`export:block`/`import:block` flag reference: **AGENTS.md § "CLI Tools"**.
@@ -676,13 +678,13 @@ TAW isn't just documented for AI coding assistants — it ships a working toolki
 - **`sync-remote`** — "sync with remote, please" → pull → compare → resolve → push: fetches and compares against origin, reconciles diverged history via a real merge (never rebase, never a guessed conflict resolution), optionally runs `phpstan`, and always confirms before the final push — the pull/merge steps are authorized by the request itself, the push still needs an explicit yes
 - **`studio`** — applies live CSS Studio visual edits back into source
 
-**Live introspection** — `php bin/taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.
+**Live introspection** — `taw inspect` (or `--json`) reports the site's actual current state: registered blocks and their real metabox field schemas, registered forms, the installed `taw/core` version, whether `MetaboxOrder` is locked. An agent queries this instead of reconstructing it by grepping PHP.
 
-**Direct field read/write** — `php bin/taw fields:get`/`fields:set` let an agent read or write any Metabox/OptionsPage field's value directly, sanitized with the exact same rules as a real admin form save — no hand-encoding a repeater's JSON shape, no guessing which sanitizer applies to which field type. This is what turns "build this page from a Figma design" into something that can also populate the content, not just scaffold empty fields. Writing content is inherently higher-stakes than scaffolding it, so every skill that writes via this primitive follows a mandatory dry-run + confirmation model — see `AGENTS.md` § "Content-writing safety model".
+**Direct field read/write** — `taw fields:get`/`fields:set` let an agent read or write any Metabox/OptionsPage field's value directly, sanitized with the exact same rules as a real admin form save — no hand-encoding a repeater's JSON shape, no guessing which sanitizer applies to which field type. This is what turns "build this page from a Figma design" into something that can also populate the content, not just scaffold empty fields. Writing content is inherently higher-stakes than scaffolding it, so every skill that writes via this primitive follows a mandatory dry-run + confirmation model — see `AGENTS.md` § "Content-writing safety model".
 
 **CI, not just convention** — `.github/workflows/ci.yml` runs `php -l`, `composer validate`, a dedicated check that every `MetaBlock::getData()` matches the exact signature the framework requires (a mismatch there is a site-wide fatal, not a cosmetic bug), and PHPStan (level 5, WordPress-aware via `szepeviktor/phpstan-wordpress`) over `Blocks/` and `inc/`. A second job spins up a real WordPress + MySQL environment and dynamically renders every registered block and form against a real post — catching the runtime errors (undefined function calls, template/data mismatches) that static checks alone can't see.
 
-**Framework drift never goes unnoticed** — `php bin/taw sync` (the scriptable core of the `update-theme` skill) checks whether the installed `taw/core` version is behind the latest release and whether this project's Tier 1/Tier 2 scaffold paths differ from the canonical `taw-theme` repo, without booting WordPress. `.github/workflows/framework-sync.yml` runs it unattended on a weekly schedule: Tier 1 changes are applied and verified through the same checks CI runs on every push, then a pull request is opened with Tier 2 diffs included for human review — or nothing happens at all if the project is already current. A client project only has to run `update-theme` once to start self-checking forever after, since this workflow file is itself Tier 1.
+**Framework drift never goes unnoticed** — `taw sync` (the scriptable core of the `update-theme` skill) checks whether the installed `taw/core` version is behind the latest release and whether this project's Tier 1/Tier 2 scaffold paths differ from the canonical `taw-theme` repo, without booting WordPress. `.github/workflows/framework-sync.yml` runs it unattended on a weekly schedule: Tier 1 changes are applied and verified through the same checks CI runs on every push, then a pull request is opened with Tier 2 diffs included for human review — or nothing happens at all if the project is already current. A client project only has to run `update-theme` once to start self-checking forever after, since this workflow file is itself Tier 1.
 
 **Live documentation lookup** — the `mcp__taw-docs__search_documentation` MCP tool, when available, searches the current framework docs directly rather than requiring a URL guess.
 

@@ -22,11 +22,11 @@ Every real client site is a divergent instance of the same `taw-theme` scaffold.
 
 **Why not `git merge` (the previous design):** a merge needs a common ancestor commit, which meant every client project had to be created via a full clone/`--keep-vcs` and could never have a truly fresh, single-commit history. That constraint is gone now. As of `taw/core` v1.16.63, `functions.php` is 100% framework-owned by construction — it's two lines (`require autoload` + `Theme::bootstrapFullSite(...)`), and every genuinely site-specific thing that used to live inside it (theme supports, nav menus, performance tuning) now lives in three files (`inc/options.php`, `inc/performance.php`, `inc/customizations.php`) that this skill never touches. Combined with the other framework-only paths (`bin/`, CI config, and the skills directories — the last reconciled per-skill so a client's own `owner: site` skills survive), there's now a small, precisely delimited set of paths where "is this safe to overwrite" is a fact about the *path* (and, for skills, a one-line `owner:` marker), not something that requires diffing against a shared history to determine. No merge, no conflicts, no `MERGE_HEAD`, no `git merge-base` precondition — this works identically whether the client project was cloned, `git init`'d fresh, or anything else.
 
-**This skill is the interactive half of a two-part system.** The actual detection/apply logic lives in `TAW\CLI\SyncCommand` (`php bin/taw sync`, shipped by `taw/core`) — this skill wraps that command for a human-in-the-loop session. The other half is `.github/workflows/framework-sync.yml` (itself Tier 1, so it propagates to every client project automatically once this skill has run there once), which runs the same command unattended on a weekly schedule and opens a PR when it finds drift. Both paths call the identical underlying logic — behavior never diverges between "an agent ran this interactively" and "CI ran this on autopilot."
+**This skill is the interactive half of a two-part system.** The actual detection/apply logic lives in `TAW\CLI\SyncCommand` (`taw sync`, shipped by `taw/core`) — this skill wraps that command for a human-in-the-loop session. The other half is `.github/workflows/framework-sync.yml` (itself Tier 1, so it propagates to every client project automatically once this skill has run there once), which runs the same command unattended on a weekly schedule and opens a PR when it finds drift. Both paths call the identical underlying logic — behavior never diverges between "an agent ran this interactively" and "CI ran this on autopilot."
 
 ## The manifest
 
-**Single source of truth:** `vendor/taw/core/resources/update-manifest.json` (ships with `taw/core`, read directly by `php bin/taw sync`). The lists below are current as of this writing for a fast read, but if they ever look wrong, trust the JSON file over this doc.
+**Single source of truth:** `vendor/taw/core/resources/update-manifest.json` (ships with `taw/core`, read directly by `taw sync`). The lists below are current as of this writing for a fast read, but if they ever look wrong, trust the JSON file over this doc.
 
 **Tier 1 — always overwrite, no confirmation needed.** Nothing client-specific has ever lived in these paths since the `functions.php`/`inc/` split; overwriting them is always correct.
 
@@ -91,8 +91,10 @@ Anything not listed under Tier 1 or Tier 2 is implicitly never-touched. Don't ex
 
 ## Step 1 — Run the sync check
 
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
 ```bash
-php bin/taw sync --json
+taw sync --json
 ```
 
 This clones a throwaway shallow copy of the canonical `taw-theme` repo (cleaned up automatically, even on failure), diffs every Tier 1/Tier 2 path against it, and separately checks whether the installed `taw/core` version is behind the latest GitHub tag. Nothing is written to disk by this step alone. Parse the JSON: `taw_core.installed`/`.latest`/`.behind`, `tier1[].path`/`.changed`, `tier2[].path`/`.changed`/`.diff`.
@@ -104,7 +106,7 @@ If `errors` is non-empty (couldn't clone, couldn't reach GitHub), report that pl
 ## Step 2 — Apply Tier 1 automatically
 
 ```bash
-php bin/taw sync --apply
+taw sync --apply
 ```
 
 Writes every changed Tier 1 path directly — no confirmation needed, per the manifest above — and never touches Tier 2. For the `skills-dir` entries this means: refresh every framework skill, delete any `owner: taw` skill that's gone from canonical, and leave every `owner: site` skill (and every unmarked one) exactly where it is. **Don't hand-roll a copy/rsync for Tier 1 yourself** — always go through this command, so behavior here stays identical to what the CI workflow does unattended. (Re-run `sync --json` afterward if you want a clean report for the final summary — Tier 1 entries will now show `changed: false`.)
@@ -125,7 +127,7 @@ curl -fsSL https://raw.githubusercontent.com/Relmaur/taw-theme/main/AGENTS.md -o
 
 **`composer.json` and `package.json` — never do a full-file overwrite, even if approved.** These are structural manifests where client-specific dependencies (a project's own `mjml`, `swup`, `embla`, `photoswipe`, `alpine-collapse`, etc.) are *additive*, not incidental — a real client project accumulating its own packages over time is the normal, expected case, not drift to be corrected. A whole-file `curl -o` would silently **delete every one of those dependencies**, since they don't exist in the canonical `taw-theme` scaffold's version of the file. Instead:
 
-**Since taw/core v1.78.0, start from `sync`'s suggestions, not the raw diff.** Each of these files gets a `merge` entry in `sync --json`, built by rule (`update-manifest.json` § `manifestMerge`): `add` (keys/repositories the scaffold has and the site lacks), `bump` (a dependency constraint the scaffold raised), `review` (other differences, such as a changed script, for the user), `optional` (Reactiph, the chatbot: skip unless wanted), `site_only` (the site's own keys, kept). Nothing in it is ever a removal. Show the user `add`/`bump`/`review`; once approved, `php bin/taw sync --apply-manifests` writes `add` + `bump` in place (then `composer update` the packages whose constraint changed, `npm install` after a package.json change). Apply an approved `review` item by hand, line by line. The steps below are for an older taw/core whose `sync --json` has no `merge`.
+**Since taw/core v1.78.0, start from `sync`'s suggestions, not the raw diff.** Each of these files gets a `merge` entry in `sync --json`, built by rule (`update-manifest.json` § `manifestMerge`): `add` (keys/repositories the scaffold has and the site lacks), `bump` (a dependency constraint the scaffold raised), `review` (other differences, such as a changed script, for the user), `optional` (Reactiph, the chatbot: skip unless wanted), `site_only` (the site's own keys, kept). Nothing in it is ever a removal. Show the user `add`/`bump`/`review`; once approved, `taw sync --apply-manifests` writes `add` + `bump` in place (then `composer update` the packages whose constraint changed, `npm install` after a package.json change). Apply an approved `review` item by hand, line by line. The steps below are for an older taw/core whose `sync --json` has no `merge`.
 
 1. Read the diff line by line and identify only the genuinely framework-relevant changes — e.g. a `taw/core` version constraint bump in `require`, a changed/added `scripts` entry, a PSR-4 `autoload` path change. Ignore every line that's just the client's own dependencies not being present upstream — that's not a real diff to act on, it's structural noise from the two files having different purposes. One specific case worth naming: if `phpunit.xml`/`tests/bootstrap.php`/`tests/TestCase.php` are landing on this project for the first time (see Tier 1/Tier 2 above), the matching `composer.json` lines — `require-dev` entries for `phpunit/phpunit` and `brain/monkey`, the `"test": "phpunit"` script, and the `autoload-dev` PSR-4 mapping `"TAW\\Theme\\Tests\\": "tests/"` — are framework-relevant additions to apply, not noise, even though they look like "new dependencies." Without them the harness files exist on disk but `composer run test` fails outright.
    **Optional features, not framework changes:** the starter ships Reactiph (`reactiph/taw-bridge`, its three Reactiph `vcs` repositories and the `"minimum-stability": "dev"` it needs) in `composer.json`, and the chatbot's `marked` + `dompurify` in `package.json`. Those lines are for new sites. On an existing site, present them as optional features and default to skipping them. Add them only when the user wants Reactiph or has `Blocks/Chatbot`. Never add `minimum-stability: dev` on its own: it lets every dependency resolve to dev versions.
@@ -152,7 +154,7 @@ If nothing in either tier had upstream changes, say so plainly — "already up t
 
 For an agent updating several themes in one session (taw-fleet's update-all: a coordinator with one subagent per theme). It applies when the prompt says **batch mode**; everything above still holds except where this section says otherwise. **A batch run never asks the user anything:** it decides by these rules or stops with a reason, and leaves every decision that needs the user to the coordinator, as a proposal in its result. The prompt gives the theme folder, the site's PHP binary, Local's Composer, whether the site is running, and the branch name.
 
-Run every command with the site's own PHP (`<php> bin/taw …`, `<php> <composer.phar> …`), from the theme folder.
+Run every command from the theme folder: `taw …` (it already uses the site's PHP), and Composer with the site's own PHP (`<php> <composer.phar> …`).
 
 **B1. Preconditions.** Stop with `status: "skipped"` and the reason, changing nothing, when:
 - `dirty`: `git status --porcelain` isn't empty;
@@ -162,19 +164,19 @@ Run every command with the site's own PHP (`<php> bin/taw …`, `<php> <composer
 
 **B2. Branch.** `chore/taw-core-<newest version>` (or `chore/update-theme-<YYYY-MM-DD>` when taw/core is current) from the up-to-date default branch. If it already exists, check it out and continue from where it is (a re-run resumes, it doesn't ask).
 
-**B3. taw/core first.** When taw/core is behind, run `composer update taw/core --with-dependencies` (approved in batch mode, including taw/core's own dependencies it moves). Do this **before** the sync: `bin/taw sync` runs from the theme's installed taw/core, and the manifest suggestions need v1.78.0 or later. Without `--with-dependencies`, a release that needs a newer dependency (v1.77.0 needs `enshrined/svg-sanitize ^1.0`) is a silent no-op: "Nothing to modify in lock file", exit 0, sometimes after "Found N security vulnerability advisories". **Check the version moved** (`composer show taw/core`). If it didn't, run `composer why-not taw/core <newest>`, then stop with `status: "failed"`, `reason: "core-held-back"`, and what holds it back in `notes`. Note the version before and after, and every other package that moved.
+**B3. taw/core first.** When taw/core is behind, run `composer update taw/core --with-dependencies` (approved in batch mode, including taw/core's own dependencies it moves). Do this **before** the sync: `taw sync` runs from the theme's installed taw/core, and the manifest suggestions need v1.78.0 or later. Without `--with-dependencies`, a release that needs a newer dependency (v1.77.0 needs `enshrined/svg-sanitize ^1.0`) is a silent no-op: "Nothing to modify in lock file", exit 0, sometimes after "Found N security vulnerability advisories". **Check the version moved** (`composer show taw/core`). If it didn't, run `composer why-not taw/core <newest>`, then stop with `status: "failed"`, `reason: "core-held-back"`, and what holds it back in `notes`. Note the version before and after, and every other package that moved.
 
 **B4. Sync.**
-1. `bin/taw sync --json`, keep the output.
-2. `bin/taw sync --apply`: Tier 1, as always.
-3. `bin/taw sync --apply-manifests` when a `merge` entry has `add` or `bump`. Then, only if a `require`/`require-dev` key was added or bumped, `composer update <those packages>`; after a `package.json` change, `npm install`. Skip both when nothing of the kind changed.
+1. `taw sync --json`, keep the output.
+2. `taw sync --apply`: Tier 1, as always.
+3. `taw sync --apply-manifests` when a `merge` entry has `add` or `bump`. Then, only if a `require`/`require-dev` key was added or bumped, `composer update <those packages>`; after a `package.json` change, `npm install`. Skip both when nothing of the kind changed.
 4. **Re-read this file.** Tier 1 just refreshed `.claude/skills/`, so the theme's copy may now be newer than the one you followed (the theme's old copy, or the canonical one if the old copy had no batch mode). Follow the theme's refreshed copy from here, and say in `notes` if it differed from the one you followed.
 
 Never hand-edit `composer.json`/`package.json` in batch mode. Without a `merge` entry (taw/core older than 1.78.0), or for `review` items, report them as proposals.
 
 **B5. Tier 2 prose is a proposal.** Don't apply any changed Tier 2 file other than through B4.3. For each, add a proposal with the path, `diff_lines` (the line count of sync's `diff` field), a one-line summary of what changed upstream, and anything site-specific the overwrite would lose (a section the site added). The coordinator asks the user and applies what's approved. To tell whether the chatbot's optional lines apply, you may check that `Blocks/Chatbot/` **exists**; don't read anything in `Blocks/`.
 
-**B6. UPGRADING checks.** Read `vendor/taw/core/UPGRADING.md` and give every **Check** in each section newer than the version you came from an entry of its own (a section can have several; an instruction such as "delete the regular plugin" counts as one). Checks are worded for a site upgraded by hand; judge them after the sync by their intent (a retired command that the synced `bin/taw` no longer lists is a pass). Each gets one outcome:
+**B6. UPGRADING checks.** Read `vendor/taw/core/UPGRADING.md` and give every **Check** in each section newer than the version you came from an entry of its own (a section can have several; an instruction such as "delete the regular plugin" counts as one). Checks are worded for a site upgraded by hand; judge them after the sync by their intent (a retired command that `taw` no longer lists is a pass). Each gets one outcome:
 - `pass`, or `not-applicable` (with why);
 - `needs-wordpress`: the check needs the site running and it isn't (don't start it; the coordinator asks once for every site);
 - `needs-browser`: it needs a browser (never open one in batch mode);
@@ -226,7 +228,7 @@ Never hand-edit `composer.json`/`package.json` in batch mode. Without a `merge` 
 - Don't run `git merge`/`git pull` against the whole working tree — this skill deliberately avoids that now.
 - Don't auto-apply Tier 2 changes without showing the diff and getting confirmation.
 - Don't full-file-overwrite `composer.json`/`package.json` (or any other structural manifest) even after approval — surgically edit only the framework-relevant lines; a whole-file replace silently deletes the client's own additive dependencies.
-- Don't hand-roll Tier 1's clone/copy logic — always go through `php bin/taw sync --apply`, so an interactive run and the automated CI workflow never diverge in behavior.
+- Don't hand-roll Tier 1's clone/copy logic — always go through `taw sync --apply`, so an interactive run and the automated CI workflow never diverge in behavior.
 - Don't run `composer update taw/core` as a silent side effect of this skill — it's a separate, explicitly confirmed action (Step 4; batch mode has the approval in its prompt).
 - Don't commit the synced changes — leave that decision and action to the user (batch mode commits on its branch; see § "Batch mode").
 - Don't assume a project without a git relationship to `taw-theme` is broken or needs special handling — that's not a precondition this skill has.

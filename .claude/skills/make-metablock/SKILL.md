@@ -51,10 +51,12 @@ Full field type list and options: `AGENTS.md` § "The Metabox Framework", or the
 
 ## Step 4 — Scaffold
 
+`taw` (installed with taw-fleet) runs this theme's `vendor/bin/taw` with the site's PHP; without it, run `vendor/bin/taw` from the theme folder.
+
 Prefer the CLI over hand-writing boilerplate:
 
 ```bash
-php bin/taw make:block SectionName --type=meta --with-style
+taw make:block SectionName --type=meta --with-style
 composer dump-autoload
 ```
 
@@ -171,7 +173,7 @@ If there's no target post yet (the block hasn't been wired into a page, or the p
 - Run `php bin/ci/check-getdata-signature.php` — same check CI runs, catches the signature bug across every block in one shot, not just the one you just wrote.
 - **Run `composer run test`** — confirms the Step 8 test file actually passes, not just that it exists. A test that doesn't run (typo'd namespace, wrong mocked method name) is worse than no test — it looks like coverage but catches nothing.
 - **Check the site actually loads** (e.g. `curl -sL -o /dev/null -w '%{http_code}' <site-url>`), not just that this one block's files are syntactically valid. Because every block auto-loads on every request, a signature mismatch (see Step 5.3) or fatal anywhere in `Blocks/` — including in files you didn't touch — takes the whole site down, and that failure mode won't show up from linting your new files alone.
-- Optionally, `php bin/taw inspect` reports the live registered blocks/fields — a fast way to confirm the new block is actually discovered and its fields match what you intended, without opening wp-admin.
+- Optionally, `taw inspect` reports the live registered blocks/fields — a fast way to confirm the new block is actually discovered and its fields match what you intended, without opening wp-admin.
 - **If the block renders images**, confirm Step 6's `Image::render()` + reserved-aspect-ratio requirement was actually followed — see `AGENTS.md` § "Performance Compliance". This is easy to skip silently since a missing `aspect-ratio` doesn't break the build or fail a test, it just produces a flaky CLS regression that won't show up unless someone happens to re-check PageSpeed Insights.
 - If a dev server is running (`npm run dev`), **ask before driving a Playwright browser check** — e.g. "want me to verify the front end render and admin metabox UI in a browser, or are you already looking at it?" On small changes the developer often has the dev site open already and can tell at a glance; only open/drive a browser via Playwright on an explicit yes. This applies to the basic render/admin-UI check here just as much as `visual-check`'s pixel comparison below — neither auto-runs.
 - Don't report the task done without at least offering a visual check when a browser is available — see the project's `verify` skill for the general pattern.
