@@ -44,6 +44,9 @@ abstract class TestCase extends PHPUnitTestCase
         Functions\when('get_template_directory')->justReturn('/tmp/theme');
         Functions\when('get_template_directory_uri')->justReturn('https://example.test/wp-content/themes/taw-theme');
         Functions\when('add_action')->justReturn(true);
+        // taw/core ≥ 1.98 looks up the post to pick a field's default
+        // (Metabox::defaultBox()); without a post it uses the first box.
+        Functions\when('get_post')->justReturn(null);
     }
 
     /**
