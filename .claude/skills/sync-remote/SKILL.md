@@ -13,7 +13,7 @@ argument-hint: "[optional: branch name, if not the current branch]"
 
 ## Overview
 
-This is the "am I up to date with everyone else working across this multi-machine setup" workflow — built after real divergence happened between machines on `chcapital` (two independent commits both adding `CLAUDE-HANDOFF.md` to `.gitignore`, resolved with a clean merge earlier in this project's history). It automates the mechanical parts (fetch, compare, fast-forward or merge) while keeping the two genuinely risky decisions — what to do with uncommitted local work, and whether to push — as explicit questions, never silent choices.
+This is the "am I up to date with everyone else working across this multi-machine setup" workflow — built after real divergence happened between machines on a client theme (two independent commits both adding `CLAUDE-HANDOFF.md` to `.gitignore`, resolved with a clean merge earlier in this project's history). It automates the mechanical parts (fetch, compare, fast-forward or merge) while keeping the two genuinely risky decisions — what to do with uncommitted local work, and whether to push — as explicit questions, never silent choices.
 
 **This does not replace the project's standing push-confirmation rule.** The user asking to "sync with remote" authorizes pulling and reconciling; it does not, by itself, authorize the push at the end. Always confirm the push separately (Step 5), same as any other git-push in this project.
 

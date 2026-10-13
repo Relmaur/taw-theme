@@ -193,8 +193,8 @@ Never hand-edit `composer.json`/`package.json` in batch mode. Without a `merge` 
 
 ```json
 {
-  "theme": "ls-mexico",
-  "site": "ls-mxico",
+  "theme": "awesome-company",
+  "site": "awesome-company",
   "status": "updated",
   "reason": null,
   "branch": "chore/taw-core-1.78.0",
@@ -236,7 +236,7 @@ Never hand-edit `composer.json`/`package.json` in batch mode. Without a `merge` 
 
 ## Migrating an existing site-authored skill
 
-If a client site already has its own skill in `.claude/skills/` (or `.agents/skills/`) that predates the `skills-dir` mechanism — e.g. the FSSPX parish site's `.claude/skills/publish-news/` — it will show up under the sync report's `warn` list until it's marked. One-time fix:
+If a client site already has its own skill in `.claude/skills/` (or `.agents/skills/`) that predates the `skills-dir` mechanism — e.g. a client site's `.claude/skills/publish-news/` — it will show up under the sync report's `warn` list until it's marked. One-time fix:
 
 1. Open the skill's `SKILL.md`.
 2. Add `owner: site` to the YAML frontmatter (anywhere in the block; convention is right after `name:`):
