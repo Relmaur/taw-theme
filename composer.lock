@@ -1108,16 +1108,16 @@
         },
         {
             "name": "taw/core",
-            "version": "v1.96.0",
+            "version": "v1.97.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Relmaur/taw-core.git",
-                "reference": "f22d55916eae17c4d8da7ff832ee5c556e1f4b75"
+                "reference": "30db707c602c19fa90b91087e774174868fbae2e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/f22d55916eae17c4d8da7ff832ee5c556e1f4b75",
-                "reference": "f22d55916eae17c4d8da7ff832ee5c556e1f4b75",
+                "url": "https://api.github.com/repos/Relmaur/taw-core/zipball/30db707c602c19fa90b91087e774174868fbae2e",
+                "reference": "30db707c602c19fa90b91087e774174868fbae2e",
                 "shasum": ""
             },
             "require": {
@@ -1190,10 +1190,10 @@
             ],
             "description": "TAW — data layer framework for WordPress (fields, options, REST-exposed meta, content interchange), plus an optional classic-theme toolkit (block system, Vite asset pipeline)",
             "support": {
-                "source": "https://github.com/Relmaur/taw-core/tree/v1.96.0",
+                "source": "https://github.com/Relmaur/taw-core/tree/v1.97.0",
                 "issues": "https://github.com/Relmaur/taw-core/issues"
             },
-            "time": "2026-10-13T00:07:27+00:00"
+            "time": "2026-10-13T01:50:31+00:00"
         }
     ],
     "packages-dev": [
